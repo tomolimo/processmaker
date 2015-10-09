@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <root>
-   <name>Timezones</name>
-   <key>timezones</key>
+   <name>Processmaker</name>
+   <key>processmaker</key>
    <state>stable</state>
     <logo>https://raw.githubusercontent.com/tomolimo/processmaker/master/processmaker.png</logo>
    <description>
       <short>
-		 <fr></fr>
+		 <fr>Ce plugin fournit la possibilité d'intégrer un processus (workflow) aux tickets.</fr>
          <en>This plugin provides a process (workflow) management linked to tickets></en>
       </short>
       <long>
