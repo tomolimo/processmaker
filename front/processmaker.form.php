@@ -1,9 +1,7 @@
 <?php
-if( !defined ('GLPI_ROOT' ) )
-    define('GLPI_ROOT', '../../..');
-include_once (GLPI_ROOT."/inc/includes.php");
-include_once '../inc/processmaker.class.php' ;
-include_once '../inc/cases.class.php' ;
+include_once ("../../../inc/includes.php");
+//include_once '../inc/processmaker.class.php' ;
+//include_once '../inc/cases.class.php' ;
 
 switch( $_POST["action"] ) {
     case 'newcase':
@@ -15,89 +13,21 @@ switch( $_POST["action"] ) {
                 $myProcessMaker = new PluginProcessmakerProcessmaker() ;
                 $myProcessMaker->login() ; //openSession();
                             
-                $requesters = PluginProcessmakerProcessmaker::getItemUsers( $_POST['itemtype'], $_POST['id'], 1  ) ; // 1 for requesters
-                if( !key_exists( 0, $requesters ) ) {
-                    $requesters[0]['glpi_id'] = 0 ;
-                    $requesters[0]['pm_id'] = 0 ;
-                }
-
-                //$technicians = PluginProcessmakerProcessmaker::getItemUsers( $_POST['itemtype'], $_POST['id'], 2 ) ; // 2 for technicians
-                //if( !key_exists( 0, $technicians ) ) {
-                //    $technicians[0]['glpi_id'] = Session::getLoginUserID() ;
-                //    $technicians[0]['pm_id'] = PluginProcessmakerProcessmaker::getPMUserId( Session::getLoginUserID() ) ;
-                //}
-                
-                // get item info to retreive title, description and duedate
-                $locTicket = new $_POST['itemtype'] ; //Ticket();
-                $locTicket->getFromDB( $_POST['id'] ) ;
-                
-                if($locTicket->countUsers($locTicket::ASSIGN) == 0 
-                    || !$locTicket->isUser($locTicket::ASSIGN, Session::getLoginUserID()) ){
-                    $locTicket->update( array( 'id' => $_POST['id'], '_itil_assign' => array( '_type' => 'user', 'users_id' => Session::getLoginUserID() )  ) ) ;
-                }
-                
-                //$writer =  PluginProcessmakerProcessmaker::getPMUserId( Session::getLoginUserID() );
-                if( !isset($locTicket->fields['due_date']) || $locTicket->fields['due_date'] == null ) {
-                    $locTicket->fields['due_date'] = "";
-                }
-
-                $resultCase = $myProcessMaker->newCase( $_POST['plugin_processmaker_process_id'],
-                                                        array(  'GLPI_ITEM_CAN_BE_SOLVED' => 0,
-                                                                'GLPI_TICKET_ID' => $_POST['id'], 
-                                                                'GLPI_ITEM_TYPE' => $_POST['itemtype'],
-                                                                'GLPI_TICKET_REQUESTER_GLPI_ID' => $requesters[0]['glpi_id'], 
-                                                                'GLPI_TICKET_REQUESTER_PM_ID' => $requesters[0]['pm_id'], 
-                                                                'GLPI_TICKET_TITLE' => $locTicket->fields['name'], 
-                                                                'GLPI_TICKET_DESCRIPTION' => $locTicket->fields['content'], 
-                                                                'GLPI_TICKET_DUE_DATE' => $locTicket->fields['due_date'],  
-																'GLPI_TICKET_URGENCY' => $locTicket->fields['urgency'], 
-                                                                'GLPI_ITEM_IMPACT' => $locTicket->fields['impact'], 
-                                                                'GLPI_ITEM_PRIORITY' => $locTicket->fields['priority'], 
-																'GLPI_TICKET_GLOBAL_VALIDATION' => $locTicket->fields['global_validation'] ,
-                                                                'GLPI_TICKET_TECHNICIAN_GLPI_ID' => Session::getLoginUserID(), //$technicians[0]['glpi_id'], 
-                                                                'GLPI_TICKET_TECHNICIAN_PM_ID' => PluginProcessmakerProcessmaker::getPMUserId( Session::getLoginUserID() ) //$technicians[0]['pm_id']
-                                                             ) ) ; 
+                $resultCase = $myProcessMaker->startNewCase( $_POST['plugin_processmaker_process_id'], $_POST['itemtype'], $_POST['id'], Session::getLoginUserID() ) ;
                 
                 if ($resultCase->status_code == 0){
-                    $caseInfo = $myProcessMaker->getCaseInfo( $resultCase->caseId ); 
-
-                    //$query = "UPDATE APPLICATION SET APP_STATUS='TO_DO' WHERE APP_UID='".$resultCase->caseId."' AND APP_STATUS='DRAFT'" ;
-                    //$res = $DB->query($query) ;
-                    // save info to DB
-                    $query = "INSERT INTO glpi_plugin_processmaker_cases (items_id, itemtype, id, case_num, case_status, processes_id) VALUES (".$_POST['id'].", '".$_POST['itemtype']."', '".$resultCase->caseId."', ".$resultCase->caseNumber.", '".$caseInfo->caseStatus."', '".$caseInfo->processId."');" ;
-			        $res = $DB->query($query) ;
-                
-                    $myProcessMaker->add1stTask($_POST['itemtype'], $_POST['id'], $caseInfo ) ;
-                
-                    //echo "New case ID: $result->caseId, Case No: $result->caseNumber \n";
                     Html::back();
                 }
                 else 
-                    Session::addMessageAfterRedirect($LANG['processmaker']['item']['error'][$resultCase->status_code]."<br>$resultCase->message ($resultCase->status_code)", true, ERROR); //echo "Error creating case: $resultCase->message \n";
+                    Session::addMessageAfterRedirect($LANG['processmaker']['item']['error'][$resultCase->status_code]."<br>".$resultCase->message." (".$resultCase->status_code.")", true, ERROR);
             } else
                 Html::back(); 
         }
-        else { // the case is created before the ticket (used for user management before ticket creation)
-            // list of requesters is needed
-            // so read ticket
-            //$requesters = array( ) ;
-            
-            
-            //foreach( $DB->request( $query ) as $dbuser ) {
-            //    $requesters[] = $dbuser['pm_users_id'] ;
-            //}
-            //$writer =  PluginProcessmakerProcessmaker::getPMUserId( Session::getLoginUserID() );
-            //$userGLPI = new User();
-            //$userGLPI->getFromDB( Session::getLoginUserID() ) ;
-            //if( $userGLPI->fields['language'] != null )
-            //    $lang =  substr( $userGLPI->fields['language'], 0, 2)  ;
-            //else
-            //    $lang = "en" ;
+        else { // the case is created before the ticket (used for post-only case creation before ticket creation)
             $myProcessMaker = new PluginProcessmakerProcessmaker() ;
-            $myProcessMaker->login() ; //openSession( $userGLPI->fields['name'], "md5:37d442efb43ebb80ec6f9649b375ab72", $lang) ; 
+            $myProcessMaker->login() ; 
             
-            //$resultCase = $myProcessMaker->newCaseImpersonate( $_POST['plugin_processmaker_process_id'], $writer) ;  
-            $resultCase = $myProcessMaker->newCase( $_POST['plugin_processmaker_process_id'], array( 'GLPI_ITEM_CAN_BE_SOLVED' => 0 ) ) ;  
+            $resultCase = $myProcessMaker->newCase( $_POST['plugin_processmaker_process_id'], array( 'GLPI_ITEM_CAN_BE_SOLVED' => 0, 'GLPI_SELFSERVICE_CREATED' => '1') ) ;
             if ($resultCase->status_code == 0){
                 // case is created 
                 // Must show it...
@@ -106,11 +36,6 @@ switch( $_POST["action"] ) {
                 Html::redirect($CFG_GLPI['root_doc']."/plugins/processmaker/front/processmaker.helpdesk.form.php?process_id=".$_POST['plugin_processmaker_process_id']."&case_id=".$resultCase->caseId."&rand=$rand&itilcategories_id=".$_POST["itilcategories_id"]."&type=".$_REQUEST["type"]); 
                                 
             } else {
-                //Html::helpHeader($LANG['job'][13], $_SERVER['PHP_SELF'], $_SESSION["glpiname"]);
-                //// case is not created show error message
-                //echo "Error : ".$resultCase->status_code."</br>" ;
-                //echo $resultCase->message."</br>" ;
-                //Html::helpFooter();
                 Session::addMessageAfterRedirect($LANG['processmaker']['item']['error'][$resultCase->status_code]."<br>$resultCase->message ($resultCase->status_code)", true, ERROR); //echo "Error creating case: $resultCase->message \n";
                 Html::redirect($CFG_GLPI["root_doc"]."/front/helpdesk.public.php?create_ticket=1");
             }
@@ -131,7 +56,7 @@ switch( $_POST["action"] ) {
         }
         else if( isset( $_POST['reassign'] ) ) {
             // here we should re-assign the current task to $_POST['users_id_recipient']
-            $GLPINewPMUserId = PluginProcessmakerProcessmaker::getPMUserId( $_POST['users_id_recipient'] ) ; 
+            $GLPINewPMUserId = PluginProcessmakerUser::getPMUserId( $_POST['users_id_recipient'] ) ;
             if( $_POST['plugin_processmaker_userId'] != $GLPINewPMUserId ) {
                 $locPM = new PluginProcessmakerProcessmaker() ;
                 $locPM->login( ) ;
@@ -160,12 +85,12 @@ switch( $_POST["action"] ) {
         }
         else if( isset($_POST['delete']) ) {
             // delete case from case table, this will also delete the tasks
-            $locCase = new PluginProcessmakerCases ;
+            $locCase = new PluginProcessmakerCase ;
             $locCase->getFromDB( $_POST['plugin_processmaker_caseId'] ) ;
             if( $locCase->deleteCase() ) {
                 // request delete from pm itself
                 $myProcessMaker = new PluginProcessmakerProcessmaker() ; 
-                $myProcessMaker->login() ;
+                $myProcessMaker->login(true) ;
                 $resultPM = $myProcessMaker->deleteCase(  $_POST['plugin_processmaker_caseId'] ) ;
                 
                 if( $resultPM->status_code == 0 ) {
@@ -181,7 +106,7 @@ switch( $_POST["action"] ) {
             $myProcessMaker->login() ; 
             $resultPM = $myProcessMaker->cancelCase(  $_POST['plugin_processmaker_caseId'] ) ; //, $_POST['plugin_processmaker_delIndex'], $_POST['plugin_processmaker_userId'] ) ;                
             if( $resultPM->status_code === 0 ) {
-                $locCase = new PluginProcessmakerCases ;
+                $locCase = new PluginProcessmakerCase ;
                 $locCase->getFromDB( $_POST['plugin_processmaker_caseId'] ) ;
                 if( $locCase->cancelCase() )                
                     Session::addMessageAfterRedirect($LANG['processmaker']['item']['case']['cancelled'], true, INFO); 
@@ -198,4 +123,3 @@ switch( $_POST["action"] ) {
 // to return to ticket
 Html::back();
 
-?>

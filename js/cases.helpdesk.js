@@ -1,11 +1,18 @@
 ﻿        
 var oldHandler ;
-var submitButton  ;
-function onClickContinue( obj ) {
+var submitButton;
+var caseIFrame;
+
+function onClickContinue(obj) {
+    //debugger;
     // call old handler
     if (obj != undefined && oldHandler)
         oldHandler(obj.target); 
-    submitButton.click() ;  
+    // hide the iFrame
+    caseIFrame.style.visibility = 'hidden';
+
+    // call new handler
+    submitButton.click();
 }
 
 
@@ -39,11 +46,11 @@ function onLoadFrame( evt, caseId, delIndex, caseNumber, processName ) {
             var buttonContinue = contentDocument.getElementById('form[btnGLPISendRequest]');
             var txtAreaUseRequestSumUp = contentDocument.getElementById('form[UserRequestSumUp]');
             var linkList = contentDocument.getElementsByTagName('a');
-            if (txtAreaUseRequestSumUp != undefined) { // !bAreaUseRequestSumUp && 
-                //bAreaUseRequestSumUp = true; // to prevent multiple adds
-                Ext.select("textarea[name='content']").elements[0].value = txtAreaUseRequestSumUp.value; 
+            if (txtAreaUseRequestSumUp != undefined) {
+                //debugger;
+                $("textarea[name='content']")[0].value = txtAreaUseRequestSumUp.value; 
             } else
-                Ext.select("textarea[name='content']").elements[0].value = '_';
+                $("textarea[name='content']")[0].value = '_';
 
             if (!bButtonContinue && buttonContinue != undefined && linkList != undefined && linkList.length > 0) {
                 bButtonContinue = true; //window.clearInterval(caseTimer); // to be sure that it will be done only one time
@@ -61,13 +68,13 @@ function onLoadFrame( evt, caseId, delIndex, caseNumber, processName ) {
                 buttonContinue.onclick = onClickContinue;
 
 
-                submitButton = Ext.select("input[name='add'][type=submit]").elements[0];
+                submitButton = $("input[name='add'][type=submit]")[0];
                 submitButton.insertAdjacentHTML('beforebegin', "<input type='hidden' name='processmaker_action' value='routecase'/>");
                 submitButton.insertAdjacentHTML('beforebegin', "<input type='hidden' name='processmaker_caseid' value='" + caseId + "'/>");
                 submitButton.insertAdjacentHTML('beforebegin', "<input type='hidden' name='processmaker_delindex' value='" + delIndex + "'/>");
                 submitButton.insertAdjacentHTML('beforebegin', "<input type='hidden' name='processmaker_casenum' value='" + caseNumber + "'/>");
 
-                Ext.select("input[name='name'][type=text]").elements[0].value = processName;
+                $("input[name='name'][type=text]")[0].value = processName;
 
             }
             
@@ -75,7 +82,7 @@ function onLoadFrame( evt, caseId, delIndex, caseNumber, processName ) {
             // try to redim caseIFrame
             if (!redimIFrame) {
                 var locElt = contentDocument.getElementsByTagName("form")[0];
-                var newHeight = (locElt.clientHeight < 100 ? 100 : locElt.clientHeight) + locElt.offsetParent.offsetTop + 10 ;
+                var newHeight = (locElt.clientHeight < 300 ? 300 : locElt.clientHeight) + locElt.offsetParent.offsetTop + 10 ;
                 caseIFrame.height = newHeight;
                 redimIFrame = true;
             }

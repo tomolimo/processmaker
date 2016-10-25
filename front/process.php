@@ -5,10 +5,10 @@ include (GLPI_ROOT."/inc/includes.php");
 
 Html::header($LANG['processmaker']['title'][1], $_SERVER['PHP_SELF'], "plugins", "processmaker");
 
-if (plugin_processmaker_haveRight("process_config","r") || Session::haveRight("config","w")) { 
+if (Session::haveRight("plugin_processmaker_config",READ) || Session::haveRight("config", UPDATE)) { 
     $process=new PluginProcessmakerProcess();
 
-    if( isset( $_REQUEST['refresh'] ) && plugin_processmaker_haveRight("process_config","w") ) {
+    if( isset( $_REQUEST['refresh'] ) && Session::haveRight("plugin_processmaker_config",UPDATE) ) {
         $process->refresh();
         Html::back();
     }

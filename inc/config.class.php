@@ -5,19 +5,24 @@
 class PluginProcessmakerConfig extends CommonDBTM {
 
     static private $_instance = NULL;
+    //static private $db = NULL ;
 
-    function canCreate() {
-        return Session::haveRight('config', 'w');
+    static function canCreate() {
+        return Session::haveRight('config', UPDATE);
     }
 
-    function canView() {
-        return Session::haveRight('config', 'r');
+    static function canView() {
+        return Session::haveRight('config', READ);
     }
 
-    static function getTypeName() {
+    static function canUpdate() {
+        return Session::haveRight('config', UPDATE);
+    }
+
+    static function getTypeName($nb=0) {
         global $LANG;
 
-        return $LANG['common'][12];
+        return $LANG['processmaker']['config']['setup'];
     }
 
     function getName($with_comment=0) {
@@ -40,118 +45,128 @@ class PluginProcessmakerConfig extends CommonDBTM {
         return self::$_instance;
     }
 
-    //static function install(Migration $mig) {
-    //    global $DB, $LANG;
+   /**
+   * Prepare input datas for updating the item
+   *
+   * @param $input array used to update the item
+   *
+   * @return array the modified $input array
+   **/
+   function prepareInputForUpdate($input) {
 
-    //    $table = 'glpi_plugin_behaviors_configs';
-    //    if (!TableExists($table)) { //not installed
+      if( !isset($input["maintenance"]) ) {
+         $input["maintenance"] = 0 ;
+      }
 
-    //        $query = "CREATE TABLE `$table` (
-    //                 `id` int(11) NOT NULL,
-    //                 `use_requester_item_group` tinyint(1) NOT NULL default '0',
-    //                 `use_requester_user_group` tinyint(1) NOT NULL default '0',
-    //                 `is_ticketsolutiontype_mandatory` tinyint(1) NOT NULL default '0',
-    //                 `is_ticketrealtime_mandatory` tinyint(1) NOT NULL default '0',
-    //                 `is_requester_mandatory` tinyint(1) NOT NULL default '0',
-    //                 `is_ticketdate_locked` tinyint(1) NOT NULL default '0',
-    //                 `use_assign_user_group` tinyint(1) NOT NULL default '0',
-    //                 `tickets_id_format` VARCHAR(15) NULL,
-    //                 `remove_from_ocs` tinyint(1) NOT NULL default '0',
-    //                 `add_notif` tinyint(1) NOT NULL default '0',
-    //                 `use_lock` tinyint(1) NOT NULL default '0',
-    //                 `date_mod` datetime default NULL,
-    //                 `comment` text,
-    //                 PRIMARY KEY  (`id`)
-    //               ) ENGINE=MyISAM  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci";
-    //        $DB->query($query) or die($LANG['update'][90] . "&nbsp;:<br>" . $DB->error());
+      if (isset($input["pm_dbserver_passwd"])) {
+         if (empty($input["pm_dbserver_passwd"])) {
+            unset($input["pm_dbserver_passwd"]);
+         } else {
+            $input["pm_dbserver_passwd"] = Toolbox::encrypt(stripslashes($input["pm_dbserver_passwd"]), GLPIKEY);
+         }
+      }
 
-    //        $query = "INSERT INTO `$table` (id, date_mod) VALUES (1, NOW())";
-    //        $DB->query($query) or die($LANG['update'][90] . "&nbsp;:<br>" . $DB->error());
+      if (isset($input["_blank_pm_dbserver_passwd"]) && $input["_blank_pm_dbserver_passwd"]) {
+         $input['pm_dbserver_passwd'] = '';
+      }
 
-    //    } else {
-    //        // Upgrade
+      if (isset($input["pm_admin_passwd"])) {
+         if (empty($input["pm_admin_passwd"])) {
+            unset($input["pm_admin_passwd"]);
+         } else {
+            $input["pm_admin_passwd"] = Toolbox::encrypt(stripslashes($input["pm_admin_passwd"]), GLPIKEY);
+         }
+      }
 
-    //        $mig->addField($table, 'tickets_id_format',        'string');
-    //        $mig->addField($table, 'remove_from_ocs',          'bool');
-    //        $mig->addField($table, 'is_requester_mandatory',   'bool');
+      if (isset($input["_blank_pm_admin_passwd"]) && $input["_blank_pm_admin_passwd"]) {
+         $input['pm_admin_passwd'] = '';
+      }
 
-    //        // version 0.78.0 - feature #2801 Forbid change of ticket's creation date
-    //        $mig->addField($table, 'is_ticketdate_locked',     'bool');
-
-    //        // Version 0.80.0 - set_use_date_on_state now handle in GLPI
-    //        $mig->dropField($table, 'set_use_date_on_state');
-
-    //        // Version 0.80.4 - feature #3171 additional notifications
-    //        $mig->addField($table, 'add_notif',                'bool');
-
-    //        // Version 0.83.0 - groups now have is_requester and is_assign attribute
-    //        $mig->dropField($table, 'sql_user_group_filter');
-    //        $mig->dropField($table, 'sql_tech_group_filter');
-
-    //        // Version 0.83.1 - prevent update on ticket updated by another user
-    //        $mig->addField($table, 'use_lock',                 'bool');
-
-    //    }
-
-    //    return true;
-    //}
-
-    //static function uninstall() {
-    //    global $DB;
-
-    //    if (TableExists('glpi_plugin_behaviors_configs')) { //not installed
-
-    //        $query = "DROP TABLE `glpi_plugin_behaviors_configs`";
-    //        $DB->query($query) or die($DB->error());
-    //    }
-    //    return true;
-    //}
-
+      return $input;
+   }
     static function showConfigForm($item) {
-        global $LANG, $DB;
+        global $LANG, $PM_DB;
 
-       
         $ui_theme = array(
-          'classic' => 'classic',
-          'neoclassic' => 'neoclassic',
-          'uxmodern' => 'uxmodern' ,
-          'uxs' => 'uxs'
-        );        
-        
+          'glpi_classic' => 'glpi_classic',
+          'glpi_neoclassic' => 'glpi_neoclassic'
+        );
+
         $config = self::getInstance();
 
         $config->showFormHeader();
 
         echo "<tr class='tab_bg_1'>";
-        echo "<td>".$LANG['processmaker']['config']['name']."&nbsp;:</td><td>";
-        echo $config->fields['name'];
-        echo "</td><td colspan='2' class='center'>".$LANG['processmaker']['config']['comments']."&nbsp;:";
+        echo "<td >".$LANG['processmaker']['config']['URL']."</td><td >";
+        echo "<input size='50' type='text' name='pm_server_URL' value='".$config->fields['pm_server_URL']."'>" ;
         echo "</td></tr>\n";
 
         echo "<tr class='tab_bg_1'>";
-        echo "<td>".$LANG['processmaker']['config']['URL']."&nbsp;:</td><td>";
-        echo "<input type='text' name='pm_server_URL' value='".$config->fields['pm_server_URL']."'>" ;
-        echo "</td><td rowspan='5' colspan='2' class='center'>";
-        echo "<textarea cols='60' rows='8' name='comment' >".$config->fields['comment']."</textarea>";
-        echo "<br>".$LANG['common'][26]."&nbsp;: ";
-        echo Html::convDateTime($config->fields["date_mod"]);
-        echo "</td></tr>\n";
-
-        echo "<tr class='tab_bg_1'>";
-        echo "<td>".$LANG['processmaker']['config']['workspace']."&nbsp;:</td><td>";
+        echo "<td >".$LANG['processmaker']['config']['workspace']."</td><td >";
         echo "<input type='text' name='pm_workspace' value='".$config->fields['pm_workspace']."'>" ;
         echo "</td></tr>\n";
 
         echo "<tr class='tab_bg_1'>";
-        echo "<td>".$LANG['processmaker']['config']['theme']."&nbsp;:</td><td>";
+        echo "<td >" . $LANG['processmaker']['config']['admin']['user'] . "</td>";
+        echo "<td ><input type='text' name='pm_admin_user' value='".$config->fields["pm_admin_user"]."'>";
+        echo "</td></tr>\n";
+
+        echo "<tr class='tab_bg_1'>";
+        echo "<td >" . $LANG['processmaker']['config']['admin']['password'] . "</td>";
+        echo "<td ><input type='password' name='pm_admin_passwd' value='' autocomplete='off'>";
+        echo "&nbsp;<input type='checkbox' name='_blank_pm_admin_passwd'>&nbsp;".__('Clear');
+        echo "</td></tr>\n";
+
+        echo "<tr class='tab_bg_1'>";
+        echo "<td >".$LANG['processmaker']['config']['connectionstatus']."</td><td >";
+        $pm = new PluginProcessmakerProcessmaker ;
+        $ret = $pm->login(true);
+        if( $ret ) {
+           echo "<font color='green'>".__('Test successful');
+        } else {
+           echo "<font color='red'>".__('Test failed')."<br>".print_r($pm->lasterror,true);
+        }
+        echo "</font></span></td></tr>\n";
+
+        echo "<tr><td  colspan='4' class='center b'>".$LANG['processmaker']['config']['mysql']."</td></tr>";
+
+        echo "<tr class='tab_bg_1'>";
+        echo "<td >" . __('SQL server (MariaDB or MySQL)') . "</td>";
+        echo "<td ><input type='text' size=50 name='pm_dbserver_name' value='".$config->fields["pm_dbserver_name"]."'>";
+        echo "</td></tr>\n";
+
+        echo "<tr class='tab_bg_1'>";
+        echo "<td >" . __('SQL user') . "</td>";
+        echo "<td ><input type='text' name='pm_dbserver_user' value='".$config->fields["pm_dbserver_user"]."'>";
+        echo "</td></tr>\n";
+
+        echo "<tr class='tab_bg_1'>";
+        echo "<td >" . __('SQL password') . "</td>";
+        echo "<td ><input type='password' name='pm_dbserver_passwd' value='' autocomplete='off'>";
+        echo "&nbsp;<input type='checkbox' name='_blank_pm_dbserver_passwd'>&nbsp;".__('Clear');
+        echo "</td></tr>\n";
+
+        echo "<tr class='tab_bg_1'>";
+        echo "<td >".$LANG['processmaker']['config']['connectionstatus']."</td><td >";
+        if( $PM_DB->connected ) {
+           echo "<font color='green'>".__('Test successful');
+        } else {
+           echo "<font color='red'>".__('Test failed');
+        }
+        echo "</font></span></td></tr>\n";
+
+        echo "<tr><td  colspan='4' class='center b'>".__('Settings')."</td></tr>";
+
+        echo "<tr class='tab_bg_1'>";
+        echo "<td >".$LANG['processmaker']['config']['theme']."</td><td >";
         Dropdown::showFromArray('pm_theme', $ui_theme,
                         array('value' => $config->fields['pm_theme']));
         echo "</td></tr>";
-        
+
         $taskCatogrie = new TaskCategory;
         $taskCatogrie->getFromDB( $config->fields['taskcategories_id'] ) ;
         echo "<tr class='tab_bg_1'>";
-        echo "<td>".$LANG['processmaker']['config']['main_task_category']."&nbsp;:</td><td>";
+        echo "<td >".$LANG['processmaker']['config']['main_task_category']."</td><td >";
         echo "<a href='".Toolbox::getItemTypeFormURL( 'TaskCategory' )."?id=". $config->fields['taskcategories_id']."'>".str_replace(" ", "&nbsp;", $taskCatogrie->fields['name']);
         if ($_SESSION["glpiis_ids_visible"]) {
             echo " (".$config->fields['taskcategories_id'].")";
@@ -162,7 +177,7 @@ class PluginProcessmakerConfig extends CommonDBTM {
         $taskUser = new User;
         $taskUser->getFromDB( $config->fields['users_id'] ) ;
         echo "<tr class='tab_bg_1'>";
-        echo "<td>".$LANG['processmaker']['config']['taskwriter']."&nbsp;:</td><td>";
+        echo "<td >".$LANG['processmaker']['config']['taskwriter']."</td><td >";
         echo "<a href='".Toolbox::getItemTypeFormURL( 'User' )."?id=". $config->fields['users_id']."'>".str_replace(" ", "&nbsp;", $taskUser->getName());
         if ($_SESSION["glpiis_ids_visible"]) {
             echo " (".$config->fields['users_id'].")";
@@ -171,16 +186,39 @@ class PluginProcessmakerConfig extends CommonDBTM {
         echo "</td></tr>\n";
 
         echo "<tr class='tab_bg_1'>";
-        echo "<td>".$LANG['processmaker']['config']['pm_group_name']."&nbsp;:</td><td>";        
-        $query = "SELECT * FROM wf_".$config->fields['pm_workspace'].".content WHERE CON_CATEGORY='GRP_TITLE' and CON_ID='".$config->fields['pm_group_guid']."' ;" ; 
-        echo "<table>";
-        foreach( $DB->request( $query ) as $row ) {
-            echo "<tr><td>".$row['CON_LANG']."</td><td>".$row['CON_VALUE']."</td>";
+        echo "<td >".$LANG['processmaker']['config']['pm_group_name']."</td><td >";
+
+        $pmGroups = array( 0 => Dropdown::EMPTY_VALUE ) ;
+        $query = "SELECT DISTINCT CON_ID, CON_VALUE FROM content WHERE CON_CATEGORY='GRP_TITLE' AND CON_LANG='".$pm->lang."' ORDER BY CON_VALUE;" ;
+        if( $PM_DB->connected ) {
+           foreach( $PM_DB->request( $query ) as $row ) {
+              $pmGroups[ $row['CON_ID'] ] = $row['CON_VALUE'] ;
+           }
+           Dropdown::showFromArray( 'pm_group_guid', $pmGroups, array('value' => $config->fields['pm_group_guid']) ) ;
+        } else {
+           echo "<font color='red'>".__('Not connected');
         }
-        echo "</table>" ;
+
         echo "</td></tr>\n";
 
-        
+         //echo "<tr class='tab_bg_1'>";
+         //echo "<td >".$LANG['processmaker']['config']['comments']."";
+         //echo "</td><td rowspan='5'  >";
+         //echo "<textarea cols='60' rows='5' name='comment' >".$config->fields['comment']."</textarea>";
+         //echo "</td></tr>\n";
+
+         //echo "<tr></tr>";
+         //echo "<tr></tr>";
+         //echo "<tr></tr>";
+         //echo "<tr></tr>";
+
+         echo "<tr><td  colspan='4' class='center b'>".__('Maintenance')."</td></tr>";
+
+         echo "<tr class='tab_bg_1'>";
+         echo "<td >".$LANG['processmaker']['config']['maintenance']."</td><td >";
+         Dropdown::showYesNo("maintenance", $config->fields['maintenance']);
+         echo "</td></tr>";
+
         $config->showFormButtons(array('candel'=>false));
 
         return false;
@@ -204,5 +242,6 @@ class PluginProcessmakerConfig extends CommonDBTM {
         }
         return true;
     }
+
 
 }

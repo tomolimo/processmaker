@@ -14,16 +14,28 @@ if (!defined('GLPI_ROOT')) {
  */
 class PluginProcessmakerProcess extends CommonDBTM {
 
-    function canCreate() {
-        return plugin_processmaker_haveRight('process_config', 'w');
+    static function getMenuName() {
+        return 'ProcessMaker';
     }
 
-    
-    function canView() {
-        return plugin_processmaker_haveRight('process_config', 'r');
+    static function canCreate() {
+        return Session::haveRight('plugin_processmaker_config', UPDATE);
     }
 
-    
+
+    static function canView() {
+        return Session::haveRight('plugin_processmaker_config', READ);
+    }
+
+    static function canUpdate( ) {
+        return Session::haveRight('plugin_processmaker_config', UPDATE);
+    }
+
+    function canUpdateItem() {
+        return Session::haveRight('plugin_processmaker_config', UPDATE);
+    }
+
+
     function maybeDeleted(){
         return false ;
     }
@@ -33,15 +45,16 @@ class PluginProcessmakerProcess extends CommonDBTM {
      * will refresh (re-synch) all process task list
      */
     function refreshTasks( $post ) {
-        global $DB, $CFG_GLPI ;
-        
+        global $PM_DB, $CFG_GLPI ;
+
         if( $this->getFromDB( $post['id'] ) ) {
             // here we are in the right process
             // we need to get the tasks + content from PM db
-            $config = new PluginProcessmakerConfig ;
-            $config->getFromDB( 1 ) ;
-            $database = $config->fields['pm_workspace'] ;
-            if( TableExists( 'glpi_dropdowntranslations' ) && class_exists('DropdownTranslation') ){ 
+            //$config = PluginProcessmakerConfig::getInstance() ;
+            //$database = $config->fields['pm_workspace'] ;
+            $translates = false ;
+            $mapLangs = array( ) ;
+            if( TableExists( 'glpi_dropdowntranslations' ) && class_exists('DropdownTranslation') ){
                 // to force rigths to add translations
                 $_SESSION['glpi_dropdowntranslations']['TaskCategory']['name'] = 'name' ;
                 $_SESSION['glpi_dropdowntranslations']['TaskCategory']['completename'] = 'completename' ;
@@ -51,27 +64,24 @@ class PluginProcessmakerProcess extends CommonDBTM {
                 foreach( $CFG_GLPI['languages'] as $key => $valArray){
                     $mapLangs[ locale_get_primary_language( $key ) ][] = $key ;
                 }
-            } else {
-                $translates = false ;
-                $mapLangs = array( ) ;
             }
-            $lang = $CFG_GLPI['languages'][ $CFG_GLPI['language'] ][ 2 ] ; 
-            $query = "select task.TAS_UID, task.TAS_START, content.CON_LANG, content.CON_CATEGORY, content.CON_VALUE from wf_$database.task
-                        inner join wf_$database.content on content.CON_ID=task.TAS_UID
+            $lang = locale_get_primary_language( $CFG_GLPI['language'] ) ; // $CFG_GLPI['languages'][ $CFG_GLPI['language'] ][ 3 ] ;
+            $query = "select task.TAS_UID, task.TAS_START, content.CON_LANG, content.CON_CATEGORY, content.CON_VALUE from task
+                        inner join content on content.CON_ID=task.TAS_UID
                         where task.PRO_UID = '".$this->fields['process_guid']."' and content.CON_CATEGORY in ('TAS_TITLE', 'TAS_DESCRIPTION') ".($translates?"":"and content.CON_LANG='$lang'")." ;" ;
             $taskArray = array() ;
             $defaultLangTaskArray=array();
-            foreach( $DB->request( $query ) as $task ) { 
+            foreach( $PM_DB->request( $query ) as $task ) {
                 if( $task['CON_LANG'] == $lang ) {
-                    $defaultLangTaskArray[ $task['TAS_UID'] ][ $task['CON_CATEGORY'] ]  = $task['CON_VALUE'] ; 
+                    $defaultLangTaskArray[ $task['TAS_UID'] ][ $task['CON_CATEGORY'] ]  = $task['CON_VALUE'] ;
                     $defaultLangTaskArray[ $task['TAS_UID'] ]['start']=($task['TAS_START']=='TRUE'?true:false);
                 } else {
                     foreach( $mapLangs[ $task['CON_LANG'] ] as $valL ) {
-                        $taskArray[ $task['TAS_UID'] ][ $valL ][ $task['CON_CATEGORY'] ]  = $task['CON_VALUE'] ; 
+                        $taskArray[ $task['TAS_UID'] ][ $valL ][ $task['CON_CATEGORY'] ]  = $task['CON_VALUE'] ;
                     }
                 }
             }
-                        
+
             foreach( $defaultLangTaskArray as $taskGUID => $task ) {
                 $pmTaskCat = new PluginProcessmakerTaskCategory ;
                 $taskCat = new TaskCategory ;
@@ -90,57 +100,54 @@ class PluginProcessmakerProcess extends CommonDBTM {
                         $taskCat->add( array( 'is_recursive' => true, 'name' => $task['TAS_TITLE'], 'comment' => $task['TAS_DESCRIPTION'], 'taskcategories_id' => $this->fields['taskcategories_id'] ) ) ;
                         // update pmTaskCat
                         $pmTaskCat->update( array( 'id' => $pmTaskCat->getID(), 'taskcategories_id' => $taskCat->getID(), 'start' => $task['start'] ) ) ;
-                    }                    
+                    }
                 } else {
                     // should create a new one
                     // taskcat must be created
                     $taskCat->add( array( 'is_recursive' => true, 'name' => $task['TAS_TITLE'], 'comment' => $task['TAS_DESCRIPTION'], 'taskcategories_id' => $this->fields['taskcategories_id'] ) ) ;
                     // pmTaskCat must be created too
-                    $pmTaskCat->add( array( 'processes_id' => $this->getID(), 'pm_task_guid' => $taskGUID, 'taskcategories_id' => $taskCat->getID(), 'start' => $task['start'] ) ) ;                    
+                    $pmTaskCat->add( array( 'processes_id' => $this->getID(), 'pm_task_guid' => $taskGUID, 'taskcategories_id' => $taskCat->getID(), 'start' => $task['start'] ) ) ;
                 }
                 // here we should take into account translations if any
                 if( $translates && isset($taskArray[ $taskGUID ])  ) {
                     foreach( $taskArray[ $taskGUID ] as $langTask => $taskL ) {
                         // look for 'name' field
-                        if( $loc_id = DropdownTranslation::getTranslationID( $taskCat->getID(), 'TaskCategory', 'name', $langTask ) ) {                            
+                        if( $loc_id = DropdownTranslation::getTranslationID( $taskCat->getID(), 'TaskCategory', 'name', $langTask ) ) {
                             if( DropdownTranslation::getTranslatedValue( $taskCat->getID(), 'TaskCategory', 'name', $langTask ) != $taskL[ 'TAS_TITLE' ] ) {
                                 // must be updated
                                 $trans = new DropdownTranslation ;
-                                $trans->update( array( 'id' => $loc_id, 'field' => 'name', 'value' => $taskL[ 'TAS_TITLE' ], 'itemtype' => 'TaskCategory', 'items_id' => $taskCat->getID(), 'language' => $langTask ) ) ;
-                                $trans->generateCompletename( array( 'itemtype' => 'TaskCategory', 'items_id' => $taskCat->getID(), 'language' => $langTask ) ) ; 
+                                $trans->update( array( 'id' => $loc_id, 'field' => 'name', 'value' => $PM_DB->escape($taskL[ 'TAS_TITLE' ]), 'itemtype' => 'TaskCategory', 'items_id' => $taskCat->getID(), 'language' => $langTask ) ) ;
+                                $trans->generateCompletename( array( 'itemtype' => 'TaskCategory', 'items_id' => $taskCat->getID(), 'language' => $langTask ) ) ;
                             }
                         } else {
                             // must be added
                             // must be updated
                             $trans = new DropdownTranslation ;
-                            $trans->add( array( 'items_id' => $taskCat->getID(), 'itemtype' => 'TaskCategory', 'language' => $langTask, 'field' => 'name', 'value' => $taskL[ 'TAS_TITLE' ] ) ) ;
-                            $trans->generateCompletename( array( 'itemtype' => 'TaskCategory', 'items_id' => $taskCat->getID(),'language' => $langTask ) ) ; 
+                            $trans->add( array( 'items_id' => $taskCat->getID(), 'itemtype' => 'TaskCategory', 'language' => $langTask, 'field' => 'name', 'value' => $PM_DB->escape($taskL[ 'TAS_TITLE' ]) ) ) ;
+                            $trans->generateCompletename( array( 'itemtype' => 'TaskCategory', 'items_id' => $taskCat->getID(),'language' => $langTask ) ) ;
                         }
-                        
+
                         // look for 'comment' field
-                        if( $loc_id = DropdownTranslation::getTranslationID( $taskCat->getID(), 'TaskCategory', 'comment', $langTask ) ) {                            
+                        if( $loc_id = DropdownTranslation::getTranslationID( $taskCat->getID(), 'TaskCategory', 'comment', $langTask ) ) {
                             if( DropdownTranslation::getTranslatedValue( $taskCat->getID(), 'TaskCategory', 'comment', $langTask ) != $taskL[ 'TAS_DESCRIPTION' ] ) {
                                 // must be updated
                                 $trans = new DropdownTranslation ;
-                                $trans->update( array( 'id' => $loc_id, 'field' => 'comment', 'value' => $taskL[ 'TAS_DESCRIPTION' ] , 'itemtype' => 'TaskCategory', 'items_id' => $taskCat->getID(), 'language' => $langTask) ) ;
+                                $trans->update( array( 'id' => $loc_id, 'field' => 'comment', 'value' => $PM_DB->escape($taskL[ 'TAS_DESCRIPTION' ]) , 'itemtype' => 'TaskCategory', 'items_id' => $taskCat->getID(), 'language' => $langTask) ) ;
                             }
                         } else {
                             // must be added
                             $trans = new DropdownTranslation ;
-                            $trans->add( array( 'items_id' => $taskCat->getID(), 'itemtype' => 'TaskCategory', 'language' => $langTask, 'field' => 'comment', 'value' => $taskL[ 'TAS_DESCRIPTION' ] ) ) ;
+                            $trans->add( array( 'items_id' => $taskCat->getID(), 'itemtype' => 'TaskCategory', 'language' => $langTask, 'field' => 'comment', 'value' => $PM_DB->escape($taskL[ 'TAS_DESCRIPTION' ]) ) ) ;
                         }
-                        
+
                     }
                 }
-            }            
+            }
 
-            //if( $translates  ) {
-            //    unset( $_SESSION['glpi_dropdowntranslations']['TaskCategory'] ) ;
-            //}
         }
-        
+
     }
-    
+
     /**
      * Summary of refresh
      * used to refresh process list and task category list
@@ -150,34 +157,42 @@ class PluginProcessmakerProcess extends CommonDBTM {
         $pm = new PluginProcessmakerProcessmaker ;
         $pm->login( true ) ;
         $pmProcessList = $pm->processList() ;
-        
-        $config = new PluginProcessmakerConfig ;
-        $config->getFromDB( 1 ) ;
+
+        $config = PluginProcessmakerConfig::getInstance() ;
         $pmMainTaskCat = $config->fields['taskcategories_id'] ;
-        
+
         // and get processlist from GLPI
-        foreach( $pmProcessList as $process ) {
-            $glpiprocess = new PluginProcessmakerProcess ;            
-            if( $glpiprocess->getFromDBbyExternalID($process->guid) ) {            
-                // then update it only if name has changed
-                if( $glpiprocess->fields['name'] != $process->name ) {
+        if( $pmProcessList ) {
+           foreach( $pmProcessList as $process ) {
+              $glpiprocess = new PluginProcessmakerProcess ;
+              if( $glpiprocess->getFromDBbyExternalID($process->guid) ) {
+                 // then update it only if name has changed
+                 if( $glpiprocess->fields['name'] != $process->name ) {
                     $glpiprocess->update( array( 'id' => $glpiprocess->getID(), 'name' => $process->name ) ) ;
-                }
-                // and check if main task category needs update
-                if( !$glpiprocess->fields['taskcategories_id'] ) {
+                 }
+                 // and check if main task category needs update
+                 if( !$glpiprocess->fields['taskcategories_id'] ) {
                     // then needs to be added
                     $glpiprocess->addTaskCategory( $pmMainTaskCat ) ;
-                } else {
-                    $glpiprocess->updateTaskCategory( ) ;
-                }
-            } else {
-                // create it
-                if( $glpiprocess->add( array( 'process_guid' => $process->guid, 'name' => $process->name )) ){
+                 } else {
+                   $glpiprocess->updateTaskCategory( $pmMainTaskCat ) ;
+                 }
+              } else {
+                 // create it
+                 if( isset( $process->project_type ) )
+                    $project_type = $process->project_type;
+                 else
+                    $project_type = 'classic' ;
+
+                 if( $glpiprocess->add( array( 'process_guid' => $process->guid, 'name' => $process->name, 'project_type' => $project_type )) ){
                     // and add main task category for this process
                     $glpiprocess->addTaskCategory( $pmMainTaskCat ) ;
-                }
-            }                        
+                 }
+              }
+           }
         }
+
+        // should de-activate other
 
     }
 
@@ -186,14 +201,14 @@ class PluginProcessmakerProcess extends CommonDBTM {
      * Updates TaskCategory for current process, only if needed (i.e. name has changed)
      * returns true if update is done, false otherwise
      */
-    function updateTaskCategory( ) {
+    function updateTaskCategory( $pmMainTaskCat ) {
         $taskCat = new TaskCategory ;
         if( $taskCat->getFromDB( $this->fields['taskcategories_id'] ) && $taskCat->fields['name'] != $this->fields['name'] ) {
-            return $taskCat->update( array( 'id' => $taskCat->getID(), 'name' => $this->fields['name'] ) ) ;
-        }        
+           return $taskCat->update( array( 'id' => $taskCat->getID(), 'taskcategories_id' => $pmMainTaskCat, 'name' => $this->fields['name'] ) ) ;
+        }
         return false ;
     }
-    
+
     /**
      * Summary of addTaskCategory
      * Adds a new TaskCategory for $this process
@@ -207,8 +222,8 @@ class PluginProcessmakerProcess extends CommonDBTM {
         }
         return false ;
     }
-    
-       
+
+
     /**
      * Print a good title for process pages
      * add button for re-synchro of process list (only if rigths are w)
@@ -226,9 +241,9 @@ class PluginProcessmakerProcess extends CommonDBTM {
             Html::displayTitle($CFG_GLPI["root_doc"] . "/plugins/processmaker/pics/gears.png", $LANG['processmaker']['config']['refreshprocesslist'], $title,
                                        $buttons);
         }
-        
+
     }
-    
+
     /**
      * Retrieve a Process from the database using its external id (unique index): process_guid
      *
@@ -236,7 +251,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
      *
      * @return true if succeed else false
      **/
-    function getFromDBbyExternalID($extid) {
+    public function getFromDBbyExternalID($extid) {
         global $DB;
 
         $query = "SELECT *
@@ -254,8 +269,8 @@ class PluginProcessmakerProcess extends CommonDBTM {
         }
         return false;
     }
-    
-    
+
+
     /**
      * Summary of getSearchOptions
      * @return mixed
@@ -269,7 +284,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
 
         $tab[1]['table']         = 'glpi_plugin_processmaker_processes';
         $tab[1]['field']         = 'name';
-        $tab[1]['name']          = $LANG['common'][16];
+        $tab[1]['name']          = __('Name');
         $tab[1]['datatype']      = 'itemlink';
         $tab[1]['itemlink_type'] = $this->getType();
 
@@ -278,34 +293,91 @@ class PluginProcessmakerProcess extends CommonDBTM {
         //$tab[7]['name']          = $LANG['tracking'][39];
         //$tab[7]['massiveaction'] = true;
         //$tab[7]['datatype']      = 'bool';
-        
+
         $tab[8]['table']         = 'glpi_plugin_processmaker_processes';
         $tab[8]['field']         = 'is_active';
-        $tab[8]['name']          = $LANG['common'][60];
+        $tab[8]['name']          = __('Active');
         $tab[8]['massiveaction'] = true;
         $tab[8]['datatype']      = 'bool';
 
         $tab[4]['table']        = 'glpi_plugin_processmaker_processes';
         $tab[4]['field']        =  'comment';
-        $tab[4]['name']         =  $LANG['common'][25];
+        $tab[4]['name']         =  __('Comments');
         $tab[4]['massiveaction'] = true;
-        $tab[4]['datatype']     =  'text';       
-        
+        $tab[4]['datatype']     =  'text';
+
         $tab[9]['table']         = 'glpi_plugin_processmaker_processes';
         $tab[9]['field']         = 'date_mod';
-        $tab[9]['name']          = $LANG['common'][26];
+        $tab[9]['name']          = __('Last update');
         $tab[9]['massiveaction'] = false;
         $tab[9]['datatype']      = 'datetime';
-        
+
         $tab[10]['table']        = 'glpi_plugin_processmaker_processes';
         $tab[10]['field']        =  'process_guid';
         $tab[10]['name']         =  $LANG['processmaker']['process']['process_guid'];
         $tab[10]['massiveaction'] = false;
         $tab[10]['datatype']     =  'text';
 
+        $tab[11]['table']        = 'glpi_plugin_processmaker_processes';
+        $tab[11]['field']        =  'project_type';
+        $tab[11]['name']         =  $LANG['processmaker']['process']['project_type_short'];
+        $tab[11]['massiveaction'] = false;
+        $tab[11]['datatype']     =  'specific';
+
+        $tab[12]['table']         = 'glpi_plugin_processmaker_processes';
+        $tab[12]['field']         = 'hide_case_num_title';
+        $tab[12]['name']          = $LANG['processmaker']['process']['hide_case_num_title_short'];
+        $tab[12]['massiveaction'] = true;
+        $tab[12]['datatype']      = 'bool';
+
+        $tab[13]['table']         = 'glpi_plugin_processmaker_processes';
+        $tab[13]['field']         = 'insert_task_comment';
+        $tab[13]['name']          = $LANG['processmaker']['process']['insert_task_comment_short'];
+        $tab[13]['massiveaction'] = true;
+        $tab[13]['datatype']      = 'bool';
+
+
+        $tab[14]['table']         = 'glpi_itilcategories';
+        $tab[14]['field']         = 'completename';
+        $tab[14]['name']          = __('Category');
+        $tab[14]['datatype']      = 'dropdown';
+        $tab[14]['massiveaction'] = false;
+
+        $tab[15]['table']         = 'glpi_plugin_processmaker_processes';
+        $tab[15]['field']         = 'type';
+        $tab[15]['name']          = $LANG['processmaker']['process']['type'];
+        $tab[15]['searchtype']    = 'equals';
+        $tab[15]['datatype']      = 'specific';
+        $tab[15]['massiveaction'] = false;
 
         return $tab;
     }
+
+
+    /**
+     * @since version 0.84
+     *
+     * @param $field
+     * @param $values
+     * @param $options   array
+     **/
+    static function getSpecificValueToDisplay($field, $values, array $options=array()) {
+        global $LANG;
+
+        if (!is_array($values)) {
+            $values = array($field => $values);
+        }
+        switch ($field) {
+
+            case 'project_type':
+                return $LANG['processmaker']['process']['project_type_'.$values[$field]] ;
+
+            case 'type':
+                return Ticket::getTicketTypeName($values[$field]);
+        }
+        return parent::getSpecificValueToDisplay($field, $values, $options);
+    }
+
 
     static function getTypeName($nb=0) {
         global $LANG;
@@ -315,10 +387,14 @@ class PluginProcessmakerProcess extends CommonDBTM {
         }
         return $LANG['processmaker']['title'][2];
     }
-        
+
     function defineTabs($options=array()) {
 
-        $ong = array('empty' => $this->getTypeName(1));
+//        $ong = array('empty' => $this->getTypeName(1));
+        $ong = array();
+        $this->addDefaultFormTab($ong);
+        $this->addStandardTab(__CLASS__, $ong, $options);
+
         $this->addStandardTab('PluginProcessmakerTaskCategory', $ong, $options);
         $this->addStandardTab('PluginProcessmakerProcess_Profile', $ong, $options);
         //$this->addStandardTab('Ticket', $ong, $options);
@@ -326,25 +402,27 @@ class PluginProcessmakerProcess extends CommonDBTM {
 
         return $ong;
     }
-    
+
     function showForm ($ID, $options=array('candel'=>false)) {
       global $DB, $CFG_GLPI, $LANG;
 
-      if ($ID > 0) {
-         $this->check($ID,'r');
-      } 
+      //if ($ID > 0) {
+      //   $this->check($ID,READ);
+      //}
 
-      $canedit = $this->can($ID,'w');
-      
-      $this->showTabs($options);    
+      //$canedit = $this->can($ID,UPDATE);
+      //$options['canedit'] = $canedit ;
+
+      $this->initForm($ID, $options);
+      //$this->showTabs($options);
       $this->showFormHeader($options);
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td>".$LANG["common"][16]."&nbsp;:</td><td>";
+      echo "<td>".__("Name")."&nbsp;:</td><td>";
       //Html::autocompletionTextField($this, "name");
       echo $this->fields["name"];
       echo "</td>";
-      echo "<td rowspan='5' class='middle right'>".$LANG["common"][25]."&nbsp;:</td>";
+      echo "<td rowspan='5' class='middle right'>".__("Comments")."&nbsp;:</td>";
       echo "<td class='center middle' rowspan='5'><textarea cols='45' rows='6' name='comment' >".
              $this->fields["comment"]."</textarea></td></tr>";
 
@@ -354,7 +432,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
       echo "</td></tr>";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td >".$LANG['common'][60]."&nbsp;:</td><td>";
+      echo "<td >".__("Active")."&nbsp;:</td><td>";
       Dropdown::showYesNo("is_active",$this->fields["is_active"]);
       echo "</td></tr>";
 
@@ -372,7 +450,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
       echo "<td >".$LANG['processmaker']['process']['insert_task_comment']."&nbsp;:</td><td>";
       Dropdown::showYesNo("insert_task_comment",$this->fields["insert_task_comment"]);
       echo "</td></tr>";
-      
+
       echo "<tr class='tab_bg_1'>";
       echo "<td >".$LANG['processmaker']['process']['type']."&nbsp;:</td><td>";
       if (true) { // $canupdate || !$ID
@@ -380,7 +458,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
             $rand = $idtype = Ticket::dropdownType('type', $opt, array(),array('toupdate' => "search_".$idticketcategorysearch ));
             $opt = array('value' => $this->fields["type"]);
             $params = array('type'            => '__VALUE__',
-                            'entity_restrict' => $this->fields['entities_id'],
+                            //'entity_restrict' => -1, //$this->fields['entities_id'],
                             'value'           => $this->fields['itilcategories_id'],
                             'currenttype'     => $this->fields['type']);
 
@@ -391,18 +469,18 @@ class PluginProcessmakerProcess extends CommonDBTM {
           echo Ticket::getTicketTypeName($this->fields["type"]);
       }
       echo "</td>";
-      
+
       echo "<td >".$LANG['processmaker']['process']['itilcategory']."&nbsp;:</td><td>";
       if (true ) { // $canupdate || !$ID || $canupdate_descr
           $opt = array('value'  => $this->fields["itilcategories_id"]);
 
           switch ($this->fields['type']) {
               case Ticket::INCIDENT_TYPE :
-                  $opt['condition'] .= "`is_incident`='1'";
+                  $opt['condition'] = "`is_incident`='1'";
                   break;
 
               case Ticket::DEMAND_TYPE :
-                  $opt['condition'] .= "`is_request`='1'";
+                  $opt['condition'] = "`is_request`='1'";
                   break;
 
               default :
@@ -417,207 +495,77 @@ class PluginProcessmakerProcess extends CommonDBTM {
           echo Dropdown::getDropdownName("glpi_itilcategories", $this->fields["itilcategories_id"]);
       }
       echo "</td></tr>";
-      
-      
+
       echo "<tr class='tab_bg_1'>";
-      echo "<td >".$LANG['common'][26]."&nbsp;:</td><td>";
+      echo "<td >".$LANG['processmaker']['process']['project_type']."&nbsp;:</td><td>";
+      Dropdown::showFromArray( 'project_type',  array( 'classic' => $LANG['processmaker']['process']['project_type_classic'], 'bpmn' => $LANG['processmaker']['process']['project_type_bpmn'] ), array( 'value' => $this->fields["project_type"] ) ) ;
+      echo "</td></tr>";
+
+      echo "<tr class='tab_bg_1'>";
+      echo "<td >".__("Last update")."&nbsp;:</td><td>";
       echo Html::convDateTime($this->fields["date_mod"]);
       echo "</td></tr>";
-      
+
+
       $this->showFormButtons($options );
-      $this->addDivForTabs();
-      
+      //$this->addDivForTabs();
+
     }
-    
-    
-    
+
+
+
     /**
      * Execute the query to select box with all glpi users where select key = name
      *
      * Internaly used by showGroup_Users, dropdownUsers and ajax/dropdownUsers.php
      *
      * @param $count true if execute an count(*),
-     * @param $right limit user who have specific right
-     * @param $entity_restrict Restrict to a defined entity
-     * @param $value default value
-     * @param $used Already used items ID: not to display in dropdown
      * @param $search pattern
      *
      * @return mysql result set.
      **/
-    static function getSqlSearchResult ($count=true, $right="all", $entity_restrict=-1, $value=0,
-                                        $used=array(), $search='') {
+    static function getSqlSearchResult ($count=true, $search='') {
         global $DB, $CFG_GLPI;
 
         $orderby = '' ;
-        
+
         $where = ' WHERE glpi_plugin_processmaker_processes.is_active=1 ' ;
-        
+
         if( $count ) {
             $fields = " COUNT(DISTINCT glpi_plugin_processmaker_processes.id) AS cpt " ;
         } else {
             $fields = " DISTINCT glpi_plugin_processmaker_processes.* " ;
-            $orderby = " ORDER BY glpi_plugin_processmaker_processes.name ASC" ; 
+            $orderby = " ORDER BY glpi_plugin_processmaker_processes.name ASC" ;
         }
-        
-        if( strlen($search)>0 && $search!=$CFG_GLPI["ajax_wildcard"] ) 
+
+        if( strlen($search)>0 && $search!=$CFG_GLPI["ajax_wildcard"] )
         {
-            $where .= " AND (glpi_plugin_processmaker_processes.name LIKE '%$search%' 
-                        OR glpi_plugin_processmaker_processes.comment LIKE '%$search%') " ;
-        } 
-        
-        //                    LEFT JOIN glpi_plugin_processmaker_processes_profiles ON glpi_plugin_processmaker_processes_profiles.processes_id=glpi_plugin_processmaker_processes.id
-        
+            $where .= " AND (glpi_plugin_processmaker_processes.name $search
+                        OR glpi_plugin_processmaker_processes.comment $search) " ;
+        }
+
+
         $query = "SELECT $fields FROM glpi_plugin_processmaker_processes ".$where." ".$orderby.";" ;
-        
-        //// No entity define : use active ones
-        //if ($entity_restrict < 0) {
-        //    $entity_restrict = $_SESSION["glpiactiveentities"];
-        //}
 
-        //$joinprofile = false;
-        //switch ($right) {
-        //    case "interface" :
-        //        $where = " `glpi_profiles`.`interface` = 'central' ";
-        //        $joinprofile = true;
-        //        $where .= getEntitiesRestrictRequest("AND","glpi_profiles_users",'',$entity_restrict,1);
-        //        break;
-
-        //    case "id" :
-        //        $where = " `glpi_users`.`id` = '".Session::getLoginUserID()."' ";
-        //        break;
-
-        //    case "delegate" :
-        //        $groups = self::getDelegateGroupsForUser($entity_restrict);
-        //        $users  = array();
-        //        if (count($groups)) {
-        //            $query = "SELECT `glpi_users`.`id`
-        //                 FROM `glpi_groups_users`
-        //                 LEFT JOIN `glpi_users`
-        //                      ON (`glpi_users`.`id` = `glpi_groups_users`.`users_id`)
-        //                 WHERE `glpi_groups_users`.`groups_id` IN ('".implode("','",$groups)."')
-        //                       AND `glpi_groups_users`.`users_id` <> '".Session::getLoginUserID()."'";
-        //            $result = $DB->query($query);
-
-        //            if ($DB->numrows($result)) {
-        //                while ($data=$DB->fetch_array($result)) {
-        //                    $users[$data["id"]] = $data["id"];
-        //                }
-        //            }
-        //        }
-        //        // Add me to users list for central
-        //        if ($_SESSION['glpiactiveprofile']['interface'] == 'central') {
-        //            $users[Session::getLoginUserID()] = Session::getLoginUserID();
-        //        }
-
-        //        if (count($users)) {
-        //            $where = " `glpi_users`.`id` IN ('".implode("','",$users)."')";
-        //        } else {
-        //            $where = '0';
-        //        }
-        //        break;
-
-        //    case "all" :
-        //        $where = " `glpi_users`.`id` > '1' ".
-        //                 getEntitiesRestrictRequest("AND","glpi_profiles_users",'',$entity_restrict,1);
-        //        break;
-
-        //    default :
-        //        $joinprofile = true;
-        //        // Check read or active for rights
-        //        $where = " (`glpi_profiles`.`".$right."` IN ('1', 'r', 'w') ".
-        //                    getEntitiesRestrictRequest("AND", "glpi_profiles_users", '',
-        //                                               $entity_restrict, 1)." ";
-
-        //        if (!in_array($right,Profile::$helpdesk_rights)) {
-        //            $where .= " AND `glpi_profiles`.`interface` = 'central' ";
-        //        }
-        //        $where .= ')';
-        //}
-
-        //$where .= " AND `glpi_users`.`is_deleted` = '0'
-        //          AND `glpi_users`.`is_active` = '1' ";
-
-        //if ((is_numeric($value) && $value)
-        //    || count($used)) {
-
-        //    $where .= " AND `glpi_users`.`id` NOT IN (";
-        //    if (is_numeric($value)) {
-        //        $first = false;
-        //        $where .= $value;
-        //    } else {
-        //        $first = true;
-        //    }
-        //    foreach ($used as $val) {
-        //        if ($first) {
-        //            $first = false;
-        //        } else {
-        //            $where .= ",";
-        //        }
-        //        $where .= $val;
-        //    }
-        //    $where .= ")";
-        //}
-
-        //if ($count) {
-        //    $query = "SELECT COUNT(DISTINCT `glpi_users`.`id` ) AS cpt
-        //           FROM `glpi_users` ";
-        //} else {
-        //    $query = "SELECT DISTINCT `glpi_users`.*
-        //           FROM `glpi_users` ";
-        //}
-
-        //$query .= " LEFT JOIN `glpi_useremails`
-        //             ON (`glpi_users`.`id` = `glpi_useremails`.`users_id`)";
-        //$query .= " LEFT JOIN `glpi_profiles_users`
-        //             ON (`glpi_users`.`id` = `glpi_profiles_users`.`users_id`)";
-
-        //if ($joinprofile) {
-        //    $query .= " LEFT JOIN `glpi_profiles`
-        //                ON (`glpi_profiles`.`id` = `glpi_profiles_users`.`profiles_id`) ";
-        //}
-
-        //if ($count) {
-        //    $query .= " WHERE $where ";
-        //} else {
-        //    if (strlen($search)>0 && $search!=$CFG_GLPI["ajax_wildcard"]) {
-        //        $where .= " AND (`glpi_users`.`name` ".Search::makeTextSearch($search)."
-        //                     OR `glpi_users`.`realname` ".Search::makeTextSearch($search)."
-        //                     OR `glpi_users`.`firstname` ".Search::makeTextSearch($search)."
-        //                     OR `glpi_users`.`phone` ".Search::makeTextSearch($search)."
-        //                     OR `glpi_useremails`.`email` ".Search::makeTextSearch($search)."
-        //                     OR CONCAT(`glpi_users`.`realname`,' ',`glpi_users`.`firstname`) ".
-        //                                   Search::makeTextSearch($search).")";
-        //    }
-        //    $query .= " WHERE $where ";
-
-        //    if ($_SESSION["glpinames_format"] == FIRSTNAME_BEFORE) {
-        //        $query.=" ORDER BY `glpi_users`.`firstname`,
-        //                       `glpi_users`.`realname`,
-        //                       `glpi_users`.`name` ";
-        //    } else {
-        //        $query.=" ORDER BY `glpi_users`.`realname`,
-        //                       `glpi_users`.`firstname`,
-        //                       `glpi_users`.`name` ";
-        //    }
-
-        //    if ($search != $CFG_GLPI["ajax_wildcard"]) {
-        //        $query .= " LIMIT 0,".$CFG_GLPI["dropdown_max"];
-        //    }
-        //}
 
         return $DB->query($query);
     }
 
+    /**
+     * Summary of getProcessName
+     * @param mixed $pid
+     * @param mixed $link
+     * @return mixed
+     */
     static function getProcessName( $pid, $link=0 ) {
-        global $DB, $LANG;
+        global $DB;
         $process='';
         if ($link==2) {
             $process = array("name"    => "",
                           "link"    => "",
                           "comment" => "");
         }
-        
+
         $query="SELECT * FROM glpi_plugin_processmaker_processes WHERE id=$pid";
         $result = $DB->query($query);
         if ($result && $DB->numrows($result)==1) {
@@ -626,12 +574,12 @@ class PluginProcessmakerProcess extends CommonDBTM {
             if ($link==2) {
                 $process["name"]    = $processname ;
                 $process["link"]    = $CFG_GLPI["root_doc"]."/plugins/processmaker/front/process.form.php?id=".$pid;
-                $process["comment"] = $LANG['common'][16]."&nbsp;: ".$processname."<br>".$LANG["common"][25].
+                $process["comment"] = __('Name')."&nbsp;: ".$processname."<br>".__('Comments').
                                    "&nbsp;: ".$data["comment"]."<br>";
             } else {
                 $process = $processname ;
             }
-            
+
         }
         return $process;
     }
@@ -665,103 +613,18 @@ class PluginProcessmakerProcess extends CommonDBTM {
         }
         return $entities;
     }
-    
+
     /**
      * Summary of dropdown
-     * @param mixed $options 
+     * @param mixed $options
      * @return mixed
      */
     static function dropdown($options=array()) {
-        global $DB, $CFG_GLPI, $LANG;
+       global $CFG_GLPI;
+        $options['url'] = $CFG_GLPI["root_doc"].'/plugins/processmaker/ajax/dropdownProcesses.php' ;
+        return Dropdown::show( __CLASS__, $options ) ;
 
-        // Default values
-        $p['name']           = 'processes_id';
-        $p['value']          = '';
-        $p['right']          = 'id';
-        $p['all']            = 0;
-        $p['on_change']      = '';
-        $p['comments']       = 1;
-        $p['entity']         = -1;
-        $p['entity_sons']    = false;
-        $p['used']           = array();
-        $p['ldap_import']    = false;
-        $p['toupdate']       = '';
-        $p['rand']           = mt_rand();
-
-        if (is_array($options) && count($options)) {
-            foreach ($options as $key => $val) {
-                $p[$key] = $val;
-            }
-        }
-
-
-        // Make a select box with all glpi users
-        $use_ajax = false;
-
-        if ($CFG_GLPI["use_ajax"]) {
-            $res = self::getSqlSearchResult (true, $p['right'], $p['entity'], $p['value'], $p['used']);
-            $nb = ($res ? $DB->result($res,0,"cpt") : 0);
-            if ($nb > $CFG_GLPI["ajax_limit_count"]) {
-                $use_ajax = true;
-            }
-        }
-        $process = self::getProcessName($p['value'],2);
-
-        $default_display  = "<select id='dropdown_".$p['name'].$p['rand']."' name='".$p['name']."'>";
-        $default_display .= "<option value='".$p['value']."'>";
-        $default_display .= Toolbox::substr($process["name"], 0, $_SESSION["glpidropdown_chars_limit"]);
-        $default_display .= "</option></select>";
-
-        //$view_users = (Session::haveRight("user", "r"));
-        //TODO: management of rights
-        $view_processes = true ;
-
-        $params = array('searchText'       => '__VALUE__',
-                        'value'            => $p['value'],
-                        'myname'           => $p['name'],
-                        'all'              => $p['all'],
-                        'right'            => $p['right'],
-                        'comment'          => $p['comments'],
-                        'rand'             => $p['rand'],
-                        'on_change'        => $p['on_change'],
-                        'entity_restrict'  => $p['entity'],
-                        'used'             => $p['used'],
-                        'update_item'      => $p['toupdate'],);
-        if ($view_processes) {
-            $params['update_link'] = $view_processes;
-        }
-
-        $default = "";
-        if (!empty($p['value']) && $p['value']>0) {
-            $default = $default_display;
-
-        } else {
-            $default = "<select name='".$p['name']."' id='dropdown_".$p['name'].$p['rand']."'>";
-            if ($p['all']) {
-                $default.= "<option value='0'>[ ".$LANG['common'][66]." ]</option></select>";
-            } else {
-                $default.= "<option value='0'>".Dropdown::EMPTY_VALUE."</option></select>\n";
-            }
-        }
-
-        Ajax::dropdown($use_ajax, "/plugins/processmaker/ajax/dropdownProcesses.php", $params, $default, $p['rand']);
-
-        // Display comment
-        if ($p['comments']) {
-            if (!$view_processes) {
-                $process["link"] = '';
-            } else if (empty($process["link"])) {
-                $process["link"] = $CFG_GLPI['root_doc']."/plugins/processmaker/front/process.php";
-            }
-            Html::showToolTip($process["comment"],
-                              array('contentid' => "comment_".$p['name'].$p['rand'],
-                                    'link'      => $process["link"],
-                                    'linkid'    => "comment_link_".$p["name"].$p['rand']));
-        }
-
-        
-        return $p['rand'];
     }
-    
+
 }
 

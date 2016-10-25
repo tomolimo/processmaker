@@ -29,14 +29,14 @@ function showMask(elt) {
 };
 
 
-function onTaskFrameLoad(delIndex) {
+function onTaskFrameLoad(event, delIndex, hideClaimButton, csrf) {
     //alert("Loaded frame " + delIndex);
-    var taskFrameId = "caseiframe-" + delIndex;
+    var taskFrameId = event.target.id; //"caseiframe-" + delIndex;
     var bShowHideNextStep = false ; // not done yet!
     var bHideClaimCancelButton = false; // To manage 'Claim' button
     var taskFrameTimerCounter = 0;
     var redimIFrame = false;
-
+    //debugger;
     var taskFrameTimer = window.setInterval(function () {
         try {
             var locContentDocument;
@@ -63,9 +63,17 @@ function onTaskFrameLoad(delIndex) {
                         var action = node.action.split('?');
                         node.action = GLPI_HTTP_CASE_FORM + '?' + action[1] + '&DEL_INDEX=' + delIndex;
 
+                        // add an element that will be the csrf data code for the POST
+                        //debugger;
+                        var csrfElt = document.createElement("input");
+                        csrfElt.setAttribute("type", "hidden");
+                        csrfElt.setAttribute("name", "_glpi_csrf_token") ;
+                        csrfElt.setAttribute("value", csrf) ;
+                        node.appendChild(csrfElt);
+
                         // try to add showMask function to submit event
-                        //locElt.addEventListener( 'click', showMask ); // it is not good if a validation error occurs
-                        node.addEventListener('submit', showMask, true);
+                        // TODO
+                        //node.addEventListener('submit', showMask, true);
                     } else {
                         // then hide the button itself
                         locElt.style.display = 'none';
@@ -78,16 +86,22 @@ function onTaskFrameLoad(delIndex) {
                 var cancelButton = locContentDocument.getElementById('form[BTN_CANCEL]');
                 if (cancelButton != undefined && !bHideClaimCancelButton) {
                     cancelButton.style.display = 'none';
+                    // hides claim button if asked for
+                    if (hideClaimButton) {
+                        claimButton = locContentDocument.getElementById('form[BTN_CATCH]');
+                        claimButton.style.display = 'none';
+                    }
                     // to manage Claim
                     var formList = locContentDocument.getElementsByTagName('form');
                     var node = formList[0]; // must have one element in list: in a dynaform there is one and only one HTML form
                     var action = node.action.split('?');
                     node.action = GLPI_HTTP_CASE_FORM + '?' + action[1] + '&DEL_INDEX=' + delIndex;
                     bHideClaimCancelButton = true;
-                    node.addEventListener('submit', showMask);
+                    // TODO
+                    //node.addEventListener('submit', showMask);
                 }
 
-                // to force immediat reload of GLPI item form
+                // to force immediate reload of GLPI item form
                 var forcedReload = locContentDocument.getElementById('GLPI_FORCE_RELOAD');
                 if (forcedReload != undefined && !GLPI_DURING_RELOAD) {
                     //showMask();
@@ -96,12 +110,19 @@ function onTaskFrameLoad(delIndex) {
                     GLPI_RELOAD_PARENT.location.reload();
                 }
 
-                // try to redim caseIFrame
+                // try to redim caseIFrame                
                 if (!redimIFrame) {
+                    var newHeight;
                     var locElt = locContentDocument.getElementsByTagName("table")[0];
-                    var newHeight = (locElt.clientHeight < 400 ? 400 : locElt.clientHeight) + locElt.offsetParent.offsetTop ;
+                    if (locElt && locElt.offsetParent)
+                        newHeight = (locElt.clientHeight < 400 ? 400 : locElt.clientHeight) + locElt.offsetParent.offsetTop ;
+                    else {
+                        locElt = locContentDocument.getElementsByTagName("form")[0];
+                        newHeight = (locElt.clientHeight < 400 ? 400 : locElt.clientHeight) + locElt.offsetTop ;
+                    }
                     //locElt.clientHeight = newHeight; // don't know if this is neccessary!!! --> bugs on IE8
-                    tabs.getItem('task-' + delIndex).setHeight(newHeight);
+                    //NOT NEEDED WITH jQuery: var elts = $('#processmakertabpanel').tabs();//.getItem('task-' + delIndex).setHeight(newHeight);
+                    //debugger;
                     taskFrame.height = newHeight ;
                     redimIFrame = true;
                 }
@@ -141,11 +162,14 @@ function clearClass(lociFrame) {
     }, 10);
 }
 
-function onOtherFrameLoad(tabPanelName, frameName, eltTagName) {
-    var otherFrameId = frameName; //tabPanelName ; //+ 'Frame';
+function onOtherFrameLoad(tabPanelName, frameName, eltTagName, isMap3) {
+    var otherFrameId = frameName; 
     var otherFrameTimerCounter = 0;
     var redimIFrame = false;
     //debugger;
+    if (isMap3 == undefined)
+        isMap3 = false;
+
     var otherFrameTimer = window.setInterval(function () {
         try {
 
@@ -161,17 +185,38 @@ function onOtherFrameLoad(tabPanelName, frameName, eltTagName) {
                 // try to redim otherFrame
                 // and tabPanel
                 if (!redimIFrame) {
-                    var locElt = locContentDocument.getElementsByTagName(eltTagName)[0];
+                    var locElt;
+                    // isMap3 == true
+                    // map is bpmn
+                    // must look at div with special CSS class name to get newHeight and should change offset and size of parent div 
+                    if (!isMap3) {
+                        if (tabPanelName == 'caseMap') {
+//                            locElt = locContentDocument.querySelectorAll('div.panel_content___processmaker')[0];
+                            locElt = locContentDocument.querySelectorAll('div.panel_containerWindow___processmaker')[0];
+                            locElt2 = locContentDocument.getElementById('pm_target');
+                            locElt2.style.height = locElt.clientHeight + 'px';
+                        } else {
+                            locElt = locContentDocument.getElementsByTagName(eltTagName)[0];
+                        }
+                    } else {
+                        locElt = locContentDocument.querySelectorAll('div.pmui-pmpool')[0];
+                    }
                     if (locElt != undefined) {
-                        var newHeight ;
+                        var newHeight;
+                        if (isMap3) {
+                            locElt.offsetParent.style.top = 0;
+                            locElt.offsetParent.style.width = locElt.offsetWidth + locElt.offsetLeft + 'px';
+                            locElt.offsetParent.style.height = locElt.offsetHeight + locElt.offsetTop + 'px';
+                        }
+
                         if (locElt.offsetParent)
-                            newHeight = (locElt.clientHeight < 400 ? 400 : locElt.clientHeight) + locElt.offsetParent.offsetTop ;
+                            newHeight = (locElt.offsetHeight < 400 ? 400 : locElt.offsetHeight) + locElt.offsetParent.offsetTop ;
                         else
-                            newHeight = (locElt.clientHeight < 400 ? 400 : locElt.clientHeight) ;
-                        if (locElt.scrollHeight && locElt.scrollHeight > newHeight )
-                            newHeight = locElt.scrollHeight ;
-                        tabs.getItem(tabPanelName).setHeight(newHeight);
-                        otherFrame.height = newHeight;
+                            newHeight = (locElt.offsetHeight < 400 ? 400 : locElt.offsetHeight) ;
+                        if (locElt.scrollHeight && locElt.scrollHeight > newHeight)
+                            newHeight = locElt.scrollHeight;
+                        //NOT NEEDED WITH jQuery: tabs.getItem(tabPanelName).setHeight(newHeight);
+                        otherFrame.height = newHeight ;
                         redimIFrame = true;
                     }
                 }
@@ -188,5 +233,7 @@ function onOtherFrameLoad(tabPanelName, frameName, eltTagName) {
     }, 10);
 
 }
+
+
 
 
