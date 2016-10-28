@@ -1381,14 +1381,20 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
             // create new tasks
             if( property_exists( $pmRouteCaseResponse, 'routing' ) ) {
                // now tries to get some variables to setup content for new task and to append text to solved task
-               $txtForTasks = $myProcessMaker->getVariables( $myCase->getID(), array( "GLPI_ITEM_APPEND_TO_TASK" ) );
+               $txtForTasks = $myProcessMaker->getVariables( $myCase->getID(), array( "GLPI_ITEM_APPEND_TO_TASK",
+                                                                                      "GLPI_ITEM_SET_STATUS" ) );
+               $itemSetStatus = '';
+               if( array_key_exists( 'GLPI_ITEM_SET_STATUS', $txtForTasks ) ) {
+                  $itemSetStatus = $txtForTasks[ 'GLPI_ITEM_SET_STATUS' ]  ;
+               }
                if( array_key_exists( 'GLPI_ITEM_APPEND_TO_TASK', $txtForTasks ) )
                   $txtToAppendToTask = $txtForTasks[ 'GLPI_ITEM_APPEND_TO_TASK' ] ;
                else
                   $txtToAppendToTask  = '' ;
 
                // reset those variables
-               $resultSave = $myProcessMaker->sendVariables( $myCase->getID() , array( "GLPI_ITEM_APPEND_TO_TASK" => '' ) ) ;
+               $resultSave = $myProcessMaker->sendVariables( $myCase->getID() , array( "GLPI_ITEM_APPEND_TO_TASK" => '',
+                                                                                       "GLPI_ITEM_SET_STATUS" => '' ) ) ;
 
                // routing has been done, then solve 1st task
                $myProcessMaker->solveTask(  $myCase->getID(), $parm->input['processmaker_delindex'], $txtToAppendToTask ) ;
@@ -1397,6 +1403,10 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                 foreach( $pmRouteCaseResponse->routing as $route ) {
                     $myProcessMaker->addTask( $myCase->fields['itemtype'], $myCase->fields['items_id'], $caseInfo, $route->delIndex, PluginProcessmakerUser::getGLPIUserId( $route->userId ), 0, $route->taskId ) ;
                 }
+
+               if( $itemSetStatus != '' ) {
+                  $myProcessMaker->setItemStatus($myCase->fields['itemtype'], $myCase->fields['items_id'], $itemSetStatus ) ;
+               }
             }
 
             // evolution of case status: DRAFT, TO_DO, COMPLETED, CANCELLED
@@ -1656,7 +1666,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
      */
     public function setItemStatus( $itemtype, $itemId, $newstatus ) {
        $item = getItemForItemtype( $itemtype ) ;
-       if( $item->getFromDB( $itemId ) && $itemtype::isAllowedStatus( $item->fields['status'], $newstatus )) {
+      if( $item->getFromDB( $itemId ) ) { //&& $itemtype::isAllowedStatus( $item->fields['status'], $newstatus )) {
           //$item->fields['status'] = $newstatus ;
           $item->update( array('id' => $item->getID(), 'status' => $newstatus) ) ;
        }

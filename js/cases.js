@@ -113,13 +113,15 @@ function onTaskFrameLoad(event, delIndex, hideClaimButton, csrf) {
                 // try to redim caseIFrame                
                 if (!redimIFrame) {
                     var newHeight;
-                    var locElt = locContentDocument.getElementsByTagName("table")[0];
-                    if (locElt && locElt.offsetParent)
-                        newHeight = (locElt.clientHeight < 400 ? 400 : locElt.clientHeight) + locElt.offsetParent.offsetTop ;
-                    else {
-                        locElt = locContentDocument.getElementsByTagName("form")[0];
-                        newHeight = (locElt.clientHeight < 400 ? 400 : locElt.clientHeight) + locElt.offsetTop ;
-                    }
+                    //var locElt = locContentDocument.getElementsByTagName("table")[0];
+                    var locElt = locContentDocument.getElementsByTagName("body")[0];
+                    newHeight = parseInt(getComputedStyle(locElt, null).getPropertyValue('height'), 10) + 60;
+                    //if (locElt)
+                    //    newHeight = (locElt.clientHeight < 400 ? 400 : locElt.clientHeight) + locElt.offsetParent.offsetTop ;
+                    //else {
+                    //    locElt = locContentDocument.getElementsByTagName("form")[0];
+                    //    newHeight = (locElt.clientHeight < 400 ? 400 : locElt.clientHeight) + locElt.offsetTop ;
+                    //}
                     //locElt.clientHeight = newHeight; // don't know if this is neccessary!!! --> bugs on IE8
                     //NOT NEEDED WITH jQuery: var elts = $('#processmakertabpanel').tabs();//.getItem('task-' + delIndex).setHeight(newHeight);
                     //debugger;
@@ -141,25 +143,62 @@ function onTaskFrameLoad(event, delIndex, hideClaimButton, csrf) {
 
 }
 
+function onTaskFrameActivation(delIndex) {
+    var taskFrameId = "caseiframe-" + delIndex;
+    var taskFrameTimerCounter = 0;
+    var redimIFrame = false;
+
+    var taskFrameTimer = window.setInterval(function () {
+        try {
+            var locContentDocument;
+            var taskFrame = document.getElementById(taskFrameId);
+
+            if (taskFrame != undefined && taskFrame.contentDocument != undefined) {
+                // here we've caught the content of the iframe
+                locContentDocument = taskFrame.contentDocument;
+
+                // try to redim caseIFrame
+                if (!redimIFrame) {
+                    var newHeight;
+                    var locElt = locContentDocument.getElementsByTagName("body")[0];
+                    newHeight = parseInt(getComputedStyle(locElt, null).getPropertyValue('height'), 10) ;
+
+                    tabs.getItem('task-' + delIndex).setHeight(newHeight);
+                    taskFrame.height = newHeight;
+                    redimIFrame = true;
+                }
+            }
+
+            taskFrameTimerCounter = taskFrameTimerCounter + 1;
+
+            if (taskFrameTimerCounter > 3000 || redimIFrame) // timeout
+                window.clearInterval(taskFrameTimer);
+
+        } catch (evt) {
+            // nothing to do here for the moment
+        }
+
+    }, 10);
+}
 function clearClass(lociFrame) {
 
-    var otherFrameTimerCounter = 0;
-    var otherFrameTimer = window.setInterval(function () {
+   //var otherFrameTimerCounter = 0;
+   //var otherFrameTimer = window.setInterval(function () {
         try {
             var locElt = lociFrame.contentDocument.getElementsByTagName('body')[0];
             if (locElt != undefined && locElt.className != '') {
                 //debugger;
                 locElt.className = '';
-                window.clearInterval(otherFrameTimer);
-            } else {
-                otherFrameTimerCounter = otherFrameTimerCounter + 1;
-                if (otherFrameTimerCounter > 3000 )
-                    window.clearInterval(otherFrameTimer);
+         //   window.clearInterval(otherFrameTimer);
+         //} else {
+         //   otherFrameTimerCounter = otherFrameTimerCounter + 1;
+         //   if (otherFrameTimerCounter > 3000 )
+         //      window.clearInterval(otherFrameTimer);
             }
         } catch (ev) {
             
         }
-    }, 10);
+   //}, 10);
 }
 
 function onOtherFrameLoad(tabPanelName, frameName, eltTagName, isMap3) {
@@ -205,16 +244,20 @@ function onOtherFrameLoad(tabPanelName, frameName, eltTagName, isMap3) {
                         var newHeight;
                         if (isMap3) {
                             locElt.offsetParent.style.top = 0;
-                            locElt.offsetParent.style.width = locElt.offsetWidth + locElt.offsetLeft + 'px';
+                            locElt.offsetParent.style.width = locElt.offsetWidth + 10 + locElt.offsetLeft + 'px';
                             locElt.offsetParent.style.height = locElt.offsetHeight + locElt.offsetTop + 'px';
+                            newHeight = (locElt.offsetHeight < 500 ? 500 : locElt.offsetHeight) + locElt.offsetParent.offsetTop + 30;
+                        } else {
+                            newHeight = (locElt.offsetHeight < 500 ? 500 : locElt.offsetHeight) ;
                         }
-
-                        if (locElt.offsetParent)
-                            newHeight = (locElt.offsetHeight < 400 ? 400 : locElt.offsetHeight) + locElt.offsetParent.offsetTop ;
-                        else
-                            newHeight = (locElt.offsetHeight < 400 ? 400 : locElt.offsetHeight) ;
-                        if (locElt.scrollHeight && locElt.scrollHeight > newHeight)
+                        if (tabPanelName == 'caseMap') {
+                            // trick to force scrollbar to be shown
+                            locElt.offsetParent.style.overflow = 'visible';
+                            locElt.offsetParent.style.overflow = 'hidden';
+                        }
+                        if (locElt.scrollHeight && locElt.scrollHeight > newHeight) {
                             newHeight = locElt.scrollHeight;
+                        }
                         //NOT NEEDED WITH jQuery: tabs.getItem(tabPanelName).setHeight(newHeight);
                         otherFrame.height = newHeight ;
                         redimIFrame = true;

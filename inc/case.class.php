@@ -397,7 +397,7 @@ class PluginProcessmakerCase extends CommonDBTM {
                             if( actionToDo == 'caseMap' ) {
                                 addTabPanel( actionToDo,
                                         '".$LANG['processmaker']['item']['case']['casemap']."',
-                                        '<iframe id=\'caseiframe-' + actionToDo + '\' style=\'border: none;\' onload=\'onOtherFrameLoad( \"'+actionToDo+'\", \"caseiframe-' + actionToDo + '\", \"body\", ".($project_type=='bpmn' ? 1 : 0 )." );\' width=\'100%\' src=\'$caseMapUrl\' ></iframe>'
+                                        '<iframe id=\'caseiframe-' + actionToDo + '\' style=\'border: none;\' onload=\'onOtherFrameLoad( \"'+actionToDo+'\", \"caseiframe-' + actionToDo + '\", \"body\", ".($project_type=='bpmn' ? "true" : "false" )." );\' width=\'100%\' src=\'$caseMapUrl\' ></iframe>'
                                         );
                             } else
                            if( actionToDo == 'caseHistory' ) {
@@ -501,7 +501,7 @@ class PluginProcessmakerCase extends CommonDBTM {
                                                     searchTag = 'body' ;
                                                     break ;
                                                                 }
-                                            onOtherFrameLoad( newPanel, 'caseiframe-' + newPanel, searchTag ) ;
+                                            onOtherFrameLoad( newPanel, 'caseiframe-' + newPanel, searchTag, ".($project_type=='bpmn' ? "true" : "false" )."  ) ;
                                                             } catch( evt ) {
                                                                 //debugger;
                                                             }
