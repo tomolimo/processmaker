@@ -178,7 +178,7 @@ class PluginProcessmakerUser extends CommonDBTM {
      * Summary of getGLPIUserId
      *      returns GLPI user ID from a Processmaker user ID
      * @param string $pmUserId
-     * @return int, GLPI user id, or 0 if not found
+    * @return int GLPI user id, or 0 if not found
      */
     public static function getGLPIUserId( $pmUserId ){
        $obj = new self ;

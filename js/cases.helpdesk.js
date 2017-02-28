@@ -41,8 +41,13 @@ function onLoadFrame( evt, caseId, delIndex, caseNumber, processName ) {
 
         caseIFrame = document.getElementById('caseiframe'); 
 
-        if (caseIFrame != undefined && caseIFrame.contentDocument != undefined) {
-            var contentDocument = caseIFrame.contentDocument; 
+      var contentDocument;
+      try {
+         contentDocument = caseIFrame.contentDocument;
+      } catch (ex) {
+         contentDocument = false;
+      }
+      if (caseIFrame != undefined && contentDocument) { 
             var buttonContinue = contentDocument.getElementById('form[btnGLPISendRequest]');
             var txtAreaUseRequestSumUp = contentDocument.getElementById('form[UserRequestSumUp]');
             var linkList = contentDocument.getElementsByTagName('a');

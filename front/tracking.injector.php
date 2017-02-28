@@ -28,7 +28,7 @@ if( isset($_POST["_from_helpdesk"]) && $_POST["_from_helpdesk"] == 1
     // if not we will continue
     // special case if RUMT plugin is enabled and no process is available and category is 'User Management' then must start RUMT.
 
-    $processList = PluginProcessmakerProcessmaker::getProcessesWithCategoryAndProfile( $_POST["itilcategories_id"], $_POST["type"], $_SESSION['glpiactiveprofile']['id'], $_SESSION['glpiactive_entity'] ) ;
+   $processList = PluginProcessmakerProcessmaker::getProcessesWithCategoryAndProfile( $_POST["itilcategories_id"], $_POST["type"], $_SESSION['glpiactiveprofile']['id'], $_POST["entities_id"] ) ;
 
     // currently only one process should be assigned to this itilcategory so this array should contain only one row
     $processQt = count( $processList ) ;

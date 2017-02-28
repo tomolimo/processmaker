@@ -112,7 +112,8 @@ $LANG['processmaker']['search']['processtitle']="Nom du processus";
 $LANG['processmaker']['search']['casetitle']="Titre du cas";
 $LANG['processmaker']['search']['hascase']="Cas en cours ?";
 
-$LANG['processmaker']['cron']['pmusers']="Synchro des utilisateurs GLPI et des pseudo-groups avec ProcessMaker."  ;
-$LANG['processmaker']['cron']['pmnotifications']="Notifications des tâches GLPI liées à des tâches de ProcessMaker." ;
+$LANG['processmaker']['cron']['pmusers']="Synchro des utilisateurs GLPI et des groups avec ProcessMaker."  ;
+//$LANG['processmaker']['cron']['pmnotifications']="Notifications des tâches GLPI liées à des tâches de ProcessMaker." ;
+$LANG['processmaker']['cron']['pmtaskactions']="Pour appliquer les actions de tâches entre cas."  ;
 $LANG['processmaker']['cron']['pmorphancases']['description']="Nettoyage des cas orphelins." ;
 $LANG['processmaker']['cron']['pmorphancases']['parameter']="Nombre de jours avant nettoyage des cas orphelins."; 

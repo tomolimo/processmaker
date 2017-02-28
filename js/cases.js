@@ -20,13 +20,25 @@ function bGLPIHideElement(eltList, attribute, value) {
     return ret;
 }
 
-function showMask(elt) {
-    if( !elt.defaultPrevented ) {
-        Ext.getBody().moveTo(0, 0);
-        var myMask = new Ext.LoadMask(Ext.getBody(), { removeMask: false });
-        myMask.show();
-    }
-};
+
+function displayOverlay() {
+   //debugger;
+   // don't use displayOverlay when submit input open new tab or update parent ( example: pdf generation )
+   if (!($(this).is('input[type=submit]')
+       && $(this).parents('form').length > 0
+       && ($(this).parents('form').first().attr('target') == '_blank' || $(this).parents('form').first().attr('target') == '_parent'))) {
+      $("<div class='ui-widget-overlay ui-front'></div>").appendTo("body");
+
+      var timer = window.setInterval(function () {
+         var count = $('.ui-widget-overlay.ui-front').length;
+         if (count == 2) {
+            $($('.ui-widget-overlay.ui-front')[1]).remove();
+            window.clearInterval(timer);
+         }
+
+      }, 10);
+   }
+}
 
 
 function onTaskFrameLoad(event, delIndex, hideClaimButton, csrf) {
@@ -41,12 +53,22 @@ function onTaskFrameLoad(event, delIndex, hideClaimButton, csrf) {
         try {
             var locContentDocument;
             var taskFrame = document.getElementById(taskFrameId);
-
-            if (taskFrame != undefined && taskFrame.contentDocument != undefined) {
+           try {
+              locContentDocument = taskFrame.contentDocument;
+           } catch (ex) {
+              locContentDocument = false;
+           }
+            if (taskFrame != undefined && locContentDocument != undefined) {
                 // here we've caught the content of the iframe
 
+               // if task resumé, then hide the form part
+               //debugger;
+               var form_resume = locContentDocument.getElementsByName('cases_Resume');
+               if (form_resume.length > 0 && form_resume[0].style.display != 'none') {
+                  form_resume[0].style.display = 'none';
+               }
+
                 // then look if btnGLPISendRequest exists,
-                locContentDocument = taskFrame.contentDocument;
                 var locElt = locContentDocument.getElementById('form[btnGLPISendRequest]');
                 if (!bShowHideNextStep && locElt != undefined ) {
                     var linkList = locContentDocument.getElementsByTagName('a');
@@ -60,6 +82,7 @@ function onTaskFrameLoad(event, delIndex, hideClaimButton, csrf) {
 
                         // if yes then change the action of the form POST
                         var node = formList[0]; // must have one element in list: in a dynaform there is one and only one HTML form
+                        node.setAttribute('actionBackup', node.action);
                         var action = node.action.split('?');
                         node.action = GLPI_HTTP_CASE_FORM + '?' + action[1] + '&DEL_INDEX=' + delIndex;
 
@@ -71,9 +94,8 @@ function onTaskFrameLoad(event, delIndex, hideClaimButton, csrf) {
                         csrfElt.setAttribute("value", csrf) ;
                         node.appendChild(csrfElt);
 
-                        // try to add showMask function to submit event
-                        // TODO
-                        //node.addEventListener('submit', showMask, true);
+                        // add showMask function to submit event
+                        //node.addEventListener('submit', displayOverlay, true);
                     } else {
                         // then hide the button itself
                         locElt.style.display = 'none';
@@ -94,8 +116,11 @@ function onTaskFrameLoad(event, delIndex, hideClaimButton, csrf) {
                     // to manage Claim
                     var formList = locContentDocument.getElementsByTagName('form');
                     var node = formList[0]; // must have one element in list: in a dynaform there is one and only one HTML form
+                    node.setAttribute('actionBackup', node.action);
+
                     var action = node.action.split('?');
                     node.action = GLPI_HTTP_CASE_FORM + '?' + action[1] + '&DEL_INDEX=' + delIndex;
+
                     bHideClaimCancelButton = true;
                     // TODO
                     //node.addEventListener('submit', showMask);
@@ -110,24 +135,15 @@ function onTaskFrameLoad(event, delIndex, hideClaimButton, csrf) {
                     GLPI_RELOAD_PARENT.location.reload();
                 }
 
-                // try to redim caseIFrame                
-                if (!redimIFrame) {
-                    var newHeight;
-                    //var locElt = locContentDocument.getElementsByTagName("table")[0];
-                    var locElt = locContentDocument.getElementsByTagName("body")[0];
-                    newHeight = parseInt(getComputedStyle(locElt, null).getPropertyValue('height'), 10) + 60;
-                    //if (locElt)
-                    //    newHeight = (locElt.clientHeight < 400 ? 400 : locElt.clientHeight) + locElt.offsetParent.offsetTop ;
-                    //else {
-                    //    locElt = locContentDocument.getElementsByTagName("form")[0];
-                    //    newHeight = (locElt.clientHeight < 400 ? 400 : locElt.clientHeight) + locElt.offsetTop ;
-                    //}
-                    //locElt.clientHeight = newHeight; // don't know if this is neccessary!!! --> bugs on IE8
-                    //NOT NEEDED WITH jQuery: var elts = $('#processmakertabpanel').tabs();//.getItem('task-' + delIndex).setHeight(newHeight);
-                    //debugger;
-                    taskFrame.height = newHeight ;
-                    redimIFrame = true;
-                }
+               // try to redim caseIFrame                
+               if (!redimIFrame) {
+                  redimTaskFrame(taskFrame, delIndex);
+                  var redimFrameTimer = window.setInterval(function () {
+                     redimTaskFrame(taskFrame, delIndex);
+                  }, 1000);
+
+                  redimIFrame = true;
+               }
             }
 
             taskFrameTimerCounter = taskFrameTimerCounter + 1;
@@ -141,6 +157,21 @@ function onTaskFrameLoad(event, delIndex, hideClaimButton, csrf) {
 
     }, 10);
 
+}
+
+function redimTaskFrame(taskFrame, delIndex) {
+    var newHeight;
+    try{
+        //var locElt = locContentDocument.getElementsByTagName("table")[0];
+        var locElt = taskFrame.contentDocument.getElementsByTagName("body")[0];
+        newHeight = parseInt(getComputedStyle(locElt, null).getPropertyValue('height'), 10) ;
+        if (newHeight < 500) {
+            newHeight = 500;
+        }
+
+        taskFrame.height = newHeight;
+    } catch (e) {
+    }
 }
 
 function onTaskFrameActivation(delIndex) {
@@ -182,23 +213,16 @@ function onTaskFrameActivation(delIndex) {
 }
 function clearClass(lociFrame) {
 
-   //var otherFrameTimerCounter = 0;
-   //var otherFrameTimer = window.setInterval(function () {
-        try {
-            var locElt = lociFrame.contentDocument.getElementsByTagName('body')[0];
-            if (locElt != undefined && locElt.className != '') {
-                //debugger;
-                locElt.className = '';
-         //   window.clearInterval(otherFrameTimer);
-         //} else {
-         //   otherFrameTimerCounter = otherFrameTimerCounter + 1;
-         //   if (otherFrameTimerCounter > 3000 )
-         //      window.clearInterval(otherFrameTimer);
-            }
-        } catch (ev) {
+   try {
+      var locElt = lociFrame.contentDocument.getElementsByTagName('body')[0];
+      if (locElt != undefined && locElt.className != '') {
+            //debugger;
+            locElt.className = '';
+
+      }
+   } catch (ev) {
             
-        }
-   //}, 10);
+   }
 }
 
 function onOtherFrameLoad(tabPanelName, frameName, eltTagName, isMap3) {

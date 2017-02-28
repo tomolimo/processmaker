@@ -310,7 +310,7 @@ function plugin_processmaker_install() {
         $DB->query($query) or die("error adding columns 'itilcategories_id' and 'type' to glpi_plugin_processmaker_processes" . $DB->error());
     }
 
-    if( !FieldExists( 'glpi_plugin_processmaker_processes', 'project_type') ) {   // since version 3.0
+    if( !FieldExists( 'glpi_plugin_processmaker_processes', 'project_type') ) {
         $query = "ALTER TABLE `glpi_plugin_processmaker_processes`
 	                ADD COLUMN `project_type` VARCHAR(50) NOT NULL DEFAULT 'classic';" ;
 
@@ -352,7 +352,6 @@ function plugin_processmaker_install() {
                 )
                 COLLATE='utf8_general_ci'
                 ENGINE=InnoDB
-                AUTO_INCREMENT=57
                 ;
 			";
 
@@ -375,6 +374,66 @@ function plugin_processmaker_install() {
     //        $config->update( array( 'id' => $config->getID(), 'taskcategories_id' => $pmCategory ) ) ;
     //}
 
+    if (!TableExists("glpi_plugin_processmaker_crontaskactions")) {
+       $query = "CREATE TABLE `glpi_plugin_processmaker_crontaskactions` (
+                     `id`        INT(11) NOT NULL AUTO_INCREMENT,
+                     `plugin_processmaker_caselinks_id` INT(11) NULL DEFAULT NULL,
+                     `itemtype`  VARCHAR(100) NOT NULL,
+                     `items_id`  INT(11) NOT NULL DEFAULT '0',
+                     `users_id`  INT(11) NOT NULL DEFAULT '0',
+	                  `toclaim`   TINYINT(1) NOT NULL DEFAULT '0',
+                     `postdatas` TEXT NULL DEFAULT NULL,
+                     `state`     INT(11) NOT NULL ,
+	                  `date_mod`  DATETIME NULL DEFAULT NULL,
+                     PRIMARY KEY (`id`)
+                  )
+                  COLLATE='utf8_general_ci'
+                  ENGINE=InnoDB;" ;
+       $DB->query($query) or die("error creating glpi_plugin_processmaker_crontaskactions" . $DB->error());
+    }
+
+    if (!TableExists("glpi_plugin_processmaker_caselinks")) {
+       $query = "CREATE TABLE `glpi_plugin_processmaker_caselinks` (
+	                  `id` INT(11) NOT NULL AUTO_INCREMENT,
+	                  `name` VARCHAR(255) NOT NULL,
+	                  `is_active` TINYINT(1) NOT NULL DEFAULT '0',
+	                  `is_externaldata` TINYINT(1) NOT NULL DEFAULT '0' COMMENT '0:insert data from case,1:wait for external application to set datas',
+	                  `is_self` TINYINT(1) NOT NULL DEFAULT '0' COMMENT '0:use linked tickets, 1:use self',
+	                  `sourcetask_guid` VARCHAR(32) NULL DEFAULT NULL,
+	                  `targettask_guid` VARCHAR(32) NULL DEFAULT NULL,
+	                  `targetprocess_guid` VARCHAR(32) NULL DEFAULT NULL,
+	                  `targetdynaform_guid` VARCHAR(32) NULL DEFAULT NULL,
+	                  `sourcecondition` TEXT NULL,
+	                  `targettoclaim` TINYINT(1) NOT NULL DEFAULT '0',
+                  	`externalapplication` TEXT NULL,
+	                  `date_mod` DATETIME NULL DEFAULT NULL,
+	                  PRIMARY KEY (`id`),
+	                  INDEX `is_active` (`is_active`),
+	                  INDEX `is_externaldata` (`is_externaldata`),
+	                  INDEX `is_self` (`is_self`)
+                  )
+                  COLLATE='utf8_general_ci'
+                  ENGINE=InnoDB;" ;
+       $DB->query($query) or die("error creating glpi_plugin_processmaker_caselinks" . $DB->error());
+    }
+
+
+    if (!TableExists("glpi_plugin_processmaker_caselinkactions")) {
+       $query = "CREATE TABLE `glpi_plugin_processmaker_caselinkactions` (
+	                  `id` INT(11) NOT NULL AUTO_INCREMENT,
+	                  `plugin_processmaker_caselinks_id` INT(11) NULL DEFAULT NULL,
+	                  `name` VARCHAR(255) NOT NULL,
+	                  `value` TEXT NULL,
+	                  PRIMARY KEY (`id`),
+	                  UNIQUE INDEX `caselinks_id_name` (`plugin_processmaker_caselinks_id`, `name`)
+                  )
+                  COLLATE='utf8_general_ci'
+                  ENGINE=InnoDB
+                  ;" ;
+       $DB->query($query) or die("error creating glpi_plugin_processmaker_caselinkactions" . $DB->error());
+    }
+
+
     // no longer used since 2.6
     //$myProcessMaker = new PluginProcessmakerProcessmaker() ;
     //$myProcessMaker->login(true) ; // to force admin login
@@ -393,6 +452,7 @@ function plugin_processmaker_install() {
     CronTask::Register('PluginProcessmakerProcessmaker', 'pmusers', DAY_TIMESTAMP, array( 'state' => CronTask::STATE_DISABLE, 'mode' => CronTask::MODE_EXTERNAL));
     //CronTask::Register('PluginProcessmakerProcessmaker', 'pmnotifications', DAY_TIMESTAMP, array( 'state' => CronTask::STATE_DISABLE, 'mode' => CronTask::MODE_EXTERNAL));
     CronTask::Register('PluginProcessmakerProcessmaker', 'pmorphancases', DAY_TIMESTAMP, array('param' => 10, 'state' => CronTask::STATE_DISABLE, 'mode' => CronTask::MODE_EXTERNAL));
+   CronTask::Register('PluginProcessmakerProcessmaker', 'pmtaskactions', MINUTE_TIMESTAMP, array('state' => CronTask::STATE_DISABLE, 'mode' => CronTask::MODE_EXTERNAL));
 
 
     // required because autoload doesn't work for unactive plugin'
@@ -640,4 +700,219 @@ function plugin_processmaker_post_init(){
 function plugin_processmaker_giveItem($itemtype,$ID,$data,$num){
 
    return ;
+}
+
+
+/**
+   * Summary of plugin_item_add_update_processmaker_tasks
+   * @param mixed $parm
+   */
+function plugin_item_update_processmaker_tasks($parm){
+   global $DB, $CFG_GLPI;
+
+   // we need to test if a specific case is completed, and if so
+   // we should complete the linked cases (via linked tickets)
+   $pmTaskCat = new PluginProcessmakerTaskCategory ;
+   if( $pmTaskCat->getFromDBbyCategory( $parm->fields['taskcategories_id'] )
+            && in_array( 'state', $parm->updates )
+            && $parm->input['state'] == 2) {  // the task has just been set to DONE state
+
+      //$taskList = array( array( 'sourcetaskguid'     => '54949951157c000b2336474053483376',
+      //                   'sourcecondition'    => '@@RELEASE_DONE == 1' ,
+      //                   'targettaskguid'     => '95599365257bffa6d6170d9068913760',
+      //                   'targetprocessguid'  => '51126098657bd96b286ded7016691792',
+      //                   'targetdynaformguid' => '28421020557bffc5b374850018853291',
+      //                   'targettoclaim'      => true,
+      //                   'targetactions'      => array( 'RELEASE_DONE'     => '@@RELEASE_DONE' )
+      //                  ) ) ;
+
+      $itemtype = str_replace( 'Task', '',  $parm->getType() ) ;
+
+      //foreach( $taskList as $targetTask ) {
+      foreach( $DB->request( 'glpi_plugin_processmaker_caselinks', "is_active = 1 AND sourcetask_guid='".$pmTaskCat->fields['pm_task_guid']."'") as $targetTask ) {
+
+         $srcCaseId = PluginProcessmakerProcessmaker::getCaseIdFromItem( $itemtype, $parm->fields['tickets_id']) ;
+
+         // Must check the condition
+         $casevariables = array();
+         $matches = array() ;
+         if( preg_match_all( "/@@(\w+)/u", $targetTask['sourcecondition'], $matches  ) ) {
+            $casevariables = $matches[1] ;
+         }
+         //foreach( $targetTask['targetactions'] as $actionvalue ){
+         foreach( $DB->request( 'glpi_plugin_processmaker_caselinkactions', 'plugin_processmaker_caselinks_id = '.$targetTask['id']) as $actionvalue ){
+            $targetTask['targetactions'][$actionvalue['name']] = $actionvalue['value'];
+            if( preg_match_all( "/@@(\w+)/u", $actionvalue['value'], $matches  ) ) {
+               $casevariables = array_merge( $casevariables, $matches[1] ) ;
+            }
+         }
+         $externalapplication = false ; // by default
+         if( $targetTask['is_externaldata'] && isset($targetTask['externalapplication']) ) {
+            // must read some values
+            $externalapplication = json_decode( $targetTask['externalapplication'], true ) ;
+            // must be of the form
+            // {"method":"POST","url":"http://arsupd201.ar.ray.group:8000/search_by_userid/","params":{"user":"@@USER_ID","system":"GPP","list":"@@ROLE_LIST"}}
+            // Where method is the POST, GET, ... method
+            // url is the URL to be called
+            // params is a list of parameters to get from running case
+            foreach ( $externalapplication['params'] as $paramname => $variable ) {
+               if( preg_match_all( "/@@(\w+)/u", $variable, $matches  ) ) {
+                  $casevariables = array_merge( $casevariables, $matches[1] ) ;
+               }
+            }
+         }
+
+
+         // ask for those case variables
+         $myProcessMaker = new PluginProcessmakerProcessmaker() ;
+         $myProcessMaker->login( ) ;
+         // now tries to get the variables to check condition
+         $infoForTasks = $myProcessMaker->getVariables( $srcCaseId, $casevariables );
+         foreach($infoForTasks as $casevar => $varval ){
+            $infoForTasks[ "@@$casevar" ] = "'$varval'" ;
+            unset( $infoForTasks[ $casevar ] ) ;
+         }
+         $targetTask['sourcecondition'] = str_replace( array_keys($infoForTasks), $infoForTasks, $targetTask['sourcecondition'] ) ;
+
+
+         if( eval( "return ".$targetTask['sourcecondition'].";" ) ){
+            // look at each linked ticket if a case is attached and then if a task like $val is TO_DO
+            // then will try to routeCase for each tasks in $val
+
+            $postdatas = array();
+            foreach( $targetTask['targetactions'] as $action => $actionvalue) {
+               $postdatas['form'][$action] = eval( "return ".str_replace( array_keys($infoForTasks), $infoForTasks, $actionvalue)." ;" ) ;
+            }
+            $postdatas['UID']                        = $targetTask['targetdynaform_guid'];
+            $postdatas['__DynaformName__']           = $targetTask['targetprocess_guid']."_".$targetTask['targetdynaform_guid'] ;
+            $postdatas['__notValidateThisFields__']  = '[]';
+            $postdatas['DynaformRequiredFields']     = '[]';
+            $postdatas['form']['btnGLPISendRequest'] = 'submit' ;
+
+            //foreach ( $externalapplication['params'] as $paramname => $variable ) {
+            //   $externalapplicationparams[$paramname] = eval( "return ".str_replace( array_keys($infoForTasks), $infoForTasks, $variable)." ;" ) ;
+            //}
+
+            $externalapplicationparams = array() ;
+            if( $externalapplication ) {
+               // must call curl
+               foreach ( $externalapplication['params'] as $paramname => $variable ) {
+                  $externalapplicationparams[$paramname] = eval( "return ".str_replace( array_keys($infoForTasks), $infoForTasks, $variable)." ;" ) ;
+               }
+               $externalapplicationparams['callback']=$CFG_GLPI['root_doc']."/plugins/processmaker/ajax/asynchronousdatas.php";
+               $ch = curl_init();
+               $externalapplication['url'] = eval( "return '".str_replace( array_keys($infoForTasks), $infoForTasks, $externalapplication['url'])."' ;" ) ; // '???
+               curl_setopt($ch, CURLOPT_URL,  $externalapplication['url'] );
+            }
+
+            if( $targetTask['is_self'] ) {
+               // MUST BE done on a add task hook, and not on an update task hook
+
+               //$query = "SELECT glpi_plugin_processmaker_cases.id, MAX(glpi_plugin_processmaker_tasks.del_index) AS del_index FROM glpi_tickettasks
+               //            JOIN glpi_plugin_processmaker_taskcategories ON glpi_plugin_processmaker_taskcategories.taskcategories_id=glpi_tickettasks.taskcategories_id
+               //            JOIN glpi_plugin_processmaker_cases ON glpi_plugin_processmaker_cases.processes_id=glpi_plugin_processmaker_taskcategories.processes_id
+               //            RIGHT JOIN glpi_plugin_processmaker_tasks ON glpi_plugin_processmaker_tasks.items_id=glpi_tickettasks.id AND glpi_plugin_processmaker_tasks.case_id=glpi_plugin_processmaker_cases.id
+               //            WHERE glpi_plugin_processmaker_taskcategories.pm_task_guid = '".$targetTask['targettask_guid']."' AND glpi_tickettasks.state = 1 AND glpi_tickettasks.tickets_id=".$parm->fields['tickets_id'] ;
+               
+               //$res = $DB->query($query) ;
+               //if( $res && $DB->numrows($res) > 0 && $case=$DB->fetch_assoc($res) && isset($case['id']) && isset($case['del_index']) ) {
+               //foreach( $DB->request($query) as $case ) {
+               $taskCase = $myProcessMaker->taskCase( $srcCaseId ) ;
+               foreach( $taskCase as $task ) {
+                  // search for target task guid
+                  if( $task->guid == $targetTask['targettask_guid'] )
+                     break ;
+               }
+
+               $postdatas['APP_UID']                    = $srcCaseId;
+               $postdatas['DEL_INDEX']                  = $task->delegate;
+
+               //need to get the 'ProcessMaker' user
+               $pmconfig = PluginProcessmakerConfig::getInstance() ;
+
+               $cronaction = new PluginProcessmakerCrontaskaction;
+               $cronaction->add( array( 'plugin_processmaker_caselinks_id' => $targetTask['id'],
+                                          'itemtype'  => $itemtype,
+                                          'items_id'  => $parm->fields['tickets_id'],
+                                          'users_id'  => $pmconfig->fields['users_id'],
+                                          'toclaim'   => $targetTask['targettoclaim'],
+                                          'state'     => ($targetTask['is_externaldata'] ? PluginProcessmakerCrontaskaction::WAITING_DATAS : PluginProcessmakerCrontaskaction::DATAS_READY),
+                                          'postdatas' => json_encode( $postdatas, JSON_HEX_APOS | JSON_HEX_QUOT)
+                                          ),
+                                 null,
+                                 false) ;
+
+               if( $externalapplication ) {
+                  // must call external application in order to get the needed data asynchroneously
+                  // must be of the form
+                  // {"url":"http://arsupd201.ar.ray.group:8000/search_by_userid/","params":{"user":"@@USER_ID","system":"GPP","list":"@@ROLE_LIST"}}
+                  // url is the URL to be called
+                  
+                  $externalapplicationparams['record_id'] = $cronaction->getID();
+
+                  $externalapplicationparams = json_encode( $externalapplicationparams, JSON_HEX_APOS | JSON_HEX_QUOT);
+                  //$externalapplicationparams = http_formdata_flat_hierarchy( $externalapplicationparams ) ;
+                  
+                  curl_setopt($ch, CURLOPT_POST, 1);
+                  curl_setopt($ch, CURLOPT_POSTFIELDS, $externalapplicationparams);
+                  curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json', 'Content-Length: ' . strlen($externalapplicationparams)));
+
+                  $response = curl_exec ($ch);
+
+                  curl_close ($ch);
+               }
+//               }
+            } else {
+               foreach( Ticket_Ticket::getLinkedTicketsTo( $parm->fields['tickets_id'] ) as $tlink  ){
+                  if( $tlink['link'] == Ticket_Ticket::LINK_TO ) {
+                     $query = "SELECT glpi_plugin_processmaker_cases.id, MAX(glpi_plugin_processmaker_tasks.del_index) AS del_index FROM glpi_tickettasks
+                           JOIN glpi_plugin_processmaker_taskcategories ON glpi_plugin_processmaker_taskcategories.taskcategories_id=glpi_tickettasks.taskcategories_id
+                           JOIN glpi_plugin_processmaker_cases ON glpi_plugin_processmaker_cases.processes_id=glpi_plugin_processmaker_taskcategories.processes_id
+                           RIGHT JOIN glpi_plugin_processmaker_tasks ON glpi_plugin_processmaker_tasks.items_id=glpi_tickettasks.id AND glpi_plugin_processmaker_tasks.case_id=glpi_plugin_processmaker_cases.id
+                           WHERE glpi_plugin_processmaker_taskcategories.pm_task_guid = '".$targetTask['targettask_guid']."' AND glpi_tickettasks.state = 1 AND glpi_tickettasks.tickets_id=".$tlink['tickets_id'] ;
+                     foreach( $DB->request($query) as $case ) {
+                        // must be only one row
+
+                        $postdatas['APP_UID']                    = $case['id'];
+                        $postdatas['DEL_INDEX']                  = $case['del_index'];
+
+                        $cronaction = new PluginProcessmakerCrontaskaction;
+                        $cronaction->add( array( 'plugin_processmaker_caselinks_id' => $targetTask['id'],
+                                                   'itemtype'  => $itemtype,
+                                                   'items_id'  => $parm->fields['tickets_id'],
+                                                   'users_id'  => Session::getLoginUserID(),
+                                                   'toclaim'   => $targetTask['targettoclaim'],
+                                                   'state'     => ($targetTask['is_externaldata'] ? PluginProcessmakerCrontaskaction::WAITING_DATAS : PluginProcessmakerCrontaskaction::DATAS_READY),
+                                                   'postdatas' => json_encode( $postdatas, JSON_HEX_APOS | JSON_HEX_QUOT)
+                                                   ),
+                                          null,
+                                          false) ;
+                     }
+                     //if( $externalapplication ) {
+                     //   // must call external application in order to get the needed data asynchroneously
+                     //   // must be of the form
+                     //   // {"method":"POST","url":"http://arsupd201.ar.ray.group:8000/search_by_userid/","params":{"user":"@@USER_ID","system":"GPP","list":"@@ROLE_LIST"}}
+                     //   // Where method is the POST, GET
+                     //   // url is the URL to be called
+                     //   $externalapplicationparams['record_id']=$cronaction->getID();
+                     //   $externalapplicationparams = http_formdata_flat_hierarchy( $externalapplicationparams ) ;
+                     //   if( $externalapplication['method'] != 'GET') {
+                     //      switch($externalapplication['method']) {
+                     //         case 'POST' :
+                     //            curl_setopt($ch, CURLOPT_POST, 1);
+                     //            curl_setopt($ch, CURLOPT_POSTFIELDS, $externalapplicationparams);
+                     //            break;
+                     //      }
+                     //   }
+                     //   $response = curl_exec ($ch);
+
+                     //   curl_close ($ch);
+                     //}
+                  }
+               }
+            }
+         }
+
+      }
+   }
 }

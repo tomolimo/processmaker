@@ -544,7 +544,7 @@ class PluginProcessmakerCase extends CommonDBTM {
                  echo "<input type='hidden' name='id' value='$item_id'>";
                  echo "<input type='hidden' name='itemtype' value='$item_type'>";
                  //                Dropdown::show('PluginProcessmakerProcessmaker', array( 'entity' => $item->fields['entities_id'], 'name' => 'plugin_processmaker_process_id', 'condition' => "is_active=1")); // condition is used to prevent start of none-active cases
-                PluginProcessmakerProcess::dropdown(array( 'entity' => $item->fields['entities_id'], 'name' => 'plugin_processmaker_process_id', 'condition' => "is_active=1"));
+                PluginProcessmakerProcess::dropdown(array( 'value' => 0, 'entity' => $item->fields['entities_id'], 'name' => 'plugin_processmaker_process_id', 'condition' => "is_active=1"));
                  echo "</td><td class='tab_bg_2'>";
                  echo "<input type='submit' name='additem' value='".$LANG['processmaker']['item']['start']."' class='submit'>";
                  echo "</td></tr>";
@@ -648,7 +648,7 @@ class PluginProcessmakerCase extends CommonDBTM {
      */
     public static function canSolve ($parm) {
         $myCase = new self;
-        if( $myCase->getCaseFromItemTypeAndItemId( $parm->getType(), $parm->getID() )  ) {
+        if( $myCase->getCaseFromItemTypeAndItemId( $parm['item']->getType(), $parm['item']->getID() )  ) {
             $pmVar = $myCase->getVariables( array( 'GLPI_ITEM_CAN_BE_SOLVED' ) ) ;
             if( $myCase->fields['case_status'] != 'COMPLETED' && $myCase->fields['case_status'] != 'CANCELLED' && (!isset($pmVar['GLPI_ITEM_CAN_BE_SOLVED']) || $pmVar['GLPI_ITEM_CAN_BE_SOLVED'] != 1) ) {
                 // then item can't be solved

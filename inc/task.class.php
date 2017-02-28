@@ -89,34 +89,36 @@ class PluginProcessmakerTask extends CommonITILTask
 
    static function populatePlanning($params) {
       global $CFG_GLPI;
-      //echo 'Test' ;
+
       $ret = array();
       $events = array() ;
-      $params['begin'] = '2000-01-01 00:00:00';
-      $ret = CommonITILTask::genericPopulatePlanning( 'TicketTask', $params ) ;
+      if( isset($params['start']) ) {
+         $params['begin'] = '2000-01-01 00:00:00';
+         $ret = CommonITILTask::genericPopulatePlanning( 'TicketTask', $params ) ;
 
-      foreach( $ret as $key => $event ) {
-         if( $event['state'] == 1 || ($params['display_done_events'] == 1 && $event['state'] == 2)) { // if todo or done but need to show them (=planning)
-            // check if task is one within a case
-            $pmTask = new self('TicketTask');
-            if( $pmTask->getFromDB( $event['tickettasks_id'] )  ) { // $pmTask->getFromDBByQuery( " WHERE itemtype = 'TicketTask' AND items_id = ". $event['tickettasks_id'] ) ) {
-               $event['editable'] = false;
-               $event['url'] .= '&forcetab=PluginProcessmakerCase$processmakercases' ;
+         foreach( $ret as $key => $event ) {
+            if( $event['state'] == 1 || ($params['display_done_events'] == 1 && $event['state'] == 2)) { // if todo or done but need to show them (=planning)
+               // check if task is one within a case
+               $pmTask = new self('TicketTask');
+               if( $pmTask->getFromDB( $event['tickettasks_id'] )  ) { // $pmTask->getFromDBByQuery( " WHERE itemtype = 'TicketTask' AND items_id = ". $event['tickettasks_id'] ) ) {
+                  $event['editable'] = false;
+                  $event['url'] .= '&forcetab=PluginProcessmakerCase$processmakercases' ;
 
-               $taskCat = new TaskCategory ;
-               $taskCat->getFromDB( $pmTask->fields['taskcategories_id'] ) ;
-               $taskComment = isset($taskCat->fields['comment']) ? $taskCat->fields['comment'] : '' ;
-               if( Session::haveTranslations('TaskCategory', 'comment') ) {
-                  $taskComment = DropdownTranslation::getTranslatedValue( $taskCat->getID(), 'TaskCategory', 'comment', $_SESSION['glpilanguage'], $taskComment ) ;
+                  $taskCat = new TaskCategory ;
+                  $taskCat->getFromDB( $pmTask->fields['taskcategories_id'] ) ;
+                  $taskComment = isset($taskCat->fields['comment']) ? $taskCat->fields['comment'] : '' ;
+                  if( Session::haveTranslations('TaskCategory', 'comment') ) {
+                     $taskComment = DropdownTranslation::getTranslatedValue( $taskCat->getID(), 'TaskCategory', 'comment', $_SESSION['glpilanguage'], $taskComment ) ;
+                  }
+
+                  $event['content'] = str_replace( '##processmaker.taskcomment##', $taskComment, $event['content'] ) ;
+                  $event['content'] = str_replace( '##ticket.url##_PluginProcessmakerCase$processmakercases', "", $event['content'] ) ; //<a href=\"".$event['url']."\">"."Click to manage task"."</a>
+                  //if( $event['state'] == 1 && $event['end'] < $params['start'] ) { // if todo and late
+                  //   $event['name'] = $event['end'].' '.$event['name'] ; //$event['begin'].' to '.$event['end'].' '.$event['name'] ;
+                  //   $event['end'] = $params['start'].' 24:00:00'; //.$CFG_GLPI['planning_end'];
+                  //}
+                  $events[$key] = $event ;
                }
-
-               $event['content'] = str_replace( '##processmaker.taskcomment##', $taskComment, $event['content'] ) ;
-               $event['content'] = str_replace( '##ticket.url##_PluginProcessmakerCase$processmakercases', "", $event['content'] ) ; //<a href=\"".$event['url']."\">"."Click to manage task"."</a>
-               if( $event['state'] == 1 && $event['end'] < $params['start'] ) { // if todo and late
-                  $event['name'] = $event['end'].' '.$event['name'] ; //$event['begin'].' to '.$event['end'].' '.$event['name'] ;
-                  $event['end'] = $params['start'].' 24:00:00'; //.$CFG_GLPI['planning_end'];
-               }
-               $events[$key] = $event ;
             }
          }
       }

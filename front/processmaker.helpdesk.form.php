@@ -20,8 +20,10 @@ function processMakerShowProcessList ($ID, $from_helpdesk) {
     echo "<input type='hidden' name='action' value='newcase'>";
     echo "<input type='hidden' name='id' value='-1'>";
     echo "<input type='hidden' name='itemtype' value='Ticket'>";
+    echo "<input type='hidden' name='itilcategories_id' value='".$_REQUEST['itilcategories_id']."'>";
+    echo "<input type='hidden' name='type' value='".$_REQUEST['type']."'>";
 //    Dropdown::show('PluginProcessmakerProcessmaker', array( 'name' => 'plugin_processmaker_process_id', 'condition' => "is_active=1 and is_helpdeskvisible=1")); // condition is used to prevent start of none-active and none-helpdesk-visible cases
-    PluginProcessmakerProcess::dropdown( array( 'entity' => $_SESSION['glpiactive_entity'], 'name' => 'plugin_processmaker_process_id' ));
+    PluginProcessmakerProcess::dropdown( array( 'value' => 0, 'entity' => $_SESSION['glpiactive_entity'], 'name' => 'plugin_processmaker_process_id' ));
     echo "</td><td class='center'>";
     echo "<input type='submit' name='additem' value='Start' class='submit'>";
     echo "</td></tr>";
@@ -907,7 +909,7 @@ function showFormHelpdesk($ID, $pmItem, $caseInfo, $ticket_template=false) {
    }
 
    $email  = UserEmail::getDefaultForUser($ID);
-   $default_use_notif = Entity::getUsedConfig('is_notif_enable_default', $_SESSION['glpiactive_entity'], '', 1);
+   $default_use_notif = Entity::getUsedConfig('is_notif_enable_default', $_REQUEST['entities_id'], '', 1);
 
    // Set default values...
    $default_values = array('_users_id_requester_notif'
@@ -925,12 +927,12 @@ function showFormHelpdesk($ID, $pmItem, $caseInfo, $ticket_template=false) {
                            'urgency'             => 3,
 
                            'items_id'            => 0,
-                           'entities_id'         => $_SESSION['glpiactive_entity'],
+                           'entities_id'         => $_REQUEST['entities_id'],
                            'plan'                => array(),
                            'global_validation'   => CommonITILValidation::NONE,
                            '_add_validation'     => 0,
                            'type'                => Entity::getUsedConfig('tickettype',
-                                                                          $_SESSION['glpiactive_entity'],
+                                                                          $_REQUEST['entities_id'],
                                                                           '', Ticket::INCIDENT_TYPE),
                            '_right'              => "id",
                            '_filename'           => array(),
@@ -1018,7 +1020,7 @@ function showFormHelpdesk($ID, $pmItem, $caseInfo, $ticket_template=false) {
                       'use_notification'
                                    => $values['_users_id_requester_notif']['use_notification'],
                       'entity_restrict'
-                                   => $_SESSION["glpiactive_entity"]);
+                                   => $_REQUEST['entities_id']);
 
       Ajax::UpdateItemOnSelectEvent("dropdown_nodelegate".$rand, "show_result".$rand,
                                     $CFG_GLPI["root_doc"]."/ajax/dropdownDelegationUsers.php",
@@ -1074,7 +1076,7 @@ function showFormHelpdesk($ID, $pmItem, $caseInfo, $ticket_template=false) {
    // Load ticket template if available :
    $tt = $ticket->getTicketTemplateToUse($ticket_template, $values['type'],
                                        $values['itilcategories_id'],
-                                       $_SESSION["glpiactive_entity"]);
+                                       $_REQUEST['entities_id']);
 
    // Predefined fields from template : reset them
    if (isset($values['_predefined_fields'])) {
@@ -1140,7 +1142,7 @@ function showFormHelpdesk($ID, $pmItem, $caseInfo, $ticket_template=false) {
    if ($tt->isHiddenField('locations_id')) {
       echo "<input type='hidden' name='locations_id' value='".$values['locations_id']."'>";
    }
-   echo "<input type='hidden' name='entities_id' value='".$_SESSION["glpiactive_entity"]."'>";
+   echo "<input type='hidden' name='entities_id' value='".$_REQUEST['entities_id']."'>";
    echo "<input type='hidden' name='processId' value='".$caseInfo->processId."'>";
    echo "<div class='center'><table class='tab_cadre_fixe'>";
 
@@ -1148,7 +1150,7 @@ function showFormHelpdesk($ID, $pmItem, $caseInfo, $ticket_template=false) {
    echo "<tr><th width='30%'>".$caseInfo->processName."</th><th>";
    //echo "<tr><th>".__('Describe the incident or request')."</th><th>";
    if (Session::isMultiEntitiesMode()) {
-      echo "(".Dropdown::getDropdownName("glpi_entities", $_SESSION["glpiactive_entity"]).")";
+      echo "(".Dropdown::getDropdownName("glpi_entities", $_REQUEST['entities_id']).")";
    }
    echo "</th></tr>";
 
@@ -1175,7 +1177,7 @@ function showFormHelpdesk($ID, $pmItem, $caseInfo, $ticket_template=false) {
    }
    $opt = array('value'     => $values['itilcategories_id'],
                 'condition' => $condition,
-                'entity'    => $_SESSION["glpiactive_entity"],
+                'entity'    => $_REQUEST['entities_id'],
                 'on_change' => 'this.form.submit()');
 
    if ($values['itilcategories_id'] && $tt->isMandatoryField("itilcategories_id")) {
@@ -1517,8 +1519,9 @@ if (isset($_REQUEST['case_id'])) {
         processMakerShowProcessList(Session::getLoginUserID(), 1);
     else {
         // before showing the case, we must check the rights for this user to view it, if entity has been changed in the meanwhile
-        $processList = PluginProcessmakerProcessmaker::getProcessesWithCategoryAndProfile( $_REQUEST["itilcategories_id"], $_REQUEST["type"], $_SESSION['glpiactiveprofile']['id'], $_SESSION['glpiactive_entity'] ) ;
-        if( in_array_recursive( $_REQUEST['process_id'], $processList ) ) {
+        // and must check if entity of the ticket is in the tree of authorized entities for current profile
+        $processList = PluginProcessmakerProcessmaker::getProcessesWithCategoryAndProfile( $_REQUEST["itilcategories_id"], $_REQUEST["type"], $_SESSION['glpiactiveprofile']['id'], $_REQUEST['entities_id'] ) ;
+        if( in_array( $_REQUEST['entities_id'], $_SESSION['glpiactiveentities']) && in_array_recursive( $_REQUEST['process_id'], $processList ) ) {
             processMakerShowCase(Session::getLoginUserID(), 1);
         } else {
             Html::redirect($CFG_GLPI["root_doc"]."/front/helpdesk.public.php?create_ticket=1");

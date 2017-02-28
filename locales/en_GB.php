@@ -12,8 +12,8 @@ $LANG['processmaker']['profile']['case_delete']="Delete cases";
 $LANG['processmaker']['process']['process_guid']="Process GUID";
 $LANG['processmaker']['process']['project_type_short']="Project type" ;
 $LANG['processmaker']['process']['project_type']="Project type (to be changed if not up-to-date)" ;
-$LANG['processmaker']['process']['project_type_bpmn']='BPMN';
-$LANG['processmaker']['process']['project_type_classic']='Classic' ;
+$LANG['processmaker']['process']['project_type_bpmn']='bpmn';
+$LANG['processmaker']['process']['project_type_classic']='classic' ;
 $LANG['processmaker']['process']['hide_case_num_title_short']="Hide case number and title";
 $LANG['processmaker']['process']['hide_case_num_title']="Hide case number and title in task descriptions";
 $LANG['processmaker']['process']['insert_task_comment_short']="Insert Task Category";
@@ -112,8 +112,8 @@ $LANG['processmaker']['search']['processtitle']="Process Title";
 $LANG['processmaker']['search']['casetitle']="Case Title";
 $LANG['processmaker']['search']['hascase']="Running Case?";
 
-$LANG['processmaker']['cron']['pmusers']="Syncs GLPI users and pseudo-groups into ProcessMaker."  ;
-$LANG['processmaker']['cron']['pmnotifications']="Notifications for GLPI Tasks bound to ProcessMaker Tasks." ;
+$LANG['processmaker']['cron']['pmusers']="Syncs GLPI users and groups into ProcessMaker."  ;
 
+$LANG['processmaker']['cron']['pmtaskactions']="To apply task actions between cases."  ;
 $LANG['processmaker']['cron']['pmorphancases']['description']="Cleaning of orphan cases." ;
 $LANG['processmaker']['cron']['pmorphancases']['parameter']="Number of days to keep orphan cases"; 

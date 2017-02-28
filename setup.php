@@ -48,9 +48,14 @@ function plugin_init_processmaker() {
         $PLUGIN_HOOKS['pre_show_item']['processmaker']
            = array('PluginProcessmakerProcessmaker', 'pre_show_item_processmakerticket');
 
-        $PLUGIN_HOOKS['post_show_item']['processmaker']
-           = array('Ticket' => array('PluginProcessmakerProcessmaker',
-                                     'post_show_item_processmakerticket'));
+        $PLUGIN_HOOKS['pre_show_tab']['processmaker']
+           = array('PluginProcessmakerProcessmaker', 'pre_show_tab_processmaker');
+        $PLUGIN_HOOKS['post_show_tab']['processmaker']
+           = array('PluginProcessmakerProcessmaker', 'post_show_tab_processmaker');
+
+        //$PLUGIN_HOOKS['post_show_item']['processmaker']
+        //   = array('Ticket' => array('PluginProcessmakerProcessmaker',
+        //                             'post_show_item_processmakerticket'));
 
         // Display a menu entry ?
         if (Session::haveRight('config', READ) ) {
@@ -70,7 +75,8 @@ function plugin_init_processmaker() {
         //        , 'TicketFollowup' => 'plugin_pre_item_update_processmaker_followup'
 
         $PLUGIN_HOOKS['item_update']['processmaker'] = array(
-              'TicketSatisfaction' => 'plugin_item_update_processmaker_satisfaction'
+     	'TicketSatisfaction' => 'plugin_item_update_processmaker_satisfaction',
+      'TicketTask' => 'plugin_item_update_processmaker_tasks'
           );
 
         $PLUGIN_HOOKS['item_add']['processmaker'] = array(
@@ -81,6 +87,9 @@ function plugin_init_processmaker() {
                  'NotificationTargetTicket' => array('PluginProcessmakerProcessmaker', 'plugin_item_get_datas_processmaker')
              );
 
+        $PLUGIN_HOOKS['item_get_pdfdatas']['processmaker'] = array(
+          'PluginPdfTicketTask' => array('PluginProcessmakerProcessmaker', 'plugin_item_get_pdfdatas_processmaker')
+       );
 
 
         $PLUGIN_HOOKS['pre_item_purge']['processmaker'] = array(
@@ -115,16 +124,16 @@ function plugin_version_processmaker(){
    global $LANG;
 
    return array ('name'           => 'Process Maker',
-                'version'        => '3.0.0',
+                'version'        => '3.1.0',
                 'author'         => 'Olivier Moron',
                 'homepage'       => '',
-                'minGlpiVersion' => '0.85.0');
+                'minGlpiVersion' => '9.1');
 }
 
 // Optional : check prerequisites before install : may print errors or add to message after redirect
 function plugin_processmaker_check_prerequisites(){
-   if (version_compare(GLPI_VERSION,'0.85','lt') || version_compare(GLPI_VERSION,'9.2','ge')) {
-      echo "This plugin requires GLPI 0.85.0 or higher";
+   if (version_compare(GLPI_VERSION,'9.1','lt') || version_compare(GLPI_VERSION,'9.2','ge')) {
+      echo "This plugin requires GLPI 9.1 or higher";
       return false;
    }
    //$plug = new Plugin ;

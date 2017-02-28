@@ -27,13 +27,13 @@ switch( $_POST["action"] ) {
             $myProcessMaker = new PluginProcessmakerProcessmaker() ;
             $myProcessMaker->login() ; 
             
-            $resultCase = $myProcessMaker->newCase( $_POST['plugin_processmaker_process_id'], array( 'GLPI_ITEM_CAN_BE_SOLVED' => 0, 'GLPI_SELFSERVICE_CREATED' => '1') ) ;
+         $resultCase = $myProcessMaker->newCase( $_POST['plugin_processmaker_process_id'], array( 'GLPI_ITEM_CAN_BE_SOLVED' => 0, 'GLPI_SELFSERVICE_CREATED' => '1', 'GLPI_URL' => $CFG_GLPI['url_base'].$CFG_GLPI['root_doc']) ) ;
             if ($resultCase->status_code == 0){
                 // case is created 
                 // Must show it...
                 // 
                 $rand = rand( ) ;
-                Html::redirect($CFG_GLPI['root_doc']."/plugins/processmaker/front/processmaker.helpdesk.form.php?process_id=".$_POST['plugin_processmaker_process_id']."&case_id=".$resultCase->caseId."&rand=$rand&itilcategories_id=".$_POST["itilcategories_id"]."&type=".$_REQUEST["type"]); 
+                Html::redirect($CFG_GLPI['root_doc']."/plugins/processmaker/front/processmaker.helpdesk.form.php?process_id=".$_POST['plugin_processmaker_process_id']."&case_id=".$resultCase->caseId."&rand=$rand&itilcategories_id=".$_POST["itilcategories_id"]."&type=".$_REQUEST["type"]."&entities_id=".$_REQUEST['entities_id']); 
                                 
             } else {
                 Session::addMessageAfterRedirect($LANG['processmaker']['item']['error'][$resultCase->status_code]."<br>$resultCase->message ($resultCase->status_code)", true, ERROR); //echo "Error creating case: $resultCase->message \n";

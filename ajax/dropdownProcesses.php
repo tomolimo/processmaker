@@ -32,6 +32,10 @@ if (!($item = getItemForItemtype($_REQUEST['itemtype']))) {
     exit();
 }
 
+$one_item = -1;
+if (isset($_POST['_one_id'])) {
+   $one_item = $_POST['_one_id'];
+}
 // Count real items returned
 $count = 0;
 
@@ -39,6 +43,7 @@ if (!isset($_REQUEST['emptylabel']) || ($_REQUEST['emptylabel'] == '')) {
     $_REQUEST['emptylabel'] = Dropdown::EMPTY_VALUE;
 }
 
+$search="";
 if (!empty($_REQUEST['searchText'])) {
     $search = Search::makeTextSearch($_REQUEST['searchText']);
 }
@@ -46,14 +51,14 @@ if (!empty($_REQUEST['searchText'])) {
 $processes = array();
 
 // Empty search text : display first
-//if (empty($_REQUEST['searchText'])) {
+if (empty($_REQUEST['searchText'])) {
     if ($_REQUEST['display_emptychoice']) {
         if (($one_item < 0) || ($one_item  == 0)) {
             array_push($processes, array('id'   => 0,
                                      'text' => $_REQUEST['emptylabel']));
         }
     }
-//}
+}
 
 $result = PluginProcessmakerProcess::getSqlSearchResult(false, $search);
 
