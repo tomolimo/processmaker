@@ -53,6 +53,7 @@ class PluginProcessmakerConfig extends CommonDBTM {
    * @return array the modified $input array
    **/
    function prepareInputForUpdate($input) {
+      global $CFG_GLPI;
 
       if( !isset($input["maintenance"]) ) {
          $input["maintenance"] = 0 ;
@@ -82,10 +83,40 @@ class PluginProcessmakerConfig extends CommonDBTM {
          $input['pm_admin_passwd'] = '';
       }
 
+      $input['domain'] = self::getCommonDomain( $CFG_GLPI['url_base'], $input['pm_server_URL'] ) ;
+
       return $input;
    }
+
+   /**
+    * Summary of getCommonDomain
+    * @param mixed $url1
+    * @param mixed $url2
+    * @return string the common domain part of the given urls
+    */
+   static function getCommonDomain($url1, $url2) {
+      $domain = '';
+      try {
+         $glpi = explode( "/", $url1) ;
+         $glpi = explode( ".", $glpi[2] );
+         $pm = explode( "/", $url2) ;
+         $pm = explode( ".", $pm[2] );
+         $cglpi = array_pop( $glpi ) ;
+         $cpm = array_pop( $pm) ;
+         while( $cglpi && $cpm && $cglpi == $cpm ) {
+            $domain = $cglpi.($domain==''?'':'.'.$domain) ;
+            $cglpi = array_pop( $glpi ) ;
+            $cpm = array_pop( $pm ) ;
+         }
+         if( $domain != '' ) {
+            return $domain ;
+         }
+      } catch(Exception $e) {}
+      return '';
+   }
+
     static function showConfigForm($item) {
-        global $LANG, $PM_DB;
+        global $LANG, $PM_DB, $CFG_GLPI;
 
         $ui_theme = array(
           'glpi_classic' => 'glpi_classic',
@@ -100,6 +131,38 @@ class PluginProcessmakerConfig extends CommonDBTM {
         echo "<td >".$LANG['processmaker']['config']['URL']."</td><td >";
         echo "<input size='50' type='text' name='pm_server_URL' value='".$config->fields['pm_server_URL']."'>" ;
         echo "</td></tr>\n";
+
+        echo "<tr class='tab_bg_1'>";
+        echo "<td>" . $LANG['processmaker']['config']['domain'] . "</td>";
+        echo "<td><font color='red'><div name='domain'>".$config->fields['domain']."</div></font>";
+
+        echo Html::scriptBlock("
+            function setCommonDomain() {
+               var domain = '';
+               try {
+                  var glpi= '".$CFG_GLPI['url_base']."'.split('/')[2].split('.') ;
+                  var pm = $('input[name=pm_server_URL]').val().split('/')[2].split('.');
+                  var cglpi = glpi.pop() ;
+                  var cpm = pm.pop() ;
+                  while( cglpi && cpm && cglpi == cpm ) {
+                     domain = cglpi + (domain==''?'':'.' + domain) ;
+                     cglpi = glpi.pop() ;
+                     cpm = pm.pop() ;
+                  }
+                  if( domain != '' ) {
+                     $('div[name=domain]').text(domain) ;
+                     $('div[name=domain]').parent().attr('color', 'green');
+                     return;
+                  }
+               } catch(ex) {}
+               $('div[name=domain]').text('".$LANG['processmaker']['config']['domain-error']."') ;
+               $('div[name=domain]').parent().attr('color', 'red');
+            };
+            $('input[name=pm_server_URL]').on('keyup', setCommonDomain ) ;
+            setCommonDomain() ;
+        ");
+        echo "</td></tr>\n";
+
 
         echo "<tr class='tab_bg_1'>";
         echo "<td >".$LANG['processmaker']['config']['workspace']."</td><td >";
@@ -120,8 +183,11 @@ class PluginProcessmakerConfig extends CommonDBTM {
         echo "<tr class='tab_bg_1'>";
         echo "<td >".$LANG['processmaker']['config']['connectionstatus']."</td><td >";
         $pm = new PluginProcessmakerProcessmaker ;
-        $ret = $pm->login(true);
-        if( $ret ) {
+        //$pmconnected=false ; // by default
+        if( $config->fields['pm_server_URL'] != ''
+           && $config->fields['pm_workspace'] != ''
+           && $config->fields["pm_admin_user"] != ''
+           && ($pm->login(true))) {
            echo "<font color='green'>".__('Test successful');
         } else {
            echo "<font color='red'>".__('Test failed')."<br>".print_r($pm->lasterror,true);
@@ -163,26 +229,31 @@ class PluginProcessmakerConfig extends CommonDBTM {
                         array('value' => $config->fields['pm_theme']));
         echo "</td></tr>";
 
-        $taskCatogrie = new TaskCategory;
-        $taskCatogrie->getFromDB( $config->fields['taskcategories_id'] ) ;
         echo "<tr class='tab_bg_1'>";
         echo "<td >".$LANG['processmaker']['config']['main_task_category']."</td><td >";
-        echo "<a href='".Toolbox::getItemTypeFormURL( 'TaskCategory' )."?id=". $config->fields['taskcategories_id']."'>".str_replace(" ", "&nbsp;", $taskCatogrie->fields['name']);
-        if ($_SESSION["glpiis_ids_visible"]) {
-            echo " (".$config->fields['taskcategories_id'].")";
-        }
-        echo "</a>" ;
+        TaskCategory::dropdown(array('name'              => 'taskcategories_id',
+                                 'display_emptychoice'   => true,
+                                 'value'                 => $config->fields['taskcategories_id']));
         echo "</td></tr>\n";
 
-        $taskUser = new User;
-        $taskUser->getFromDB( $config->fields['users_id'] ) ;
         echo "<tr class='tab_bg_1'>";
         echo "<td >".$LANG['processmaker']['config']['taskwriter']."</td><td >";
-        echo "<a href='".Toolbox::getItemTypeFormURL( 'User' )."?id=". $config->fields['users_id']."'>".str_replace(" ", "&nbsp;", $taskUser->getName());
-        if ($_SESSION["glpiis_ids_visible"]) {
-            echo " (".$config->fields['users_id'].")";
-        }
-        echo "</a>" ;
+        $rand = mt_rand() ;
+        User::dropdown(array('name'             => 'users_id',
+                         'display_emptychoice'  => true,
+                         'right'                => 'all',
+                         'rand'                 => $rand,
+                         'value'                => $config->fields['users_id']));
+
+        // this code adds the + sign to the form
+        echo "<img alt='' title=\"".__s('Add')."\" src='".$CFG_GLPI["root_doc"].
+                            "/pics/add_dropdown.png' style='cursor:pointer; margin-left:2px;'
+                            onClick=\"".Html::jsGetElementbyID('add_dropdown'.$rand).".dialog('open');\">";
+        echo Ajax::createIframeModalWindow('add_dropdown'.$rand,
+                                                 User::getFormURL(),
+                                                 array('display' => false));
+        // end of + sign
+
         echo "</td></tr>\n";
 
         echo "<tr class='tab_bg_1'>";
@@ -200,17 +271,6 @@ class PluginProcessmakerConfig extends CommonDBTM {
         }
 
         echo "</td></tr>\n";
-
-         //echo "<tr class='tab_bg_1'>";
-         //echo "<td >".$LANG['processmaker']['config']['comments']."";
-         //echo "</td><td rowspan='5'  >";
-         //echo "<textarea cols='60' rows='5' name='comment' >".$config->fields['comment']."</textarea>";
-         //echo "</td></tr>\n";
-
-         //echo "<tr></tr>";
-         //echo "<tr></tr>";
-         //echo "<tr></tr>";
-         //echo "<tr></tr>";
 
          echo "<tr><td  colspan='4' class='center b'>".__('Maintenance')."</td></tr>";
 

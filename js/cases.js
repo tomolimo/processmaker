@@ -63,10 +63,10 @@ function onTaskFrameLoad(event, delIndex, hideClaimButton, csrf) {
 
                // if task resumé, then hide the form part
                //debugger;
-               var form_resume = locContentDocument.getElementsByName('cases_Resume');
-               if (form_resume.length > 0 && form_resume[0].style.display != 'none') {
-                  form_resume[0].style.display = 'none';
-               }
+               //var form_resume = locContentDocument.getElementsByName('cases_Resume');
+               //if (form_resume.length > 0 && form_resume[0].style.display != 'none') {
+               //   form_resume[0].style.display = 'none';
+               //}
 
                 // then look if btnGLPISendRequest exists,
                 var locElt = locContentDocument.getElementById('form[btnGLPISendRequest]');

@@ -232,7 +232,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
             $this->pmAdminSession = false ;
             unset($_SESSION["pluginprocessmaker"]["session"]) ;
-            Toolbox::logDebug( "Processmaker Plugin: Soap problem: ". print_r( $locSession, true ) );
+            Toolbox::logDebug( "Processmaker Plugin: $admin_or_user - Soap problem: ". print_r( $locSession, true ) );
             $this->lasterror = $locSession ;
             return false ;
         }
@@ -957,7 +957,11 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    *     0 : nothing to do
    */
    static function cronPMTaskActions($task) {
-      global $DB, $CFG_GLPI;
+      global $DB, $CFG_GLPI, $PM_DB;
+
+      if (!isset($PM_DB)) {
+         $PM_DB = new PluginProcessmakerDB ;
+      }
 
       $actionCode = 0; // by default
       $error = false ;
@@ -1167,7 +1171,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
     */
     static function cronPMUsers($task) {
        global $DB, $PM_DB ;
-       
+
        if (!isset($PM_DB)) {
           $PM_DB = new PluginProcessmakerDB ;
        }
@@ -1678,6 +1682,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
         $input['is_private'] = 0 ;
         $input['actiontime'] = 0 ;
         $input['state'] = 1 ; // == TO_DO
+        $input['users_id_tech'] = 0; // by default as it can't be empty
         if( $techId ) {
            $input['users_id_tech'] = $techId;
         } elseif( $groups_id_tech ) {
@@ -1847,6 +1852,11 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
     public function solveTask( $caseId, $delIndex, $options=array() ) {
        global $DB, $CFG_GLPI ;
 
+       // change current glpi_currenttime to be sure that date_mode for solved task will not be identical than date_mode of the newly started task
+       $start_date = new DateTime( $_SESSION["glpi_currenttime"] ) ;
+       $official_date_time = $_SESSION["glpi_currenttime"] ;
+       $_SESSION["glpi_currenttime"] = $start_date->sub(new DateInterval("PT1S"))->format("Y-m-d H:i:s") ;
+
        $default_options = array(
           'txtToAppend' => '',
           'notif'       => true,
@@ -1889,6 +1899,10 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
             $glpi_task->update( $params ) ;
             $CFG_GLPI["use_mailing"]= $donotif;
         }
+
+        // restore current glpi time
+        $_SESSION["glpi_currenttime"] = $official_date_time ;
+
     }
 
     /**
@@ -2121,7 +2135,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                                // don't display message if arbehaviours is install
                                if (!($plugin->isInstalled('arbehaviours') && $plugin->isActivated('arbehaviours'))) {
                                   self::displayMessage($message, '', WARNING);
-                                  
+
                                   //save current  $_SESSION['glpiactiveprofile'][$itemtype.'_status'']
                                   $_SESSION['glpiactiveprofile'][$itemtype.'_status_save'] = $_SESSION['glpiactiveprofile'][$itemtype.'_status'];
                                   // for all $params['options']['itemtype']. status, disable solved ( life cycles )
@@ -2468,6 +2482,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
           $locItem->fields['due_date'] = "";
        }
 
+
        $resultCase = $this->newCase( $processId,
                                        array('GLPI_ITEM_CAN_BE_SOLVED'        => 0,
                                              'GLPI_TICKET_ID'                 => $itemId,
@@ -2482,9 +2497,9 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                                              'GLPI_ITEM_IMPACT'               => $locItem->fields['impact'],
                                              'GLPI_ITEM_PRIORITY'             => $locItem->fields['priority'],
                                              'GLPI_TICKET_GLOBAL_VALIDATION'  => $locItem->fields['global_validation'] ,
-                                             'GLPI_TICKET_TECHNICIAN_GLPI_ID' => $userId, //$technicians[0]['glpi_id'],
-                                             'GLPI_URL'                       => $CFG_GLPI['url_base'].$CFG_GLPI['root_doc'],
-                                             'GLPI_TICKET_TECHNICIAN_PM_ID'   => PluginProcessmakerUser::getPMUserId( $userId ) //$technicians[0]['pm_id']
+                                             'GLPI_TICKET_TECHNICIAN_GLPI_ID' => $userId, 
+                                             'GLPI_TICKET_TECHNICIAN_PM_ID'   => PluginProcessmakerUser::getPMUserId( $userId ),
+                                             'GLPI_URL'                       => $CFG_GLPI['url_base'].$CFG_GLPI['root_doc']
                                              ) ) ;
 
       if ($resultCase->status_code === 0){

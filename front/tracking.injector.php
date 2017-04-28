@@ -56,6 +56,24 @@ if( isset($_POST["_from_helpdesk"]) && $_POST["_from_helpdesk"] == 1
 
 }
 
+if( !function_exists('stripcslashes_deep') ){
+      /**
+    * Strip c slash  for variable & array
+    *
+    * @param $value     array or string: item to stripslashes (array or string)
+    *
+    * @return stripcslashes item
+   **/
+   function stripcslashes_deep($value) {
+
+      $value = is_array($value) ?
+                array_map('stripcslashes_deep', $value) :
+                stripcslashes($value);
+
+      return $value;
+   }
+}
+
 if( !function_exists('http_formdata_flat_hierarchy') ) {
     /**
      * Summary of http_formdata_flat_hierarchy
@@ -117,6 +135,9 @@ if( GLPI_USE_CSRF_CHECK ) {
    // must set a csrf token
    $data['_glpi_csrf_token'] = Session::getNewCSRFToken() ;
 }
+
+$data = array_map('Toolbox::unclean_cross_side_scripting_deep', $data);
+$data = array_map('stripcslashes_deep', $data);
 
 // need to add files if some are uploaded
 $files = array() ;

@@ -30,12 +30,7 @@ $LANG['processmaker']['process']['profile']="Delete permanently";
 $LANG['processmaker']['config']['name']="Name";
 $LANG['processmaker']['config']['setup']="ProcessMaker setup";
 $LANG['processmaker']['config']['mysql']="SQL server setup";
-$LANG['processmaker']['config']['URL']="Server URL";
-//$LANG['processmaker']['config']['db_server']="mySQL server";
-//$LANG['processmaker']['config']['db_user']="mySQL user";
-//$LANG['processmaker']['config']['db_password']="mySQL password (leave blank if unchanged)";
-//$LANG['processmaker']['config']['admin_user']="PM administrator user";
-//$LANG['processmaker']['config']['admin_password']="PM administrator password (leave blank if unchanged)";
+$LANG['processmaker']['config']['URL']="Server URL (must be in same domain than GLPI)";
 $LANG['processmaker']['config']['workspace']="Workspace Name";
 $LANG['processmaker']['config']['admin']['user']="Server administrator name";
 $LANG['processmaker']['config']['admin']['password']="Server administrator password";
@@ -51,6 +46,8 @@ $LANG['processmaker']['config']['undermaintenance']="Under maintenance, please t
 $LANG['processmaker']['config']['empty_pm_group_name']="To select group, input ProcessMaker config first!";
 $LANG['processmaker']['config']['test']="Test";
 $LANG['processmaker']['config']['connectionstatus']="Connection status";
+$LANG['processmaker']['config']['domain']="Common domain with GLPI";
+$LANG['processmaker']['config']['domain-error']="None!";
 
 $LANG['processmaker']['item']['tab']="Process - Case";
 $LANG['processmaker']['item']['cancelledcase']="Status: Cancelled";
@@ -90,6 +87,7 @@ $LANG['processmaker']['item']['case']['casechangeloghistory']='Change log histor
 
 $LANG['processmaker']['item']['error'][11]="Error creating case!";
 $LANG['processmaker']['item']['error'][14]="Can't create case: no rights for it!";
+$LANG['processmaker']['item']['error'][100]=$LANG['processmaker']['item']['error'][11];
 
 $LANG['processmaker']['item']['preventsolution'][1]="A 'Case' is running!";
 $LANG['processmaker']['item']['preventsolution'][2]="You must manage it first (see 'Process - Case' tab)!";
@@ -116,4 +114,4 @@ $LANG['processmaker']['cron']['pmusers']="Syncs GLPI users and groups into Proce
 
 $LANG['processmaker']['cron']['pmtaskactions']="To apply task actions between cases."  ;
 $LANG['processmaker']['cron']['pmorphancases']['description']="Cleaning of orphan cases." ;
-$LANG['processmaker']['cron']['pmorphancases']['parameter']="Number of days to keep orphan cases"; 
+$LANG['processmaker']['cron']['pmorphancases']['parameter']="Number of days to keep orphan cases";

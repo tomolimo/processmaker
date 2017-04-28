@@ -94,6 +94,11 @@ class PluginProcessmakerTask extends CommonITILTask
       $events = array() ;
       if( isset($params['start']) ) {
          $params['begin'] = '2000-01-01 00:00:00';
+         if ($params['type'] == 'group') {
+            $params['who_group'] = $params['who'];
+            $params['whogroup'] = $params['who'];
+            $params['who'] = 0 ;
+         }
          $ret = CommonITILTask::genericPopulatePlanning( 'TicketTask', $params ) ;
 
          foreach( $ret as $key => $event ) {

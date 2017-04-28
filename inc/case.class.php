@@ -330,16 +330,10 @@ class PluginProcessmakerCase extends CommonDBTM {
                          // normally there is only one task
                          $task = getItemForItemtype( $row['itemtype'] ) ;
                          $task->getFromDB( $row['items_id'] ) ;
-                         $user = new User; // pseudo-group
-                         $user->getFromDB( $task->fields['users_id_tech'] ) ;
-                         // check if this pseudo-group can be found in the current user's groups
-                         foreach($DB->request("SELECT id FROM ".getTableForItemType( 'Group' )." WHERE name = '".$user->fields['name']."'") as $grp ){
-                            // normally there is only one record
-                            if( isset($_SESSION['glpigroups']) && !in_array( $grp['id'], $_SESSION['glpigroups'] ) ) {
-                               $hide_claim_button=true;
-                            }
+                         // check if this group can be found in the current user's groups
+                         if( !isset($_SESSION['glpigroups']) || !in_array( $task->fields['groups_id_tech'], $_SESSION['glpigroups'] ) ) {
+                            $hide_claim_button=true;
                          }
-
                       }
                    }
                     echo "<div id='task-".$caseUser->delIndex."'>";

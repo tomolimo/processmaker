@@ -72,7 +72,6 @@ function plugin_init_processmaker() {
         $PLUGIN_HOOKS['pre_item_update']['processmaker'] = array(
               'Ticket' => 'plugin_pre_item_update_processmaker'
           );
-        //        , 'TicketFollowup' => 'plugin_pre_item_update_processmaker_followup'
 
         $PLUGIN_HOOKS['item_update']['processmaker'] = array(
      	'TicketSatisfaction' => 'plugin_item_update_processmaker_satisfaction',
@@ -99,6 +98,7 @@ function plugin_init_processmaker() {
                   'Ticket_User' => 'plugin_item_purge_processmaker'
                   ) ;
 
+        $PLUGIN_HOOKS['add_javascript']['processmaker'] = array("js/domain.js.php");
         $url      = explode("/", $_SERVER['PHP_SELF']);
         $pageName = explode("?", array_pop($url));
         switch($pageName[0]) {
@@ -106,9 +106,8 @@ function plugin_init_processmaker() {
             case "helpdesk.public.php":
                 //$plug = new Plugin;
                 //if( !$plug->isActivated('rayusermanagementticket') )
-                $PLUGIN_HOOKS['add_javascript']['processmaker'] = "js/helpdesk.public.js.php";
+                $PLUGIN_HOOKS['add_javascript']['processmaker'][] = "js/helpdesk.public.js.php";
                 break;
-
         }
 
         $PLUGIN_HOOKS['use_massive_action']['processmaker'] = 1;
@@ -124,7 +123,7 @@ function plugin_version_processmaker(){
    global $LANG;
 
    return array ('name'           => 'Process Maker',
-                'version'        => '3.1.0',
+                'version'        => '3.1.1',
                 'author'         => 'Olivier Moron',
                 'homepage'       => '',
                 'minGlpiVersion' => '9.1');

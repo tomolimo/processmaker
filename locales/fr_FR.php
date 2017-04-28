@@ -30,12 +30,7 @@ $LANG['processmaker']['process']['profile']="Effacer définitivement";
 $LANG['processmaker']['config']['name']="Nom";
 $LANG['processmaker']['config']['setup']="Configuration du serveur ProcessMaker";
 $LANG['processmaker']['config']['mysql']="Configuration du serveur SQL";
-$LANG['processmaker']['config']['URL']="URL du serveur";
-//$LANG['processmaker']['config']['db_server']="Serveur mySQL";
-//$LANG['processmaker']['config']['db_user']="Utilisateur mySQL";
-//$LANG['processmaker']['config']['db_password']="Mot de passe mySQL (vide si inchangé)";
-//$LANG['processmaker']['config']['admin_user']="Administrateur de PM";
-//$LANG['processmaker']['config']['admin_password']="Mot de passed de l'administrateur de PM (vide si inchangé)";
+$LANG['processmaker']['config']['URL']="URL du serveur (doit être dans le même domaine que GLPI)";
 $LANG['processmaker']['config']['workspace']="Nom du Workspace";
 $LANG['processmaker']['config']['admin']['user']="Non de l'administreur du server ProcessMaker";
 $LANG['processmaker']['config']['admin']['password']="Mot de passe de l'administrateur du serveur ProcessMaker";
@@ -51,6 +46,8 @@ $LANG['processmaker']['config']['undermaintenance']="En maintenance, veuillez r�
 $LANG['processmaker']['config']['empty_pm_group_name']="Pour sélectionner un groupe, renseigner d'abord la config de ProcessMaker !";
 $LANG['processmaker']['config']['test']="Test";
 $LANG['processmaker']['config']['connectionstatus']="Status de la connexion";
+$LANG['processmaker']['config']['domain']="Domaine utilisé";
+$LANG['processmaker']['config']['domain-error']="Aucun !";
 
 $LANG['processmaker']['item']['tab']="Processus - Cas";
 $LANG['processmaker']['item']['cancelledcase']="Statut : Annulé";
@@ -90,6 +87,7 @@ $LANG['processmaker']['item']['case']['casechangeloghistory']='Historique évolu
 
 $LANG['processmaker']['item']['error'][11]="Erreur à la création du cas !";
 $LANG['processmaker']['item']['error'][14]="Impossible de créer le cas : pas de droits pour cela !";
+$LANG['processmaker']['item']['error'][100]=$LANG['processmaker']['item']['error'][11];
 
 $LANG['processmaker']['item']['preventsolution'][1]="Un 'Cas' est en cours !";
 $LANG['processmaker']['item']['preventsolution'][2]="Vous devez d'abord le terminer (voir onglet 'Processus - Cas') !";
@@ -116,4 +114,4 @@ $LANG['processmaker']['cron']['pmusers']="Synchro des utilisateurs GLPI et des g
 //$LANG['processmaker']['cron']['pmnotifications']="Notifications des tâches GLPI liées à des tâches de ProcessMaker." ;
 $LANG['processmaker']['cron']['pmtaskactions']="Pour appliquer les actions de tâches entre cas."  ;
 $LANG['processmaker']['cron']['pmorphancases']['description']="Nettoyage des cas orphelins." ;
-$LANG['processmaker']['cron']['pmorphancases']['parameter']="Nombre de jours avant nettoyage des cas orphelins."; 
+$LANG['processmaker']['cron']['pmorphancases']['parameter']="Nombre de jours avant nettoyage des cas orphelins.";
