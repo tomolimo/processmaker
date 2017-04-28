@@ -70,7 +70,7 @@ class PluginProcessmakerTaskCategory extends CommonDBTM
         $buttons = array();
         $title = $LANG['processmaker']['config']['refreshtasklist'];
 
-        if (plugin_processmaker_haveRight('process_config', 'w')) {
+        if (Session::haveRight('plugin_processmaker_config', UPDATE)) {
             $buttons["process.form.php?refreshtask=1&id=".$item->getID()] = $LANG['processmaker']['config']['refreshtasklist'];
             $title = "";
             Html::displayTitle($CFG_GLPI["root_doc"] . "/plugins/processmaker/pics/gears.png", $LANG['processmaker']['config']['refreshtasklist'], $title,
@@ -78,12 +78,12 @@ class PluginProcessmakerTaskCategory extends CommonDBTM
         }
     }
     
-    function getLinkItemFromExternalID($extId) {
-        if( $this->getFromDBbyExternalID( $extId ) ) {
-            $taskcat = new TaskCategory ;            
-            return $taskcat->getFromDB( $this->fields['items_id'] ) ;
-        }
-    }
+    //function getLinkItemFromExternalID($extId) {
+    //    if( $this->getFromDBbyExternalID( $extId ) ) {
+    //        $taskcat = new TaskCategory ;
+    //        return $taskcat->getFromDB( $this->fields['items_id'] ) ;
+    //    }
+    //}
     
     
     /**
@@ -112,5 +112,30 @@ class PluginProcessmakerTaskCategory extends CommonDBTM
         return false;
     }
     
+    /**
+     * Retrieve a TaskCat from the database using its category id (unique index): taskcategories_id
+     *
+     * @param $catid string task category id
+     *
+     * @return true if succeed else false
+     **/
+    function getFromDBbyCategory($catid) {
+        global $DB;
+
+        $query = "SELECT *
+                FROM `".$this->getTable()."`
+                WHERE `taskcategories_id` = $catid";
+
+        if ($result = $DB->query($query)) {
+            if ($DB->numrows($result) != 1) {
+                return false;
+            }
+            $this->fields = $DB->fetch_assoc($result);
+            if (is_array($this->fields) && count($this->fields)) {
+                return true;
+            }
+        }
+        return false;
+    }
     
 }

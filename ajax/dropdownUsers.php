@@ -10,9 +10,7 @@
 
 // Direct access to file
 if (strpos($_SERVER['PHP_SELF'],"dropdownUsers.php")) {
-    $AJAX_INCLUDE = 1;
-    define('GLPI_ROOT','../../..');
-    include (GLPI_ROOT."/inc/includes.php");
+    include ("../../../inc/includes.php");
     header("Content-Type: text/html; charset=UTF-8");
     Html::header_nocache();
 }
@@ -21,114 +19,117 @@ if (!defined('GLPI_ROOT')) {
     die("Can not acces directly to this file");
 }
 
-include_once dirname(__FILE__)."/../inc/users.class.php" ;
+//include_once dirname(__FILE__)."/../inc/users.class.php" ;
 
 
 Session::checkLoginUser();
 
-if (!isset($_POST['right'])) {
-    $_POST['right'] = "all";
+$PM_DB = new PluginProcessmakerDB ;
+
+if (!isset($_REQUEST['right'])) {
+    $_REQUEST['right'] = "all";
 }
 
 // Default view : Nobody
-if (!isset($_POST['all'])) {
-    $_POST['all'] = 0;
+if (!isset($_REQUEST['all'])) {
+    $_REQUEST['all'] = 0;
 }
+
+
+
+
+
+
+
 
 $used = array();
 
-if (isset($_POST['used'])) {
-    if (is_array($_POST['used'])) {
-        $used = $_POST['used'];
-    } else {
-        $used = unserialize(stripslashes($_POST['used']));
-    }
+if (isset($_REQUEST['used'])) {
+   $used = $_REQUEST['used'];
 }
 
-if (isset($_POST["entity_restrict"])
-    && !is_numeric($_POST["entity_restrict"])
-    && !is_array($_POST["entity_restrict"])) {
-
-    $_POST["entity_restrict"] = unserialize(stripslashes($_POST["entity_restrict"]));
+if (!isset($_REQUEST['value'])) {
+   $_REQUEST['value'] = 0;
 }
 
-$result = PluginProcessmakerUsers::getSqlSearchResult( $_POST['pmTaskId'], false, $_POST['right'], $_POST["entity_restrict"],
-                                   $_POST['value'], $used, $_POST['searchText']);
+$one_item = -1;
+if (isset($_REQUEST['_one_id'])) {
+   $one_item = $_REQUEST['_one_id'];
+}
 
+if (!isset($_REQUEST['page'])) {
+   $_REQUEST['page']       = 1;
+   $_REQUEST['page_limit'] = $CFG_GLPI['dropdown_max'];
+}
+
+if ($one_item < 0) {
+   $start  = ($_REQUEST['page']-1)*$_REQUEST['page_limit'];
+   //$result = User::getSqlSearchResult(false, $_REQUEST['right'], $_REQUEST["entity_restrict"],
+   //                                   $_REQUEST['value'], $used, $_REQUEST['searchText'], $start,
+   //                                   $_REQUEST['page_limit']);
+   $LIMIT = "LIMIT $start,".$_REQUEST['page_limit'];
+   $result = PluginProcessmakerUser::getSqlSearchResult( $_REQUEST['specific_tags']['pmTaskId'], false, $_REQUEST['right'], $_REQUEST["entity_restrict"],
+                                   $_REQUEST['value'], $used, $_REQUEST['searchText'], $LIMIT);
+} else {
+   $query = "SELECT DISTINCT `glpi_users`.*
+             FROM `glpi_users`
+             WHERE `glpi_users`.`id` = '$one_item';";
+   $result = $DB->query($query);
+}
 $users = array();
 
-// check if $_POST["myname"] matches _itil_\w+\[users_id\]
-if( preg_match( "/^_itil_\\w+\\[users_id\\]/", $_POST["myname"] ) || preg_match( "/^_users_id_\\w+/", $_POST["myname"] )) {
-    // prevent use of pseudo-groups like *Raynet-Development_Intranet (TASK USE ONLY!) 
-    $raynetPseudoGroupNoUse = true ;
-} else $raynetPseudoGroupNoUse = false ;
-
+// Count real items returned
+$count = 0;
 if ($DB->numrows($result)) {
-    while ($data=$DB->fetch_array($result)) {
-        if( !$raynetPseudoGroupNoUse || mb_strpos( $data["name"], "*" ) === false ) {
-            $users[$data["id"]] = formatUserName($data["id"], $data["name"], $data["realname"],
-                                                 $data["firstname"]);
-            $logins[$data["id"]] = $data["name"];
-        }
-    }
+   while ($data = $DB->fetch_assoc($result)) {
+      $users[$data["id"]] = formatUserName($data["id"], $data["name"], $data["realname"],
+                                           $data["firstname"]);
+      $logins[$data["id"]] = $data["name"];
+   }
 }
 
 if (!function_exists('dpuser_cmp')) {
-    function dpuser_cmp($a, $b) {
-        return strcasecmp($a, $b);
-    }
+   function dpuser_cmp($a, $b) {
+      return strcasecmp($a, $b);
+   }
 }
 
 // Sort non case sensitive
-uasort($users, 'dpuser_cmp');
+//uasort($users, 'dpuser_cmp');
 
-echo "<select id='dropdown_".$_POST["myname"].$_POST["rand"]."' name='".$_POST['myname']."'";
+$datas = array();
 
-if (isset($_POST["on_change"]) && !empty($_POST["on_change"])) {
-    echo " onChange='".$_POST["on_change"]."'";
-}
-
-echo ">";
-
-if ($_POST['searchText']!=$CFG_GLPI["ajax_wildcard"]
-    && $DB->numrows($result)==$CFG_GLPI["dropdown_max"]) {
-
-    echo "<option value='0'>--".$LANG['common'][11]."--</option>";
-}
-
-if ($_POST['all']==0) {
-    echo "<option value='0'>".Dropdown::EMPTY_VALUE."</option>";
-} else if ($_POST['all']==1) {
-    echo "<option value='0'>[".$LANG['common'][66]."]</option>";
-}
-
-if (isset($_POST['value'])) {
-    $output = getUserName($_POST['value']);
-
-    if (!empty($output) && $output!="&nbsp;") {
-        echo "<option selected value='".$_POST['value']."'>".$output."</option>";
-    }
+// Display first if empty search
+if ($_REQUEST['page'] == 1 && empty($_REQUEST['searchText'])) {
+   if (($one_item < 0) || ($one_item == 0)) {
+      if ($_REQUEST['all'] == 0) {
+         array_push($datas, array('id'   => 0,
+                                  'text' => Dropdown::EMPTY_VALUE));
+      } else if ($_REQUEST['all'] == 1) {
+         array_push($datas, array('id'   => 0,
+                                  'text' => __('All')));
+      }
+   }
 }
 
 if (count($users)) {
-    foreach ($users as $ID => $output) {
-        echo "<option value='$ID' title=\"".Html::cleanInputText($output." - ".$logins[$ID])."\">".
-        Toolbox::substr($output, 0, $_SESSION["glpidropdown_chars_limit"])."</option>";
-    }
-}
-echo "</select>";
+   foreach ($users as $ID => $output) {
+      $title = sprintf(__('%1$s - %2$s'), $output, $logins[$ID]);
 
-if (isset($_POST["comment"]) && $_POST["comment"]) {
-    $paramscomment = array('value' => '__VALUE__',
-                           'table' => "glpi_users");
-
-    if (isset($_POST['update_link'])) {
-        $paramscomment['withlink'] = "comment_link_".$_POST["myname"].$_POST["rand"];
-    }
-    Ajax::updateItemOnSelectEvent("dropdown_".$_POST["myname"].$_POST["rand"],
-                                  "comment_".$_POST["myname"].$_POST["rand"],
-                                  $CFG_GLPI["root_doc"]."/ajax/comments.php", $paramscomment);
+      array_push($datas, array('id'    => $ID,
+                               'text'  => $output,
+                               'title' => $title));
+      $count++;
+   }
 }
 
-Ajax::commonDropdownUpdateItem($_POST);
-?>
+
+if (($one_item >= 0)
+    && isset($datas[0])) {
+   echo json_encode($datas[0]);
+} else {
+   $ret['results'] = $datas;
+   $ret['count']   = $count;
+   echo json_encode($ret);
+}
+

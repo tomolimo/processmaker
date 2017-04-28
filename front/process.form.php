@@ -12,21 +12,22 @@ if (!isset($_REQUEST["id"])) {
 $PluginProcess = new PluginProcessmakerProcess();
 
 if (isset($_REQUEST["update"])) {
-    $PluginProcess->check($_REQUEST['id'], 'w');
+    $PluginProcess->check($_REQUEST['id'], UPDATE);
     $PluginProcess->update($_REQUEST);
     Html::back();
 
 } elseif (isset($_REQUEST["refreshtask"])) {
-    $PluginProcess->check($_REQUEST['id'], 'w');
+    $PluginProcess->check($_REQUEST['id'], UPDATE);
     $PluginProcess->refreshTasks($_REQUEST);
     Html::back();
     
 } else {
-    $PluginProcess->checkGlobal('r');
-    
+   // $PluginProcess->checkGlobal(READ);
     Html::header($LANG['processmaker']['title'][1],$_SERVER["PHP_SELF"],"plugins","processmaker");
     
-    $PluginProcess->showForm($_REQUEST["id"]);
+    $PluginProcess->display($_REQUEST) ;
+    
+  //  $PluginProcess->showForm($_REQUEST["id"]);
 
     Html::footer();
 }

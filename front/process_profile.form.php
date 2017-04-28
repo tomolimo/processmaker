@@ -1,7 +1,7 @@
 <?php
 
-define('GLPI_ROOT', '../../..');
-include (GLPI_ROOT."/inc/includes.php");
+//define('GLPI_ROOT', '../../..');
+include_once ("../../../inc/includes.php");
 
 Session::checkCentralAccess();
 
@@ -11,7 +11,7 @@ $process    = new PluginProcessmakerProcess();
 
 if (isset($_POST["add"])) {
 
-    $right->check(-1,'w',$_POST);
+    $right->check(-1,UPDATE,$_POST);
     if ($right->add($_POST)) {
         //Event::log($_POST["processes_id"], "PluginProcessMakerProcess", 4, "setup",
         //            $_SESSION["glpiname"]." ".$LANG['log'][61]);
@@ -23,7 +23,7 @@ if (isset($_POST["add"])) {
     if (isset($_POST["item"]) && count($_POST["item"])) {
         foreach ($_POST["item"] as $key => $val) {
             if ($val == 1) {
-                if ($right->can($key,'w')) {
+                if ($right->can($key,UPDATE)) {
                     $right->delete(array('id' => $key));
                 }
             }
