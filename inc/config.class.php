@@ -101,8 +101,8 @@ class PluginProcessmakerConfig extends CommonDBTM {
          $glpi = explode( ".", $glpi[2] );
          $pm = explode( "/", $url2) ;
          $pm = explode( ".", $pm[2] );
-         $cglpi = array_pop( $glpi ) ;
-         $cpm = array_pop( $pm) ;
+         $cglpi = array_shift(explode(":", array_pop( $glpi ))) ;
+         $cpm = array_shift(explode(":", array_pop( $pm))) ;
          while( $cglpi && $cpm && $cglpi == $cpm ) {
             $domain = $cglpi.($domain==''?'':'.'.$domain) ;
             $cglpi = array_pop( $glpi ) ;
@@ -138,12 +138,13 @@ class PluginProcessmakerConfig extends CommonDBTM {
 
         echo Html::scriptBlock("
             function setCommonDomain() {
+               //debugger;
                var domain = '';
                try {
                   var glpi= '".$CFG_GLPI['url_base']."'.split('/')[2].split('.') ;
                   var pm = $('input[name=pm_server_URL]').val().split('/')[2].split('.');
-                  var cglpi = glpi.pop() ;
-                  var cpm = pm.pop() ;
+                  var cglpi = glpi.pop().split(':')[0] ;
+                  var cpm = pm.pop().split(':')[0] ;
                   while( cglpi && cpm && cglpi == cpm ) {
                      domain = cglpi + (domain==''?'':'.' + domain) ;
                      cglpi = glpi.pop() ;
