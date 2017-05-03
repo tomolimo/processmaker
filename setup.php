@@ -123,7 +123,7 @@ function plugin_version_processmaker(){
    global $LANG;
 
    return array ('name'           => 'Process Maker',
-                'version'        => '3.1.1',
+                'version'        => '3.1.2',
                 'author'         => 'Olivier Moron',
                 'homepage'       => '',
                 'minGlpiVersion' => '9.1');
