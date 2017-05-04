@@ -50,6 +50,24 @@ if( !function_exists('http_formdata_flat_hierarchy') ) {
 
 }
 
+if( !function_exists('stripcslashes_deep') ){
+      /**
+    * Strip c slash  for variable & array
+    *
+    * @param $value     array or string: item to stripslashes (array or string)
+    *
+    * @return stripcslashes item
+   **/
+   function stripcslashes_deep($value) {
+
+      $value = is_array($value) ?
+                array_map('stripcslashes_deep', $value) :
+                stripcslashes($value);
+
+      return $value;
+   }
+}
+
 /**
  * PluginProcessmakerProcessmaker short summary.
  *
@@ -2339,6 +2357,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 			   return strlen($header_line);
 		   }
        }
+       $request = stripcslashes_deep( $request ) ;
 
         $data = http_formdata_flat_hierarchy( $request ) ;
 
@@ -2497,7 +2516,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                                              'GLPI_ITEM_IMPACT'               => $locItem->fields['impact'],
                                              'GLPI_ITEM_PRIORITY'             => $locItem->fields['priority'],
                                              'GLPI_TICKET_GLOBAL_VALIDATION'  => $locItem->fields['global_validation'] ,
-                                             'GLPI_TICKET_TECHNICIAN_GLPI_ID' => $userId, 
+                                             'GLPI_TICKET_TECHNICIAN_GLPI_ID' => $userId,
                                              'GLPI_TICKET_TECHNICIAN_PM_ID'   => PluginProcessmakerUser::getPMUserId( $userId ),
                                              'GLPI_URL'                       => $CFG_GLPI['url_base'].$CFG_GLPI['root_doc']
                                              ) ) ;
