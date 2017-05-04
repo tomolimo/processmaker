@@ -139,25 +139,26 @@ if( GLPI_USE_CSRF_CHECK ) {
 $data = array_map('Toolbox::unclean_cross_side_scripting_deep', $data);
 $data = array_map('stripcslashes_deep', $data);
 
-// need to add files if some are uploaded
-$files = array() ;
-$paths = array() ;
-if( isset( $_FILES['filename']['name'] ) && is_array($_FILES['filename']['name']) && count($_FILES['filename']['name']) > 0) {
-    foreach( $_FILES['filename']['name'] as $num => $file ){
-        if( $file <> '' ){
-            $path = str_replace( '\\', '/', $_FILES['filename']['tmp_name'][$num] ) ;
-            $path = explode('/', $path);
-            array_pop( $path ) ;
-            $path = tmpdir(implode( '/', $path ), 'php_tmp') ;
-            if( $path !== false ) {
-                $paths[$num] = $path;
-                $files[$num] = $paths[$num].'/'.$file;
-                copy( $_FILES['filename']['tmp_name'][$num], $files[$num] ) ;
-                $data['filename['.$num.']']='@'.$files[$num] ;
-            }
-        }
-    }
-}
+// Files are uploaded via ajax, so need to pass them to next page
+//// need to add files if some are uploaded
+//$files = array() ;
+//$paths = array() ;
+//if( isset( $_FILES['filename']['name'] ) && is_array($_FILES['filename']['name']) && count($_FILES['filename']['name']) > 0) {
+//    foreach( $_FILES['filename']['name'] as $num => $file ){
+//        if( $file <> '' ){
+//            $path = str_replace( '\\', '/', $_FILES['filename']['tmp_name'][$num] ) ;
+//            $path = explode('/', $path);
+//            array_pop( $path ) ;
+//            $path = tmpdir(implode( '/', $path ), 'php_tmp') ;
+//            if( $path !== false ) {
+//                $paths[$num] = $path;
+//                $files[$num] = $paths[$num].'/'.$file;
+//                copy( $_FILES['filename']['tmp_name'][$num], $files[$num] ) ;
+//                $data['filename['.$num.']']='@'.$files[$num] ;
+//            }
+//        }
+//    }
+//}
 
 curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
 
