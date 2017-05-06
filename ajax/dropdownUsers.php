@@ -9,7 +9,7 @@
 // ----------------------------------------------------------------------
 
 // Direct access to file
-if (strpos($_SERVER['PHP_SELF'],"dropdownUsers.php")) {
+if (strpos($_SERVER['PHP_SELF'], "dropdownUsers.php")) {
     include ("../../../inc/includes.php");
     header("Content-Type: text/html; charset=UTF-8");
     Html::header_nocache();
@@ -24,7 +24,7 @@ if (!defined('GLPI_ROOT')) {
 
 Session::checkLoginUser();
 
-$PM_DB = new PluginProcessmakerDB ;
+$PM_DB = new PluginProcessmakerDB;
 
 if (!isset($_REQUEST['right'])) {
     $_REQUEST['right'] = "all";
@@ -34,13 +34,6 @@ if (!isset($_REQUEST['right'])) {
 if (!isset($_REQUEST['all'])) {
     $_REQUEST['all'] = 0;
 }
-
-
-
-
-
-
-
 
 $used = array();
 
@@ -64,9 +57,6 @@ if (!isset($_REQUEST['page'])) {
 
 if ($one_item < 0) {
    $start  = ($_REQUEST['page']-1)*$_REQUEST['page_limit'];
-   //$result = User::getSqlSearchResult(false, $_REQUEST['right'], $_REQUEST["entity_restrict"],
-   //                                   $_REQUEST['value'], $used, $_REQUEST['searchText'], $start,
-   //                                   $_REQUEST['page_limit']);
    $LIMIT = "LIMIT $start,".$_REQUEST['page_limit'];
    $result = PluginProcessmakerUser::getSqlSearchResult( $_REQUEST['specific_tags']['pmTaskId'], false, $_REQUEST['right'], $_REQUEST["entity_restrict"],
                                    $_REQUEST['value'], $used, $_REQUEST['searchText'], $LIMIT);
@@ -93,9 +83,6 @@ if (!function_exists('dpuser_cmp')) {
       return strcasecmp($a, $b);
    }
 }
-
-// Sort non case sensitive
-//uasort($users, 'dpuser_cmp');
 
 $datas = array();
 

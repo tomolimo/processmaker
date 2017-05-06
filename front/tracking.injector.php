@@ -1,8 +1,8 @@
 <?php
 
 // ----------------------------------------------------------------------
-// Original Author of file:
-// Purpose of file:
+// Original Author of file: MoronO
+// Purpose of file: mimic tracking.injector.php
 // ----------------------------------------------------------------------
 
 include( "../../../inc/includes.php");
@@ -56,129 +56,5 @@ if( isset($_POST["_from_helpdesk"]) && $_POST["_from_helpdesk"] == 1
 
 }
 
-if( !function_exists('stripcslashes_deep') ){
-      /**
-    * Strip c slash  for variable & array
-    *
-    * @param $value     array or string: item to stripslashes (array or string)
-    *
-    * @return stripcslashes item
-   **/
-   function stripcslashes_deep($value) {
-
-      $value = is_array($value) ?
-                array_map('stripcslashes_deep', $value) :
-                stripcslashes($value);
-
-      return $value;
-   }
-}
-
-if( !function_exists('http_formdata_flat_hierarchy') ) {
-    /**
-     * Summary of http_formdata_flat_hierarchy
-     * @param mixed $data
-     * @return array
-     */
-    function http_formdata_flat_hierarchy($data) {
-        $vars=array();
-        foreach($data as $key=>$value) {
-            if(is_array($value)) {
-                $temp = array() ;
-                foreach($value as $k2 => $val2){
-                    $temp[ $key.'['.$k2.']' ] = $val2 ;
-                }
-                $vars = array_merge( $vars, http_formdata_flat_hierarchy($temp) );
-            }
-            else {
-                $vars[$key]=$value;
-            }
-        }
-        return $vars;
-    }
-}
-
-if( !function_exists('tmpdir') ) {
-    /**
-     * Summary of tmpdir
-     * Will attempts $attempts to create a random temp dir in $path
-     * see: http://php.net/manual/en/function.mkdir.php
-     * @param string $path: dir into the temp subdir will be created
-     * @param string $prefix: used to prefix the random number for dir name
-     * @param int $attempts: is the quantity of attempts trying to create tempdir
-     * @return bool|string: false if $attempts has been reached, otherwise the path to the newly created dir
-     */
-    function tmpdir($path, $prefix='', $attempts=3){
-        $count = 1 ;
-        do {
-            $rand=$prefix.rand() ;
-        } while( !mkdir($path.'/'.$rand) && $count++ < $attempts ) ;
-
-        return ($count < $attempts ? $path.'/'.$rand : false ) ;
-    }
-}
-
-// by default loads standard page from GLPI
-//include (GLPI_ROOT . "/front/tracking.injector.php");
-
-$ch = curl_init();
-curl_setopt($ch, CURLOPT_COOKIE, $_SERVER['HTTP_COOKIE']);
-
-// why not 		[HTTP_REFERER]	"http://fry07689-glpi090.fr.ray.group/front/helpdesk.public.php?create_ticket=1"	string
-curl_setopt($ch, CURLOPT_REFERER, "http://".$_SERVER['SERVER_NAME' ].$CFG_GLPI["root_doc"]."/front/tracking.injector.php" ) ;
-
-curl_setopt($ch, CURLOPT_POST, 1);
-$data = http_formdata_flat_hierarchy( $_REQUEST ) ;
-
-// CSRF management
-if( GLPI_USE_CSRF_CHECK ) {
-   // must set a csrf token
-   $data['_glpi_csrf_token'] = Session::getNewCSRFToken() ;
-}
-
-$data = array_map('Toolbox::unclean_cross_side_scripting_deep', $data);
-$data = array_map('stripcslashes_deep', $data);
-
-// Files are uploaded via ajax, so need to pass them to next page
-//// need to add files if some are uploaded
-//$files = array() ;
-//$paths = array() ;
-//if( isset( $_FILES['filename']['name'] ) && is_array($_FILES['filename']['name']) && count($_FILES['filename']['name']) > 0) {
-//    foreach( $_FILES['filename']['name'] as $num => $file ){
-//        if( $file <> '' ){
-//            $path = str_replace( '\\', '/', $_FILES['filename']['tmp_name'][$num] ) ;
-//            $path = explode('/', $path);
-//            array_pop( $path ) ;
-//            $path = tmpdir(implode( '/', $path ), 'php_tmp') ;
-//            if( $path !== false ) {
-//                $paths[$num] = $path;
-//                $files[$num] = $paths[$num].'/'.$file;
-//                copy( $_FILES['filename']['tmp_name'][$num], $files[$num] ) ;
-//                $data['filename['.$num.']']='@'.$files[$num] ;
-//            }
-//        }
-//    }
-//}
-
-curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-
-//curl_setopt($ch, CURLOPT_HTTPPROXYTUNNEL, 1 ) ;
-//curl_setopt($ch, CURLOPT_PROXY, "localhost:8888");
-
-curl_setopt($ch, CURLOPT_URL, "http://".$_SERVER['SERVER_NAME' ].$CFG_GLPI["root_doc"]."/front/tracking.injector.php");
-
-// as sessions in PHP are not re-entrant, we MUST close current one before curl_exec
-@session_write_close() ;
-
-curl_exec ($ch);
-
-curl_close ($ch);
-
-// need to delete temp files
-foreach( $files as $file ) {
-    unlink( $file ) ;
-}
-foreach( $paths as $path ) {
-    rmdir( $path ) ;
-}
-
+chdir(GLPI_ROOT."/front");
+include (GLPI_ROOT . "/front/tracking.injector.php");

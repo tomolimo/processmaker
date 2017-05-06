@@ -6,17 +6,16 @@
 // ----------------------------------------------------------------------
 
 // Direct access to file
-if (strpos($_SERVER['PHP_SELF'],"dropdownProcesses.php")) {
-    include ("../../../inc/includes.php");
-    header("Content-Type: text/html; charset=UTF-8");
-    Html::header_nocache();
+if (strpos($_SERVER['PHP_SELF'], "dropdownProcesses.php")) {
+   include ("../../../inc/includes.php");
+   header("Content-Type: text/html; charset=UTF-8");
+   Html::header_nocache();
 }
 
 if (!defined('GLPI_ROOT')) {
-    die("Can not acces directly to this file");
+   die("Can not acces directly to this file");
 }
 
-//include_once dirname(__FILE__)."/../inc/process.class.php" ;
 
 Session::checkLoginUser();
 
@@ -29,7 +28,7 @@ if (isset($_REQUEST["entity_restrict"])
 
 // Security
 if (!($item = getItemForItemtype($_REQUEST['itemtype']))) {
-    exit();
+   exit();
 }
 
 $one_item = -1;
@@ -40,36 +39,36 @@ if (isset($_POST['_one_id'])) {
 $count = 0;
 
 if (!isset($_REQUEST['emptylabel']) || ($_REQUEST['emptylabel'] == '')) {
-    $_REQUEST['emptylabel'] = Dropdown::EMPTY_VALUE;
+   $_REQUEST['emptylabel'] = Dropdown::EMPTY_VALUE;
 }
 
 $search="";
 if (!empty($_REQUEST['searchText'])) {
-    $search = Search::makeTextSearch($_REQUEST['searchText']);
+   $search = Search::makeTextSearch($_REQUEST['searchText']);
 }
 
 $processes = array();
 
 // Empty search text : display first
 if (empty($_REQUEST['searchText'])) {
-    if ($_REQUEST['display_emptychoice']) {
-        if (($one_item < 0) || ($one_item  == 0)) {
-            array_push($processes, array('id'   => 0,
-                                     'text' => $_REQUEST['emptylabel']));
-        }
-    }
+   if ($_REQUEST['display_emptychoice']) {
+      if (($one_item < 0) || ($one_item  == 0)) {
+         array_push($processes, array('id'   => 0,
+                                  'text' => $_REQUEST['emptylabel']));
+      }
+   }
 }
 
 $result = PluginProcessmakerProcess::getSqlSearchResult(false, $search);
 
 if ($DB->numrows($result)) {
-    while ($data=$DB->fetch_array($result)) {
-        if( in_array( $_REQUEST["entity_restrict"], PluginProcessmakerProcess::getEntitiesForProfileByProcess( $data["id"], $_SESSION['glpiactiveprofile']['id'], true) ) ) {
-            array_push( $processes, array( 'id' => $data["id"],
-                                            'text' => $data["name"] ));
-            $count++;
-        }
-    }
+   while ($data=$DB->fetch_array($result)) {
+      if (in_array( $_REQUEST["entity_restrict"], PluginProcessmakerProcess::getEntitiesForProfileByProcess( $data["id"], $_SESSION['glpiactiveprofile']['id'], true) )) {
+         array_push( $processes, array( 'id' => $data["id"],
+                                         'text' => $data["name"] ));
+         $count++;
+      }
+   }
 }
 
 $ret['results'] = $processes;
