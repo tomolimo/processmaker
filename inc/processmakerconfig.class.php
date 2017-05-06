@@ -11,47 +11,47 @@ class ProcessmakerConfig extends CommonDBTM {
 
     var $table = 'glpi_plugins_processmaker_config';
 
-    
-    static function getTypeName($nb=0) {
-        global $LANG;
 
-        return 'Process Maker Plugin Configuration';
-    }
+   static function getTypeName($nb=0) {
+      global $LANG;
 
-
-    function defineTabs($options=array()) {
-
-        $ong = array();
-        $this->addStandardTab(__CLASS__, $ong, $options);
-
-        return $ong;
-    }
+      return 'Process Maker Plugin Configuration';
+   }
 
 
-    function getTabNameForItem(CommonGLPI $item, $withtemplate=0) {
-        global $LANG, $CFG_GLPI;
+   function defineTabs($options=array()) {
 
-        switch ($item->getType()) {
-            case __CLASS__ :
-                $tabs[1] = $LANG['common'][12];
-                return $tabs;
-        }
-        return '';
-    }
+      $ong = array();
+      $this->addStandardTab(__CLASS__, $ong, $options);
+
+      return $ong;
+   }
 
 
-    static function displayTabContentForItem(CommonGLPI $item, $tabnum=1, $withtemplate=0) {
-        global $CFG_GLPI;
+   function getTabNameForItem(CommonGLPI $item, $withtemplate=0) {
+      global $LANG, $CFG_GLPI;
 
-        if($item->getType() == __CLASS__) {
-            switch ($tabnum) {
-                case 1 :
-                    $item->showFormMailServerConfig();
-                    break;
-            }
-        }
-        return true;
-    }
+      switch ($item->getType()) {
+         case __CLASS__ :
+            $tabs[1] = $LANG['common'][12];
+             return $tabs;
+      }
+      return '';
+   }
+
+
+   static function displayTabContentForItem(CommonGLPI $item, $tabnum=1, $withtemplate=0) {
+      global $CFG_GLPI;
+
+      if ($item->getType() == __CLASS__) {
+         switch ($tabnum) {
+            case 1 :
+               $item->showFormMailServerConfig();
+                break;
+         }
+      }
+      return true;
+   }
 
 
     /**
@@ -65,35 +65,34 @@ class ProcessmakerConfig extends CommonDBTM {
      * @return Nothing (display)
      *
      **/
-    function showForm($ID, $options=array()) {
-        global $LANG, $CFG_GLPI;
+   function showForm($ID, $options=array()) {
+      global $LANG, $CFG_GLPI;
 
-        if (!Session::haveRight("config", UPDATE)) {
-            return false;
-        }
-        if (!$CFG_GLPI['use_mailing']) {
-            $options['colspan'] = 1;
-        }
+      if (!Session::haveRight("config", UPDATE)) {
+         return false;
+      }
+      if (!$CFG_GLPI['use_mailing']) {
+         $options['colspan'] = 1;
+      }
 
-        $this->getFromDB($ID);
-        $this->showTabs($options);
-        $this->addDivForTabs();
-        return true;
-    }
-
-
-    static function canCreate() {
-        return Session::haveRight('config', UPDATE);
-    }
+      $this->getFromDB($ID);
+      $this->showTabs($options);
+      $this->addDivForTabs();
+      return true;
+   }
 
 
-    static function canView() {
-        return Session::haveRight('config', READ);
-    }
+   static function canCreate() {
+      return Session::haveRight('config', UPDATE);
+   }
 
 
-    
+   static function canView() {
+      return Session::haveRight('config', READ);
+   }
+
+
+
 }
 
 
-?>

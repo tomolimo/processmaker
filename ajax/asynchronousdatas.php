@@ -12,24 +12,14 @@ if (!defined('GLPI_ROOT')) {
    die("Can not access directly to this file");
 }
 
-//include_once dirname(__FILE__)."/../inc/asynchronousdata.class.php" ;
 include_once dirname(__FILE__)."/../inc/crontaskaction.class.php" ;
 
 if( isset($_SERVER['REQUEST_METHOD']) ) {
    switch($_SERVER['REQUEST_METHOD']) {
-      //case 'OPTIONS' :
-      //   header("Access-Control-Allow-Origin: *") ;
-      //   header("Access-Control-Allow-Methods: POST");
-      //   header("Access-Control-Allow-Headers: Content-Type");
-      //   break ;
       case 'POST' :
-         //header("Access-Control-Allow-Origin: *") ;
-         //header("Content-Type: application/json; charset=UTF-8");
-
          $request_body = file_get_contents('php://input');
          $datas = json_decode($request_body, true);
 
-//         $asyncdata = new PluginProcessmakerAsynchronousdata ;
          $asyncdata = new PluginProcessmakerCrontaskaction ;
          if( isset($datas['id']) && $asyncdata->getFromDB( $datas['id'] ) && $asyncdata->fields['state'] == PluginProcessmakerCrontaskaction::WAITING_DATAS ) {
             $initialdatas = json_decode($asyncdata->fields['postdatas'], true);

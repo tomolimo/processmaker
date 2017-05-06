@@ -3,27 +3,26 @@
 include_once 'inc/processmaker.class.php';
 
 function plugin_processmaker_MassiveActions($type) {
-    global $LANG;
+   global $LANG;
 
    switch ($type) {
       case 'PluginProcessmakerProcess' :
          if (plugin_processmaker_haveRight('config', UPDATE )) {
-             return array('plugin_processmaker_taskrefresh' => $LANG['processmaker']['config']['refreshtasklist']);
+            return array('plugin_processmaker_taskrefresh' => $LANG['processmaker']['config']['refreshtasklist']);
          }
           break;
       case 'PluginProcessmakerProcess_Profile' :
          if (plugin_processmaker_haveRight('config', UPDATE )) {
-             return array('purge' => $LANG['processmaker']['process']['profile']);
+            return array('purge' => $LANG['processmaker']['process']['profile']);
          }
-          break;
-
+         break;
    }
-    return array();
+   return array();
 }
 
 
 function plugin_processmaker_MassiveActionsDisplay($options) {
-    global $LANG;
+   global $LANG;
 
    switch ($options['itemtype']) {
       case 'PluginProcessmakerProcess' :
@@ -31,19 +30,18 @@ function plugin_processmaker_MassiveActionsDisplay($options) {
             // No case for add_document : use GLPI core one
             case "plugin_processmaker_taskrefresh" :
                echo "<input type='submit' name='massiveaction' class='submit' ".
-               "value='".$LANG['buttons'][2]."'>";
-                break;
+                     "value='".$LANG['buttons'][2]."'>";
+               break;
 
          }
-          break;
+         break;
 
    }
-    return "";
+   return "";
 }
 
 
 function plugin_processmaker_MassiveActionsProcess($data) {
-    //global $LANG,$DB;
 
    switch ($data['action']) {
 
@@ -80,7 +78,7 @@ function plugin_processmaker_MassiveActionsProcess($data) {
  * @return true or die!
  */
 function plugin_processmaker_install() {
-    global $DB;
+   global $DB;
 
    if (TableExists("glpi_plugin_processmaker_config")) {
       $query = "ALTER TABLE `glpi_plugin_processmaker_config`
@@ -307,43 +305,43 @@ function plugin_processmaker_install() {
    }
 
    if (!TableExists("glpi_plugin_processmaker_processes_profiles")) { // since version 2.2
-        $query = "CREATE TABLE `glpi_plugin_processmaker_processes_profiles` (
-	                `id` INT(11) NOT NULL AUTO_INCREMENT,
-	                `processes_id` INT(11) NOT NULL DEFAULT '0',
-	                `profiles_id` INT(11) NOT NULL DEFAULT '0',
-	                `entities_id` INT(11) NOT NULL DEFAULT '0',
-	                `is_recursive` TINYINT(1) NOT NULL DEFAULT '1',
+      $query = "CREATE TABLE `glpi_plugin_processmaker_processes_profiles` (
+	               `id` INT(11) NOT NULL AUTO_INCREMENT,
+	               `processes_id` INT(11) NOT NULL DEFAULT '0',
+	               `profiles_id` INT(11) NOT NULL DEFAULT '0',
+	               `entities_id` INT(11) NOT NULL DEFAULT '0',
+	               `is_recursive` TINYINT(1) NOT NULL DEFAULT '1',
 
-	                PRIMARY KEY (`id`),
-	                INDEX `entities_id` (`entities_id`),
-	                INDEX `profiles_id` (`profiles_id`),
-	                INDEX `processes_id` (`processes_id`),
-	                INDEX `is_recursive` (`is_recursive`)
-                )
-            COLLATE='utf8_unicode_ci'
-            ENGINE=InnoDB;";
-        $DB->query($query) or die("error creating glpi_plugin_processmaker_processes_profiles" . $DB->error());
+	               PRIMARY KEY (`id`),
+	               INDEX `entities_id` (`entities_id`),
+	               INDEX `profiles_id` (`profiles_id`),
+	               INDEX `processes_id` (`processes_id`),
+	               INDEX `is_recursive` (`is_recursive`)
+               )
+         COLLATE='utf8_unicode_ci'
+         ENGINE=InnoDB;";
+      $DB->query($query) or die("error creating glpi_plugin_processmaker_processes_profiles" . $DB->error());
 
    }
 
    if (!TableExists("glpi_plugin_processmaker_taskcategories")) {
-        $query = "CREATE TABLE `glpi_plugin_processmaker_taskcategories` (
-	                `id` INT(11) NOT NULL AUTO_INCREMENT,
-	                `processes_id` INT(11) NOT NULL,
-	                `pm_task_guid` VARCHAR(32) NOT NULL,
-	                `taskcategories_id` INT(11) NOT NULL,
-	                `start` BIT(1) NOT NULL DEFAULT b'0',
-	                PRIMARY KEY (`id`),
-	                UNIQUE INDEX `pm_task_guid` (`pm_task_guid`),
-	                UNIQUE INDEX `items` (`taskcategories_id`),
-	                INDEX `processes_id` (`processes_id`)
-                )
-                COLLATE='utf8_general_ci'
-                ENGINE=InnoDB
-                ;
-			";
+      $query = "CREATE TABLE `glpi_plugin_processmaker_taskcategories` (
+	               `id` INT(11) NOT NULL AUTO_INCREMENT,
+	               `processes_id` INT(11) NOT NULL,
+	               `pm_task_guid` VARCHAR(32) NOT NULL,
+	               `taskcategories_id` INT(11) NOT NULL,
+	               `start` BIT(1) NOT NULL DEFAULT b'0',
+	               PRIMARY KEY (`id`),
+	               UNIQUE INDEX `pm_task_guid` (`pm_task_guid`),
+	               UNIQUE INDEX `items` (`taskcategories_id`),
+	               INDEX `processes_id` (`processes_id`)
+               )
+               COLLATE='utf8_general_ci'
+               ENGINE=InnoDB
+               ;
+		";
 
-        $DB->query($query) or die("error creating glpi_plugin_processmaker_taskcategories" . $DB->error());
+      $DB->query($query) or die("error creating glpi_plugin_processmaker_taskcategories" . $DB->error());
 
    }
 
@@ -422,24 +420,23 @@ function plugin_processmaker_install() {
 
     // To be called for each task managed by the plugin
     // task in class
-    CronTask::Register('PluginProcessmakerProcessmaker', 'pmusers', DAY_TIMESTAMP, array( 'state' => CronTask::STATE_DISABLE, 'mode' => CronTask::MODE_EXTERNAL));
-    //CronTask::Register('PluginProcessmakerProcessmaker', 'pmnotifications', DAY_TIMESTAMP, array( 'state' => CronTask::STATE_DISABLE, 'mode' => CronTask::MODE_EXTERNAL));
-    CronTask::Register('PluginProcessmakerProcessmaker', 'pmorphancases', DAY_TIMESTAMP, array('param' => 10, 'state' => CronTask::STATE_DISABLE, 'mode' => CronTask::MODE_EXTERNAL));
+   CronTask::Register('PluginProcessmakerProcessmaker', 'pmusers', DAY_TIMESTAMP, array( 'state' => CronTask::STATE_DISABLE, 'mode' => CronTask::MODE_EXTERNAL));
+   CronTask::Register('PluginProcessmakerProcessmaker', 'pmorphancases', DAY_TIMESTAMP, array('param' => 10, 'state' => CronTask::STATE_DISABLE, 'mode' => CronTask::MODE_EXTERNAL));
    CronTask::Register('PluginProcessmakerProcessmaker', 'pmtaskactions', MINUTE_TIMESTAMP, array('state' => CronTask::STATE_DISABLE, 'mode' => CronTask::MODE_EXTERNAL));
 
-    // required because autoload doesn't work for unactive plugin'
-    include_once(GLPI_ROOT."/plugins/processmaker/inc/profile.class.php");
-    PluginProcessmakerProfile::createAdminAccess($_SESSION['glpiactiveprofile']['id']);
+   // required because autoload doesn't work for unactive plugin'
+   include_once(GLPI_ROOT."/plugins/processmaker/inc/profile.class.php");
+   PluginProcessmakerProfile::createAdminAccess($_SESSION['glpiactiveprofile']['id']);
 
-    return true;
+   return true;
 }
 
 function plugin_processmaker_uninstall() {
-    global $DB;
+   global $DB;
 
-    CronTask::Unregister('PluginProcessmakerProcessmaker');
+   CronTask::Unregister('PluginProcessmakerProcessmaker');
 
-    return true;
+   return true;
 }
 
 
@@ -486,12 +483,12 @@ function plugin_processmaker_addLeftJoin($type,$ref_table,$new_table,$linkfield,
             case "glpi_plugin_processmaker_cases" :
                $out= " LEFT JOIN `glpi_plugin_processmaker_cases`
                         ON (`$ref_table`.`id` = `glpi_plugin_processmaker_cases`.`items_id` AND `glpi_plugin_processmaker_cases`.`itemtype` like 'Ticket') ";
-                return $out;
-                break;
+               return $out;
+
          }
 
-          return "";
-          break;
+      return "";
+
    }
 
     return "";
@@ -587,7 +584,7 @@ function plugin_pre_item_purge_processmaker ( $parm ) {
 
 /**
  * Summary of plugin_item_purge_processmaker
- * @param mixed $parm  is the object
+ * @param mixed $parm is the object
  */
 function plugin_item_purge_processmaker($parm) {
     global $DB;
@@ -674,18 +671,8 @@ function plugin_item_update_processmaker_tasks($parm) {
             && in_array( 'state', $parm->updates )
             && $parm->input['state'] == 2) {  // the task has just been set to DONE state
 
-      //$taskList = array( array( 'sourcetaskguid'     => '54949951157c000b2336474053483376',
-      //                   'sourcecondition'    => '@@RELEASE_DONE == 1' ,
-      //                   'targettaskguid'     => '95599365257bffa6d6170d9068913760',
-      //                   'targetprocessguid'  => '51126098657bd96b286ded7016691792',
-      //                   'targetdynaformguid' => '28421020557bffc5b374850018853291',
-      //                   'targettoclaim'      => true,
-      //                   'targetactions'      => array( 'RELEASE_DONE'     => '@@RELEASE_DONE' )
-      //                  ) ) ;
-
       $itemtype = str_replace( 'Task', '', $parm->getType() );
 
-      //foreach( $taskList as $targetTask ) {
       foreach ($DB->request( 'glpi_plugin_processmaker_caselinks', "is_active = 1 AND sourcetask_guid='".$pmTaskCat->fields['pm_task_guid']."'") as $targetTask) {
 
          $srcCaseId = PluginProcessmakerProcessmaker::getCaseIdFromItem( $itemtype, $parm->fields['tickets_id']);
@@ -697,7 +684,7 @@ function plugin_item_update_processmaker_tasks($parm) {
          if (preg_match_all( "/@@(\w+)/u", $targetTask['sourcecondition'], $matches  )) {
             $casevariables = $matches[1];
          }
-         //foreach( $targetTask['targetactions'] as $actionvalue ){
+
          $targetTask['targetactions'] = array(); // empty array by default
          foreach ($DB->request( 'glpi_plugin_processmaker_caselinkactions', 'plugin_processmaker_caselinks_id = '.$targetTask['id']) as $actionvalue) {
             $targetTask['targetactions'][$actionvalue['name']] = $actionvalue['value'];
@@ -745,10 +732,6 @@ function plugin_item_update_processmaker_tasks($parm) {
             $postdatas['__notValidateThisFields__']  = '[]';
             $postdatas['DynaformRequiredFields']     = '[]';
             $postdatas['form']['btnGLPISendRequest'] = 'submit';
-
-            //foreach ( $externalapplication['params'] as $paramname => $variable ) {
-            //   $externalapplicationparams[$paramname] = eval( "return ".str_replace( array_keys($infoForTasks), $infoForTasks, $variable)." ;" ) ;
-            //}
 
             $externalapplicationparams = array();
             if ($externalapplication) {
@@ -809,7 +792,6 @@ function plugin_item_update_processmaker_tasks($parm) {
                   $externalapplicationparams['id'] = $cronaction->getID();
 
                   $externalapplicationparams = json_encode( $externalapplicationparams, JSON_HEX_APOS | JSON_HEX_QUOT);
-                  //$externalapplicationparams = http_formdata_flat_hierarchy( $externalapplicationparams ) ;
 
                   curl_setopt($ch, CURLOPT_POST, 1);
                   curl_setopt($ch, CURLOPT_POSTFIELDS, $externalapplicationparams);
@@ -817,7 +799,7 @@ function plugin_item_update_processmaker_tasks($parm) {
                   curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1 );
 
                   // curl_setopt($ch, CURLOPT_HTTPPROXYTUNNEL, 1 ) ;
-                        // curl_setopt($ch, CURLOPT_PROXY, "fry07689.fr.ray.group:8888");
+                  // curl_setopt($ch, CURLOPT_PROXY, "localhost:8888");
 
                   $response = curl_exec ($ch);
 
@@ -852,26 +834,6 @@ function plugin_item_update_processmaker_tasks($parm) {
                                           null,
                                           false);
                      }
-                     //if( $externalapplication ) {
-                     //   // must call external application in order to get the needed data asynchroneously
-                     //   // must be of the form
-                     //   // {"method":"POST","url":"http://arsupd201.ar.ray.group:8000/search_by_userid/","params":{"user":"@@USER_ID","system":"GPP","list":"@@ROLE_LIST"}}
-                     //   // Where method is the POST, GET
-                     //   // url is the URL to be called
-                     //   $externalapplicationparams['record_id']=$cronaction->getID();
-                     //   $externalapplicationparams = http_formdata_flat_hierarchy( $externalapplicationparams ) ;
-                     //   if( $externalapplication['method'] != 'GET') {
-                     //      switch($externalapplication['method']) {
-                     //         case 'POST' :
-                     //            curl_setopt($ch, CURLOPT_POST, 1);
-                     //            curl_setopt($ch, CURLOPT_POSTFIELDS, $externalapplicationparams);
-                     //            break;
-                     //      }
-                     //   }
-                     //   $response = curl_exec ($ch);
-
-                     //   curl_close ($ch);
-                     //}
                   }
                }
             }
