@@ -291,7 +291,7 @@ class PluginProcessmakerConfig extends CommonDBTM {
       echo "<td >".$LANG['processmaker']['config']['pm_group_name']."</td><td >";
 
       $pmGroups = array( 0 => Dropdown::EMPTY_VALUE );
-      $query = "SELECT DISTINCT CON_ID, CON_VALUE FROM CONTENT WHERE CON_CATEGORY='GRP_TITLE' AND CON_LANG='".$pm->lang."' ORDER BY CON_VALUE;";
+      $query = "SELECT DISTINCT CON_ID, CON_VALUE FROM CONTENT WHERE CON_CATEGORY='GRP_TITLE' ORDER BY CON_VALUE;";
       if ($PM_DB->connected) {
          foreach ($PM_DB->request( $query ) as $row) {
             $pmGroups[ $row['CON_ID'] ] = $row['CON_VALUE'];

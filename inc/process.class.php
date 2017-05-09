@@ -67,7 +67,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
                $mapLangs[ locale_get_primary_language( $key ) ][] = $key;
             }
          }
-         $lang = locale_get_primary_language( $CFG_GLPI['language'] ); 
+         $lang = locale_get_primary_language( $CFG_GLPI['language'] );
          $query = "SELECT TASK.TAS_UID, TASK.TAS_START, CONTENT.CON_LANG, CONTENT.CON_CATEGORY, CONTENT.CON_VALUE FROM TASK
                         INNER JOIN CONTENT ON CONTENT.CON_ID=TASK.TAS_UID
                         WHERE TASK.PRO_UID = '".$this->fields['process_guid']."' AND CONTENT.CON_CATEGORY IN ('TAS_TITLE', 'TAS_DESCRIPTION') ".($translates ? "" : " AND CONTENT.CON_LANG='$lang'")." ;";
