@@ -332,7 +332,7 @@ class PluginProcessmakerCase extends CommonDBTM {
                      echo "<script>$('#divUsers-".$caseUser->delIndex."').load( '".$CFG_GLPI["root_doc"]."/plugins/processmaker/ajax/task_users.php?caseId=".$caseInfo->caseId."&itemId=".$item_id."&itemType=".$item_type."&userId=".$caseUser->userId."&taskId=".$caseUser->taskId."&delIndex=".$caseUser->delIndex."&delThread=".$caseUser->delThread."&rand=$rand' ); </script>";
                   }
                   echo "<iframe id='caseiframe-task-".$caseUser->delIndex."' onload='onTaskFrameLoad( event, ".$caseUser->delIndex.", ".($hide_claim_button?"true":"false").", \"$csrf\" );' style='border:none;' class='tab_bg_2' width='100%' src='";
-                  $url = $myProcessMaker->serverURL."/cases/cases_open?sid=".$_SESSION["pluginprocessmaker"]["session"]["id"]."&APP_UID=".$caseInfo->caseId."&DEL_INDEX=".$caseUser->delIndex."&action=TO_DO";
+                  $url = $myProcessMaker->serverURL."/cases/cases_Open?sid=".$_SESSION["pluginprocessmaker"]["session"]["id"]."&APP_UID=".$caseInfo->caseId."&DEL_INDEX=".$caseUser->delIndex."&action=TO_DO";
                   //if( $caseUser->userId == $GLPICurrentPMUserId || $caseUser->userId == '' ) {
                       echo $url;
                   //} else {
@@ -344,7 +344,7 @@ class PluginProcessmakerCase extends CommonDBTM {
                 // no user means CANCELLED or COMPLETED
                 // then create artificial panel to host case infos
                 echo "<div id='caseInfo'>";
-                $url = $myProcessMaker->serverURL."/cases/cases_open?sid=".$_SESSION["pluginprocessmaker"]["session"]["id"]."&APP_UID=".$caseInfo->caseId."&".$paramsURL."&action=TO_DO";
+                $url = $myProcessMaker->serverURL."/cases/cases_Open?sid=".$_SESSION["pluginprocessmaker"]["session"]["id"]."&APP_UID=".$caseInfo->caseId."&".$paramsURL."&action=TO_DO";
                 echo "<iframe id=\"caseiframe-caseInfo\" onload=\"onOtherFrameLoad( 'caseInfo', 'caseiframe-caseInfo', 'body' );\" style=\"border:none;\" class=\"tab_bg_2\" width=\"100%\" src=\"$url&rand=$rand\"></iframe></div>";
             }
             echo "</div>";

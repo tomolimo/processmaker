@@ -2261,9 +2261,9 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
       curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 
-      curl_setopt($ch, CURLOPT_URL, $this->serverURL."/cases/cases_open?sid=".$_SESSION["pluginprocessmaker"]["session"]["id"]."&APP_UID=".$request['APP_UID']."&DEL_INDEX=".$request['DEL_INDEX']."&action=TO_DO" );
+      curl_setopt($ch, CURLOPT_URL, $this->serverURL."/cases/cases_Open?sid=".$_SESSION["pluginprocessmaker"]["session"]["id"]."&APP_UID=".$request['APP_UID']."&DEL_INDEX=".$request['DEL_INDEX']."&action=TO_DO" );
       $response = curl_exec ($ch);
-        //Toolbox::logInFile( "pmtrace", "URL:\n".$this->serverURL."/cases/cases_open?sid=".$_SESSION["pluginprocessmaker"]["session"]["id"]."\nResponse:\n".$response."\n\n\n" ) ;
+        //Toolbox::logInFile( "pmtrace", "URL:\n".$this->serverURL."/cases/cases_Open?sid=".$_SESSION["pluginprocessmaker"]["session"]["id"]."\nResponse:\n".$response."\n\n\n" ) ;
 
       curl_setopt($ch, CURLOPT_POST, 1);
       curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
