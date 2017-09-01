@@ -27,6 +27,7 @@ switch ($_POST["action"]) {
          $resultCase = $myProcessMaker->newCase( $_POST['plugin_processmaker_process_id'],
                                                 array( 'GLPI_ITEM_CAN_BE_SOLVED'    => 0,
                                                        'GLPI_SELFSERVICE_CREATED'   => '1',
+                                                       'GLPI_ITEM_TYPE'             => 'Ticket',
                                                        'GLPI_URL'                   => $CFG_GLPI['url_base'].$CFG_GLPI['root_doc']) );
          if ($resultCase->status_code == 0) {
             // case is created

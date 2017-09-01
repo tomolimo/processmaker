@@ -1062,7 +1062,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       }
 
    }
- 
+
 
    /**
    * summary of cronPMUsers
@@ -1314,8 +1314,8 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
       if (isset($parm->input['processmaker_caseid'])) {
          // a case is already started for this ticket, then bind them together
-         $itemType = $parm->getType(); //$myCase->getField('itemtype');
-         $itemId = $parm->fields['id']; //$myCase->getField('items_id');
+         $itemType = $parm->getType();
+         $itemId = $parm->fields['id'];
          $caseId = $parm->input['processmaker_caseid'];
 
          $myCase = new PluginProcessmakerCase;
@@ -1336,6 +1336,11 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
          // here we create a fake task that will be used to store the creator of the case
          // this is due for traceability only
          $myProcessMaker->add1stTask( $myCase->fields['itemtype'], $myCase->fields['items_id'], $caseInfo, array( 'notif' => false) ); // no notif
+
+         // before routing, send items_id and itemtype
+         // as this information was not available at case creation
+         $resultSave = $myProcessMaker->sendVariables( $myCase->getID(), array( "GLPI_TICKET_ID" => $itemId ) );
+
          // route case
          $pmRouteCaseResponse = $myProcessMaker->routeCase( $myCase->getID(), $parm->input['processmaker_delindex'] );
 
@@ -1440,12 +1445,12 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
          // then we should check if this user has rights on the item, if not then we must add it to the watcher list!
          $glpi_item = getItemForItemtype( $itemType );
          $glpi_item->getFromDB( $itemId );
-         $user_entities = Profile_User::getUserEntities( $techId, true, true );
-         $user_can_view = in_array( $glpi_item->fields['entities_id'], $user_entities );
+         //$user_entities = Profile_User::getUserEntities( $techId, true, true );
+         //$user_can_view = in_array( $glpi_item->fields['entities_id'], $user_entities );
          if (!$glpi_item->isUser( CommonITILActor::REQUESTER, $techId )
                && !$glpi_item->isUser( CommonITILActor::OBSERVER, $techId )
-               && !$glpi_item->isUser( CommonITILActor::ASSIGN, $techId )
-               && !$user_can_view ) {
+               && !$glpi_item->isUser( CommonITILActor::ASSIGN, $techId ) ) {
+               //&& !$user_can_view ) {
             // then we must add this tech user to watcher list
             $glpi_item_user = getItemForItemtype( $glpi_item->getType() . "_User" );
             $donotif = $CFG_GLPI["use_mailing"];
@@ -1667,8 +1672,8 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
    /**
     * Summary of computeTaskDuration
-    * @param mixed $task 
-    * @param mixed $entity 
+    * @param mixed $task
+    * @param mixed $entity
     * @return mixed
     */
    function computeTaskDuration( $task, $entity ) {

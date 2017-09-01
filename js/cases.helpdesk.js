@@ -5,14 +5,22 @@ var caseIFrame;
 
 function onClickContinue(obj) {
    //debugger;
-   // call old handler
+   contentDocument = caseIFrame.contentDocument;
+   var txtAreaUserRequestSumUp = contentDocument.getElementById('form[UserRequestSumUp]');
+   if (txtAreaUserRequestSumUp) {
+      $("textarea[name='content']").val($(txtAreaUserRequestSumUp).val());
+   } else {
+      $("textarea[name='content']").val('_');
+   }
+
+   // call old handler if any
    if (obj != undefined && oldHandler) {
       oldHandler(obj.target);
    }
    // hide the iFrame
    caseIFrame.style.visibility = 'hidden';
 
-   // call new handler
+   // trigger a click on the 'add' button of the ticket 
    submitButton.click();
 }
 
@@ -34,11 +42,10 @@ function bGLPIHideElement(eltList, attribute, value) {
 function onLoadFrame( evt, caseId, delIndex, caseNumber, processName ) {
    var caseTimerCounter = 0;
    var redimIFrame = false;
-   //var bAreaUseRequestSumUp = false;
    var bButtonContinue = false;
    var caseTimer = window.setInterval(function () {
       //debugger ;
-      // look for frmDerivation form
+      // look for caseiframe iFrame
 
       caseIFrame = document.getElementById('caseiframe');
 
@@ -50,15 +57,8 @@ function onLoadFrame( evt, caseId, delIndex, caseNumber, processName ) {
       }
       if (caseIFrame != undefined && contentDocument) {
          var buttonContinue = contentDocument.getElementById('form[btnGLPISendRequest]');
-         var txtAreaUseRequestSumUp = contentDocument.getElementById('form[UserRequestSumUp]');
          var linkList = contentDocument.getElementsByTagName('a');
-         if (txtAreaUseRequestSumUp != undefined) {
-            //debugger;
-            $("textarea[name='content']")[0].value = txtAreaUseRequestSumUp.value;
-         } else {
-            $("textarea[name='content']")[0].value = '_';
-         }
-
+         
          if (!bButtonContinue && buttonContinue != undefined && linkList != undefined && linkList.length > 0) {
             bButtonContinue = true; //window.clearInterval(caseTimer); // to be sure that it will be done only one time
             // change action for the attached form and add some parameters
@@ -84,13 +84,17 @@ function onLoadFrame( evt, caseId, delIndex, caseNumber, processName ) {
 
          }
 
-            // try to redim caseIFrame
+         // try to redim caseIFrame
          if (!redimIFrame) {
+            redimIFrame = true; // to prevent several timer creation
+
+            // redim one time
             redimTaskFrame(caseIFrame);
+
+            // redim each second
             var redimFrameTimer = window.setInterval(function () {
                redimTaskFrame(caseIFrame);
             }, 1000);
-            redimIFrame = true;
          }
       }
 
