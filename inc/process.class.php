@@ -47,7 +47,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
    * @return void
    */
    function refreshTasks( $post ) {
-      global $PM_DB, $CFG_GLPI;
+      global $DB, $PM_DB, $CFG_GLPI;
 
       if ($this->getFromDB( $post['id'] )) {
          // here we are in the right process
@@ -56,7 +56,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
          //$database = $config->fields['pm_workspace'] ;
          $translates = false;
          $mapLangs = array( );
-         if (TableExists( 'glpi_dropdowntranslations' ) && class_exists('DropdownTranslation')) {
+         if ($DB->TableExists( 'glpi_dropdowntranslations' ) && class_exists('DropdownTranslation')) {
             // to force rigths to add translations
             $_SESSION['glpi_dropdowntranslations']['TaskCategory']['name'] = 'name';
             $_SESSION['glpi_dropdowntranslations']['TaskCategory']['completename'] = 'completename';

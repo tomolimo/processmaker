@@ -22,7 +22,7 @@ class PluginProcessmakerCase extends CommonDBTM {
       $item_id = $item->getID();
       $item_type = $item->getType();
       if (self::getCaseFromItemTypeAndItemId($item_type, $item_id )) {
-         return array( 'processmakercases' => $LANG['processmaker']['item']['tab']."<sup>(".$this->fields['case_status'].")</sup>" );
+         return array( 'processmakercases' => $LANG['processmaker']['item']['tab']."<sup class='tab_nb'> ".$this->fields['case_status']."</sup>" );
       } else {
          return array( 'processmakercases' => $LANG['processmaker']['item']['tab'] );
       }
@@ -257,20 +257,20 @@ class PluginProcessmakerCase extends CommonDBTM {
             $proj->getFromDBbyExternalID( $caseInfo->processId );
             $project_type = $proj->fields['project_type'];
             // then propose a button to view case history
-            echo "<tr class='tab_bg_1' >";
-            echo "<td class='tab_bg_2' colspan='1'>";
-            echo "<input type='button' class='submit' onclick=\"javascript:Actions.tabFrame('caseMap');\" value='".$LANG['processmaker']['item']['case']['viewcasemap']."'>";
-            echo "</td>";
-            echo "<td class='tab_bg_2' colspan='1'>";
-            echo "<input type='button' class='submit' onclick=\"javascript:Actions.tabFrame('caseHistory');\" value='".$LANG['processmaker']['item']['case']['viewcasehistory']."'>";
-            echo "</td>";
-            echo "<td class='tab_bg_2' colspan='1'>";
-            echo "<input type='button' class='submit' onclick=\"javascript:Actions.tabFrame('caseChangeLogHistory');\" value='".$LANG['processmaker']['item']['case']['viewcasechangeloghistory']."'>";
-            echo "</td>";
-            echo "<td class='tab_bg_2' colspan='1'>";
-            echo "<input type='button' class='submit' onclick=\"javascript:Actions.tabFrame('historyDynaformPage');\" value='".$LANG['processmaker']['item']['case']['viewdynaforms']."'>";
-            echo "</td>";
-            echo "</tr>";
+            //echo "<tr class='tab_bg_1' >";
+            //echo "<td class='tab_bg_2' colspan='1'>";
+            //echo "<input type='button' class='submit' onclick=\"javascript:Actions.tabFrame('caseMap');\" value='".$LANG['processmaker']['item']['case']['viewcasemap']."'>";
+            //echo "</td>";
+            //echo "<td class='tab_bg_2' colspan='1'>";
+            //echo "<input type='button' class='submit' onclick=\"javascript:Actions.tabFrame('caseHistory');\" value='".$LANG['processmaker']['item']['case']['viewcasehistory']."'>";
+            //echo "</td>";
+            //echo "<td class='tab_bg_2' colspan='1'>";
+            //echo "<input type='button' class='submit' onclick=\"javascript:Actions.tabFrame('caseChangeLogHistory');\" value='".$LANG['processmaker']['item']['case']['viewcasechangeloghistory']."'>";
+            //echo "</td>";
+            //echo "<td class='tab_bg_2' colspan='1'>";
+            //echo "<input type='button' class='submit' onclick=\"javascript:Actions.tabFrame('historyDynaformPage');\" value='".$LANG['processmaker']['item']['case']['viewdynaforms']."'>";
+            //echo "</td>";
+            //echo "</tr>";
             echo "</table>";
             echo "<script type='text/javascript' src='".$CFG_GLPI["root_doc"]."/plugins/processmaker/js/cases.js'></script>"; //?rand=$rand'
 
@@ -279,33 +279,44 @@ class PluginProcessmakerCase extends CommonDBTM {
             echo Html::scriptBlock("$('#processmakertabpaneltable').css('max-width', 'none');");
             echo "<tr><td>";
 
-            //
+            //////////////////////////
             // Processmaker tab panels
             // need to have a global variable which contains tab id
             // used only one time for activated panel
+            //////////////////////////
             $arrayProcessmakerTabPanel = array();
             echo "<div id=processmakertabpanel >";
-            // first define tabs
+
+            //////////////
+            // Define tabs
+            //////////////
             echo "    <ul>";
             //echo "            <li><a href='#tabs-1'>Nunc tincidunt</a></li>";
-            $arrayProcessmakerTabPanel[] = "tabs-1";
+            //$arrayProcessmakerTabPanel[] = "tabs-1";
+            $arrayProcessmakerTabPanel = [];
             if ($pmCaseUser) {
                foreach ($caseInfo->currentUsers as $caseUser) {
-                  echo "<li><a href='#task-".$caseUser->delIndex."'>".($caseUser->userId != $GLPICurrentPMUserId?"<i><sub>".$LANG['processmaker']['item']['task']['task'].$caseUser->taskName."</sub></i>":$LANG['processmaker']['item']['task']['task'].$caseUser->taskName)."</a></li>";
+                  $title = $LANG['processmaker']['item']['task']['task'].$caseUser->taskName;
+                  echo "<li><a href='#task-".$caseUser->delIndex."' title='$title'>". ($caseUser->userId != $GLPICurrentPMUserId ? "<i><sub>$title</sub></i>" : $title) ."</a></li>";
                   $arrayProcessmakerTabPanel[] = "task-".$caseUser->delIndex;
                }
             } else {
                // no user means CANCELLED or COMPLETED
                // then create artificial panel to host case infos
-               echo "<li><a href='#caseInfo'>".$LANG['processmaker']['item']['case']['caseinfo']."</a></li>";
+               echo "<li><a href='#caseInfo' title='".$LANG['processmaker']['item']['case']['caseinfo']."'>".$LANG['processmaker']['item']['case']['caseinfo']."</a></li>";
                $arrayProcessmakerTabPanel[] = "caseInfo";
             }
+            // add default panels: map, history, log and dynaforms
+            $defaultTabs = ['caseMap' => 'viewcasemap', 'caseHistory' => 'viewcasehistory', 'caseChangeLogHistory' => 'viewcasechangeloghistory', 'historyDynaformPage' => 'viewdynaforms' ];
+            foreach ($defaultTabs as $tab => $tabText) {
+               echo "<li><a href='#$tab' onclick=\"javascript:Actions.tabFrame('$tab');return false;\" title='".$LANG['processmaker']['item']['case'][$tabText]."'>".$LANG['processmaker']['item']['case'][$tabText]."</a></li>";
+            }
+
             echo "</ul>";
 
-            // second define panels
-            //echo "<div id='tabs-1'>
-            //            <p>Proin elit arcu, rutrum commodo, vehicula tempus, commodo a, risus. Curabitur nec arcu. Donec sollicitudin mi sit amet mauris. Nam elementum quam ullamcorper ante. Etiam aliquet massa et lorem. Mauris dapibus lacus auctor risus. Aenean tempor ullamcorper leo. Vivamus sed magna quis ligula eleifend adipiscing. Duis orci. Aliquam sodales tortor vitae ipsum. Aliquam nulla. Duis aliquam molestie erat. Ut et mauris vel pede varius sollicitudin. Sed ut dolor nec orci tincidunt interdum. Phasellus ipsum. Nunc tristique tempus lectus.</p>
-            //      </div>";
+            ////////////////
+            // Define panels
+            ////////////////
             if ($pmCaseUser) {
                $csrf = Session::getNewCSRFToken();
                foreach ($caseInfo->currentUsers as $caseUser) {
@@ -347,6 +358,11 @@ class PluginProcessmakerCase extends CommonDBTM {
                 $url = $myProcessMaker->serverURL."/cases/cases_Open?sid=".$_SESSION["pluginprocessmaker"]["session"]["id"]."&APP_UID=".$caseInfo->caseId."&".$paramsURL."&action=TO_DO";
                 echo "<iframe id=\"caseiframe-caseInfo\" onload=\"onOtherFrameLoad( 'caseInfo', 'caseiframe-caseInfo', 'body' );\" style=\"border:none;\" class=\"tab_bg_2\" width=\"100%\" src=\"$url&rand=$rand\"></iframe></div>";
             }
+            // default panels
+            // map, history, log and dynaforms
+            // will be added dynamically by the addTabPanel function
+
+
             echo "</div>";
             // end of tabs/panels
 
@@ -363,7 +379,9 @@ class PluginProcessmakerCase extends CommonDBTM {
                     //debugger ;
                     if( !$('#processmakertabpanel')[0].children[name] ) { // panel is not yet existing, create one
                         //var num_tabs = $('#processmakertabpanel ul li').length ;
-                        $('#processmakertabpanel ul').append( '<li><a href=\'#' + name + '\'>' + title + '</a></li>' );
+                        if( $('#processmakertabpanel a[href=\"#'+name+'\"]').length == 0 ) {
+                           $('#processmakertabpanel ul').append( '<li><a href=\'#' + name + '\'>' + title + '</a></li>' );
+                        }
                         //debugger ;
                         $('#processmakertabpanel').append( '<div id=\'' + name + '\'>' + html + '</div>');
                         $('#processmakertabpanel').tabs('refresh'); // to show the panel

@@ -80,13 +80,13 @@ function plugin_processmaker_MassiveActionsProcess($data) {
 function plugin_processmaker_install() {
    global $DB;
 
-   if (TableExists("glpi_plugin_processmaker_config")) {
+   if ($DB->TableExists("glpi_plugin_processmaker_config")) {
       $query = "ALTER TABLE `glpi_plugin_processmaker_config`
 	                ADD COLUMN `date_mod` DATETIME NULL DEFAULT NULL AFTER `pm_theme`,
 	                ADD COLUMN `comment` TEXT NULL AFTER `date_mod`;
                   RENAME TABLE `glpi_plugin_processmaker_config` TO `glpi_plugin_processmaker_configs`;";
         $DB->query($query) or die("error creating glpi_plugin_processmaker_configs" . $DB->error());
-   } else if (!TableExists("glpi_plugin_processmaker_configs")) {
+   } else if (!$DB->TableExists("glpi_plugin_processmaker_configs")) {
       $query = "  CREATE TABLE `glpi_plugin_processmaker_configs` (
                   `id` INT(11) NOT NULL AUTO_INCREMENT,
                   `name` VARCHAR(50) NOT NULL DEFAULT 'ProcessMaker',
@@ -120,7 +120,7 @@ function plugin_processmaker_install() {
       $DB->query( $query ) or die("error creating default record in glpi_plugin_processmaker_configs" . $DB->error());
    }
 
-   if (!FieldExists("glpi_plugin_processmaker_configs", "pm_dbserver_name" )) {
+   if (!$DB->FieldExists("glpi_plugin_processmaker_configs", "pm_dbserver_name" )) {
         $query = "ALTER TABLE `glpi_plugin_processmaker_configs`
                      ADD COLUMN `pm_dbserver_name` VARCHAR(255) NULL DEFAULT NULL AFTER `pm_group_guid`,
                      ADD COLUMN `pm_dbserver_user` VARCHAR(255) NULL DEFAULT NULL AFTER `pm_dbserver_name`,
@@ -128,33 +128,33 @@ function plugin_processmaker_install() {
          $DB->query($query) or die("error adding fields pm_dbserver_name, pm_dbserver_user, pm_dbserver_passwd to glpi_plugin_processmaker_configs" . $DB->error());
    }
 
-   if (!FieldExists("glpi_plugin_processmaker_configs", "maintenance" )) {
+   if (!$DB->FieldExists("glpi_plugin_processmaker_configs", "maintenance" )) {
       $query = "ALTER TABLE `glpi_plugin_processmaker_configs`
                	ADD COLUMN `maintenance` TINYINT(1) NOT NULL DEFAULT '0' AFTER `pm_dbserver_passwd`;
                ;";
       $DB->query($query) or die("error adding field maintenance to glpi_plugin_processmaker_configs" . $DB->error());
    }
 
-   if (!FieldExists("glpi_plugin_processmaker_configs", "domain" )) {
+   if (!$DB->FieldExists("glpi_plugin_processmaker_configs", "domain" )) {
       $query = "ALTER TABLE `glpi_plugin_processmaker_configs`
 	               ADD COLUMN `domain` VARCHAR(50) NULL DEFAULT '' AFTER `pm_dbserver_passwd`;
                ";
       $DB->query($query) or die("error adding field domain to glpi_plugin_processmaker_configs" . $DB->error());
    }
 
-   if (!FieldExists("glpi_plugin_processmaker_configs", "maintenance" )) {
+   if (!$DB->FieldExists("glpi_plugin_processmaker_configs", "maintenance" )) {
       $query = "ALTER TABLE `glpi_plugin_processmaker_configs`
                	ADD COLUMN `maintenance` TINYINT(1) NOT NULL DEFAULT '0' AFTER `domain`;
                ;";
       $DB->query($query) or die("error adding fields maintenance to glpi_plugin_processmaker_configs" . $DB->error());
    }
 
-   if (TableExists("glpi_plugin_processmaker_profiles")) {
+   if ($DB->TableExists("glpi_plugin_processmaker_profiles")) {
       $query = "DROP TABLE `glpi_plugin_processmaker_profiles` ;";
       $DB->query($query) or die("error dropping glpi_plugin_processmaker_profiles" . $DB->error());
    }
 
-   if (!TableExists("glpi_plugin_processmaker_cases")) {
+   if (!$DB->TableExists("glpi_plugin_processmaker_cases")) {
       $query = "CREATE TABLE `glpi_plugin_processmaker_cases` (
 	                        `id` VARCHAR(32) NOT NULL,
 	                        `items_id` INT(11) NOT NULL,
@@ -172,7 +172,7 @@ function plugin_processmaker_install() {
       $DB->query($query) or die("error creating glpi_plugin_processmaker_cases" . $DB->error());
    }
 
-   if (!FieldExists("glpi_plugin_processmaker_cases", "processes_id")) {
+   if (!$DB->FieldExists("glpi_plugin_processmaker_cases", "processes_id")) {
       $query = "ALTER TABLE `glpi_plugin_processmaker_cases`
 	               ADD COLUMN `processes_id` INT(11) NULL DEFAULT NULL;
                ";
@@ -196,7 +196,7 @@ function plugin_processmaker_install() {
       }
    }
 
-   if (!TableExists("glpi_plugin_processmaker_tasks")) {
+   if (!$DB->TableExists("glpi_plugin_processmaker_tasks")) {
         $query = "CREATE TABLE `glpi_plugin_processmaker_tasks` (
 	                        `id` INT(11) NOT NULL AUTO_INCREMENT,
 	                        `items_id` INT(11) NOT NULL,
@@ -214,7 +214,7 @@ function plugin_processmaker_install() {
         $DB->query($query) or die("error creating glpi_plugin_processmaker_tasks" . $DB->error());
    }
 
-   if (!TableExists("glpi_plugin_processmaker_users")) {
+   if (!$DB->TableExists("glpi_plugin_processmaker_users")) {
       $query = "CREATE TABLE `glpi_plugin_processmaker_users` (
                 `id` INT(11) NOT NULL AUTO_INCREMENT,
                 `pm_users_id` VARCHAR(32) NOT NULL ,
@@ -229,7 +229,7 @@ function plugin_processmaker_install() {
       $DB->query($query) or die("error creating glpi_plugin_processmaker_users" . $DB->error());
    }
 
-   if (!FieldExists('glpi_plugin_processmaker_users', 'password')) {
+   if (!$DB->FieldExists('glpi_plugin_processmaker_users', 'password')) {
       $query = "ALTER TABLE `glpi_plugin_processmaker_users`
 	            ADD COLUMN `id` INT NOT NULL AUTO_INCREMENT FIRST,
                ADD COLUMN `password` VARCHAR(32) NULL DEFAULT NULL AFTER `pm_users_id`,
@@ -243,7 +243,7 @@ function plugin_processmaker_install() {
       $DB->query($query) or die("error updating TicketTask" . $DB->error());
    }
 
-   if (FieldExists('glpi_plugin_processmaker_users', 'glpi_users_id')) {
+   if ($DB->FieldExists('glpi_plugin_processmaker_users', 'glpi_users_id')) {
         $query = "ALTER TABLE `glpi_plugin_processmaker_users`
 	               ALTER `glpi_users_id` DROP DEFAULT,
                   DROP PRIMARY KEY,
@@ -259,7 +259,7 @@ function plugin_processmaker_install() {
       $DB->query($query) or die("error renaming 'glpi_users_id' into 'id' to glpi_plugin_processmaker_users" . $DB->error());
    }
 
-   if (!TableExists("glpi_plugin_processmaker_processes")) {
+   if (!$DB->TableExists("glpi_plugin_processmaker_processes")) {
       $query = "CREATE TABLE `glpi_plugin_processmaker_processes` (
 				`id` INT(11) NOT NULL AUTO_INCREMENT,
             `process_guid` VARCHAR(32) NOT NULL,
@@ -283,13 +283,13 @@ function plugin_processmaker_install() {
       $DB->query($query) or die("error creating glpi_plugin_processmaker_processes" . $DB->error());
    }
 
-   if (FieldExists( 'glpi_plugin_processmaker_processes', 'is_helpdeskvisible')) {
+   if ($DB->FieldExists( 'glpi_plugin_processmaker_processes', 'is_helpdeskvisible')) {
       $query = "ALTER TABLE `glpi_plugin_processmaker_processes`
                     CHANGE COLUMN `is_helpdeskvisible` `is_helpdeskvisible_notusedanymore` TINYINT(1) NOT NULL DEFAULT '0' COMMENT 'Not used any more since version 2.2' AFTER `name`;";
       $DB->query($query);
    }
 
-   if (!FieldExists( 'glpi_plugin_processmaker_processes', 'itilcategories_id')) {
+   if (!$DB->FieldExists( 'glpi_plugin_processmaker_processes', 'itilcategories_id')) {
       $query = "ALTER TABLE `glpi_plugin_processmaker_processes`
 	                ADD COLUMN `itilcategories_id` INT(11) NOT NULL DEFAULT '0',
 	                ADD COLUMN `type` INT(11) NOT NULL DEFAULT '1' COMMENT 'Only used for Tickets';";
@@ -297,14 +297,14 @@ function plugin_processmaker_install() {
       $DB->query($query) or die("error adding columns 'itilcategories_id' and 'type' to glpi_plugin_processmaker_processes" . $DB->error());
    }
 
-   if (!FieldExists( 'glpi_plugin_processmaker_processes', 'project_type')) {
+   if (!$DB->FieldExists( 'glpi_plugin_processmaker_processes', 'project_type')) {
       $query = "ALTER TABLE `glpi_plugin_processmaker_processes`
 	                ADD COLUMN `project_type` VARCHAR(50) NOT NULL DEFAULT 'classic';";
 
       $DB->query($query) or die("error adding columns 'project_type' to glpi_plugin_processmaker_processes" . $DB->error());
    }
 
-   if (!TableExists("glpi_plugin_processmaker_processes_profiles")) { // since version 2.2
+   if (!$DB->TableExists("glpi_plugin_processmaker_processes_profiles")) { // since version 2.2
       $query = "CREATE TABLE `glpi_plugin_processmaker_processes_profiles` (
 	               `id` INT(11) NOT NULL AUTO_INCREMENT,
 	               `processes_id` INT(11) NOT NULL DEFAULT '0',
@@ -324,7 +324,7 @@ function plugin_processmaker_install() {
 
    }
 
-   if (!TableExists("glpi_plugin_processmaker_taskcategories")) {
+   if (!$DB->TableExists("glpi_plugin_processmaker_taskcategories")) {
       $query = "CREATE TABLE `glpi_plugin_processmaker_taskcategories` (
 	               `id` INT(11) NOT NULL AUTO_INCREMENT,
 	               `processes_id` INT(11) NOT NULL,
@@ -345,7 +345,7 @@ function plugin_processmaker_install() {
 
    }
 
-   if (!TableExists("glpi_plugin_processmaker_crontaskactions")) {
+   if (!$DB->TableExists("glpi_plugin_processmaker_crontaskactions")) {
       $query = "CREATE TABLE `glpi_plugin_processmaker_crontaskactions` (
                      `id`        INT(11) NOT NULL AUTO_INCREMENT,
                      `plugin_processmaker_caselinks_id` INT(11) NULL DEFAULT NULL,
@@ -363,7 +363,7 @@ function plugin_processmaker_install() {
       $DB->query($query) or die("error creating glpi_plugin_processmaker_crontaskactions" . $DB->error());
    }
 
-   if (!TableExists("glpi_plugin_processmaker_caselinks")) {
+   if (!$DB->TableExists("glpi_plugin_processmaker_caselinks")) {
       $query = "CREATE TABLE `glpi_plugin_processmaker_caselinks` (
 	                  `id` INT(11) NOT NULL AUTO_INCREMENT,
 	                  `name` VARCHAR(255) NOT NULL,
@@ -388,7 +388,7 @@ function plugin_processmaker_install() {
       $DB->query($query) or die("error creating glpi_plugin_processmaker_caselinks" . $DB->error());
    }
 
-   if (!TableExists("glpi_plugin_processmaker_caselinkactions")) {
+   if (!$DB->TableExists("glpi_plugin_processmaker_caselinkactions")) {
       $query = "CREATE TABLE `glpi_plugin_processmaker_caselinkactions` (
 	                  `id` INT(11) NOT NULL AUTO_INCREMENT,
 	                  `plugin_processmaker_caselinks_id` INT(11) NULL DEFAULT NULL,
@@ -403,7 +403,7 @@ function plugin_processmaker_install() {
       $DB->query($query) or die("error creating glpi_plugin_processmaker_caselinkactions" . $DB->error());
    }
 
-    //if( !TableExists('glpi_plugin_processmaker_selfservicedrafts')){
+    //if( !$DB->TableExists('glpi_plugin_processmaker_selfservicedrafts')){
     //   $query = "CREATE TABLE `glpi_plugin_processmaker_selfservicedrafts` (
     //                 `id` INT(11) NOT NULL AUTO_INCREMENT,
     //                 `users_id` INT(11) NOT NULL,
@@ -525,9 +525,11 @@ function plugin_pre_item_update_processmaker(CommonITILObject $parm) {
                   break;
                case 'due_date' :
                   $locVar[ 'GLPI_TICKET_DUE_DATE' ] = $val;
+                  $locVar[ 'GLPI_ITEM_DUE_DATE' ] = $val;
                    break;
                case 'urgency' :
                   $locVar[ 'GLPI_TICKET_URGENCY' ] = $val;
+                  $locVar[ 'GLPI_ITEM_URGENCY' ] = $val;
                    break;
                case 'impact' :
                   $locVar[ 'GLPI_ITEM_IMPACT' ] = $val;
@@ -587,9 +589,12 @@ function plugin_pre_item_purge_processmaker ( $parm ) {
  * @param mixed $parm is the object
  */
 function plugin_item_purge_processmaker($parm) {
-    global $DB;
+   global $DB;
 
-   if ($parm->getType() == 'Ticket_User' && is_array( $parm->fields ) && isset( $parm->fields['type'] )  && $parm->fields['type'] == 2) {
+   //$objects = ['Ticket', 'Change', 'Problem'];
+   $object_users = ['Ticket_User', 'Change_User', 'Problem_User'];
+
+   if (in_array($parm->getType(), $object_users) && is_array( $parm->fields ) && isset( $parm->fields['type'] )  && $parm->fields['type'] == 2) {
 
       // We just deleted a tech from this ticket then we must if needed "de-assign" the tasks assigned to this tech
       // and re-assign them to the first tech in the list !!!!
@@ -597,7 +602,7 @@ function plugin_item_purge_processmaker($parm) {
       $locCase = new PluginProcessmakerCase;
 
       $itemId = $parm->fields['tickets_id'];
-      $itemType = 'Ticket';
+      $itemType = explode('_', $parm->getType())[0]; // 'Ticket';
 
       if ($locCase->getCaseFromItemTypeAndItemId( $itemType, $itemId )) {
          // case is existing for this item
@@ -605,7 +610,10 @@ function plugin_item_purge_processmaker($parm) {
          $locPM = new PluginProcessmakerProcessmaker;
          $locPM->login();
          $locVars = array( 'GLPI_TICKET_TECHNICIAN_GLPI_ID' => $technicians[0]['glpi_id'],
-                             'GLPI_TICKET_TECHNICIAN_PM_ID' => $technicians[0]['pm_id'] );
+                           'GLPI_ITEM_TECHNICIAN_GLPI_ID'   => $technicians[0]['glpi_id'],
+                           'GLPI_TICKET_TECHNICIAN_PM_ID'   => $technicians[0]['pm_id'],
+                           'GLPI_ITEM_TECHNICIAN_PM_ID'     => $technicians[0]['pm_id']
+                         );
 
          // and we must find all tasks assigned to this former user and re-assigned them to new user (if any :))!
          $caseInfo = $locPM->getCaseInfo( $locCase->getID() );

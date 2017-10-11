@@ -95,7 +95,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    *
    * @return string
    **/
-   static function getTable() {
+   static function getTable($classname = null) {
 
       return "glpi_plugin_processmaker_processes";
    }
@@ -2396,19 +2396,28 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       $resultCase = $this->newCase( $processId,
                                      array('GLPI_ITEM_CAN_BE_SOLVED'        => 0,
                                            'GLPI_TICKET_ID'                 => $itemId,
+                                           'GLPI_ITEM_ID'                   => $itemId,
                                            'GLPI_ITEM_TYPE'                 => $itemType,
                                            'GLPI_TICKET_REQUESTER_GLPI_ID'  => $requesters[0]['glpi_id'],
+                                           'GLPI_ITEM_REQUESTER_GLPI_ID'    => $requesters[0]['glpi_id'],
                                            'GLPI_TICKET_REQUESTER_PM_ID'    => $requesters[0]['pm_id'],
+                                           'GLPI_ITEM_REQUESTER_PM_ID'      => $requesters[0]['pm_id'],
                                            'GLPI_TICKET_TITLE'              => $locItem->fields['name'],
+                                           'GLPI_ITEM_TITLE'                => $locItem->fields['name'],
                                            'GLPI_TICKET_DESCRIPTION'        => $locItem->fields['content'],
+                                           'GLPI_ITEM_DESCRIPTION'          => $locItem->fields['content'],
                                            'GLPI_TICKET_DUE_DATE'           => $locItem->fields['due_date'],
+                                           'GLPI_ITEM_DUE_DATE'             => $locItem->fields['due_date'],
                                            'GLPI_ITEM_ITIL_CATEGORY_ID'     => $locItem->fields['itilcategories_id'],
                                            'GLPI_TICKET_URGENCY'            => $locItem->fields['urgency'],
+                                           'GLPI_ITEM_URGENCY'              => $locItem->fields['urgency'],
                                            'GLPI_ITEM_IMPACT'               => $locItem->fields['impact'],
                                            'GLPI_ITEM_PRIORITY'             => $locItem->fields['priority'],
                                            'GLPI_TICKET_GLOBAL_VALIDATION'  => $locItem->fields['global_validation'] ,
                                            'GLPI_TICKET_TECHNICIAN_GLPI_ID' => $userId,
+                                           'GLPI_ITEM_TECHNICIAN_GLPI_ID'   => $userId,
                                            'GLPI_TICKET_TECHNICIAN_PM_ID'   => PluginProcessmakerUser::getPMUserId( $userId ),
+                                           'GLPI_ITEM_TECHNICIAN_PM_ID'     => PluginProcessmakerUser::getPMUserId( $userId ),
                                            'GLPI_URL'                       => $CFG_GLPI['url_base'].$CFG_GLPI['root_doc']
                                            ) );
 
@@ -2457,16 +2466,16 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
       // now tries to get some variables to setup content for new task and to append text to solved task
       $infoForTasks = $this->getVariables( $myCase->getID(), array( "GLPI_ITEM_TASK_CONTENT",
-                                                                             "GLPI_ITEM_APPEND_TO_TASK",
-                                                                             "GLPI_NEXT_GROUP_TO_BE_ASSIGNED",
-                                                                             "GLPI_ITEM_TITLE",
-                                                                             "GLPI_TICKET_FOLLOWUP_CONTENT",
-                                                                             "GLPI_TICKET_FOLLOWUP_IS_PRIVATE",
-                                                                             "GLPI_TICKET_FOLLOWUP_REQUESTTYPES_ID",
-                                                                             "GLPI_ITEM_TASK_ENDDATE",
-                                                                             "GLPI_ITEM_TASK_STARTDATE",
-                                                                             "GLPI_ITEM_SET_STATUS"
-                                                                             ) );
+                                                                    "GLPI_ITEM_APPEND_TO_TASK",
+                                                                    "GLPI_NEXT_GROUP_TO_BE_ASSIGNED",
+                                                                    "GLPI_ITEM_TITLE",
+                                                                    "GLPI_TICKET_FOLLOWUP_CONTENT",
+                                                                    "GLPI_TICKET_FOLLOWUP_IS_PRIVATE",
+                                                                    "GLPI_TICKET_FOLLOWUP_REQUESTTYPES_ID",
+                                                                    "GLPI_ITEM_TASK_ENDDATE",
+                                                                    "GLPI_ITEM_TASK_STARTDATE",
+                                                                    "GLPI_ITEM_SET_STATUS"
+                                                                  ) );
       $itemSetStatus = '';
       if (array_key_exists( 'GLPI_ITEM_SET_STATUS', $infoForTasks )) {
          $itemSetStatus = $infoForTasks[ 'GLPI_ITEM_SET_STATUS' ];

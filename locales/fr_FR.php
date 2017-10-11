@@ -79,10 +79,10 @@ $LANG['processmaker']['item']['case']['casehistory']='Historique du cas' ;
 $LANG['processmaker']['item']['case']['dynaforms']='Dynaforms';
 $LANG['processmaker']['item']['case']['changelog']='Historique des modifications';
 $LANG['processmaker']['item']['case']['caseinfo']='Infos du cas';
-$LANG['processmaker']['item']['case']['viewcasemap']='Voir carte du cas';
-$LANG['processmaker']['item']['case']['viewcasehistory']='Voir historique du cas';
-$LANG['processmaker']['item']['case']['viewdynaforms']='Voir dynaforms';
-$LANG['processmaker']['item']['case']['viewcasechangeloghistory']='Voir historique évolutions' ;
+$LANG['processmaker']['item']['case']['viewcasemap']='Voir: carte du cas';
+$LANG['processmaker']['item']['case']['viewcasehistory']='Voir: historique du cas';
+$LANG['processmaker']['item']['case']['viewdynaforms']='Voir: dynaforms';
+$LANG['processmaker']['item']['case']['viewcasechangeloghistory']='Voir: historique évolutions' ;
 $LANG['processmaker']['item']['case']['casechangeloghistory']='Historique évolutions' ;
 
 $LANG['processmaker']['item']['error'][11]="Erreur à la création du cas !";
