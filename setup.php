@@ -115,7 +115,7 @@ function plugin_version_processmaker() {
    return array ('name'           => 'Process Maker',
                 'version'        => '3.2.0',
                 'author'         => 'Olivier Moron',
-                'homepage'       => '',
+                'homepage'       => 'https://github.com/tomolimo/processmaker',
                 'minGlpiVersion' => '9.2');
 }
 
