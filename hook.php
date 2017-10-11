@@ -525,9 +525,11 @@ function plugin_pre_item_update_processmaker(CommonITILObject $parm) {
                   break;
                case 'due_date' :
                   $locVar[ 'GLPI_TICKET_DUE_DATE' ] = $val;
+                  $locVar[ 'GLPI_ITEM_DUE_DATE' ] = $val;
                    break;
                case 'urgency' :
                   $locVar[ 'GLPI_TICKET_URGENCY' ] = $val;
+                  $locVar[ 'GLPI_ITEM_URGENCY' ] = $val;
                    break;
                case 'impact' :
                   $locVar[ 'GLPI_ITEM_IMPACT' ] = $val;
@@ -587,9 +589,12 @@ function plugin_pre_item_purge_processmaker ( $parm ) {
  * @param mixed $parm is the object
  */
 function plugin_item_purge_processmaker($parm) {
-    global $DB;
+   global $DB;
 
-   if ($parm->getType() == 'Ticket_User' && is_array( $parm->fields ) && isset( $parm->fields['type'] )  && $parm->fields['type'] == 2) {
+   //$objects = ['Ticket', 'Change', 'Problem'];
+   $object_users = ['Ticket_User', 'Change_User', 'Problem_User'];
+
+   if (in_array($parm->getType(), $object_users) && is_array( $parm->fields ) && isset( $parm->fields['type'] )  && $parm->fields['type'] == 2) {
 
       // We just deleted a tech from this ticket then we must if needed "de-assign" the tasks assigned to this tech
       // and re-assign them to the first tech in the list !!!!
@@ -597,7 +602,7 @@ function plugin_item_purge_processmaker($parm) {
       $locCase = new PluginProcessmakerCase;
 
       $itemId = $parm->fields['tickets_id'];
-      $itemType = 'Ticket';
+      $itemType = explode('_', $parm->getType())[0]; // 'Ticket';
 
       if ($locCase->getCaseFromItemTypeAndItemId( $itemType, $itemId )) {
          // case is existing for this item
@@ -605,7 +610,10 @@ function plugin_item_purge_processmaker($parm) {
          $locPM = new PluginProcessmakerProcessmaker;
          $locPM->login();
          $locVars = array( 'GLPI_TICKET_TECHNICIAN_GLPI_ID' => $technicians[0]['glpi_id'],
-                             'GLPI_TICKET_TECHNICIAN_PM_ID' => $technicians[0]['pm_id'] );
+                           'GLPI_ITEM_TECHNICIAN_GLPI_ID'   => $technicians[0]['glpi_id'],
+                           'GLPI_TICKET_TECHNICIAN_PM_ID'   => $technicians[0]['pm_id'],
+                           'GLPI_ITEM_TECHNICIAN_PM_ID'     => $technicians[0]['pm_id']
+                         );
 
          // and we must find all tasks assigned to this former user and re-assigned them to new user (if any :))!
          $caseInfo = $locPM->getCaseInfo( $locCase->getID() );

@@ -1,11 +1,12 @@
 <?php
 
-
 // Init the hooks of the plugins -Needed
 function plugin_init_processmaker() {
    global $PLUGIN_HOOKS, $CFG_GLPI;
 
    $PLUGIN_HOOKS['csrf_compliant']['processmaker'] = true;
+
+   $objects = ['Ticket', 'Change', 'Problem'];
 
    $plugin = new Plugin();
    if ($plugin->isInstalled('processmaker')
@@ -14,7 +15,7 @@ function plugin_init_processmaker() {
 
       Plugin::registerClass('PluginProcessmakerProcessmaker');
 
-      Plugin::registerClass('PluginProcessmakerCase', array('addtabon' => array('Ticket')));
+      Plugin::registerClass('PluginProcessmakerCase', array('addtabon' => $objects));
 
       Plugin::registerClass('PluginProcessmakerTaskCategory');
 
@@ -46,23 +47,53 @@ function plugin_init_processmaker() {
 
       Plugin::registerClass('PluginProcessmakerProcess', array( 'massiveaction_nodelete_types' => true) );
 
-      $PLUGIN_HOOKS['pre_item_add']['processmaker'] = array(
-         'Ticket' => array('PluginProcessmakerProcessmaker', 'plugin_pre_item_add_processmaker')
-      );
+      $hooks = [];
+      foreach($objects as $obj){
+         $hooks[$obj] = ['PluginProcessmakerProcessmaker', 'plugin_pre_item_add_processmaker'];
+      }
+      $PLUGIN_HOOKS['pre_item_add']['processmaker'] = $hooks;
+      //$PLUGIN_HOOKS['pre_item_add']['processmaker'] = array(
+      //   'Ticket' => array('PluginProcessmakerProcessmaker', 'plugin_pre_item_add_processmaker'),
+      //   'Problem' => array('PluginProcessmakerProcessmaker', 'plugin_pre_item_add_processmaker'),
+      //   'Change' => array('PluginProcessmakerProcessmaker', 'plugin_pre_item_add_processmaker')
+      //);
 
-      $PLUGIN_HOOKS['pre_item_update']['processmaker'] = array(
-         'Ticket' => 'plugin_pre_item_update_processmaker'
-      );
+      $hooks = [];
+      foreach($objects as $obj){
+         $hooks[$obj] = 'plugin_pre_item_update_processmaker';
+      }
+      $PLUGIN_HOOKS['pre_item_update']['processmaker'] = $hooks;
+      //$PLUGIN_HOOKS['pre_item_update']['processmaker'] = array(
+      //   'Ticket' => 'plugin_pre_item_update_processmaker',
+      //   'Problem' => 'plugin_pre_item_update_processmaker',
+      //   'Change' => 'plugin_pre_item_update_processmaker'
+      //);
 
-      $PLUGIN_HOOKS['item_update']['processmaker'] = array(
-         'TicketSatisfaction' => 'plugin_item_update_processmaker_satisfaction',
-         'TicketTask' => 'plugin_item_update_processmaker_tasks'
-      );
+      $hooks = ['TicketSatisfaction' => 'plugin_item_update_processmaker_satisfaction'];
+      foreach($objects as $obj){
+         $hooks[$obj.'Task'] = 'plugin_item_update_processmaker_tasks';
+      }
+      $PLUGIN_HOOKS['item_update']['processmaker'] = $hooks;
+      //$PLUGIN_HOOKS['item_update']['processmaker'] = array(
+      //   'TicketSatisfaction' => 'plugin_item_update_processmaker_satisfaction',
+      //   'TicketTask' => 'plugin_item_update_processmaker_tasks',
+      //   'ProblemTask' => 'plugin_item_update_processmaker_tasks',
+      //   'ChangeTask' => 'plugin_item_update_processmaker_tasks'
+      //);
 
-      $PLUGIN_HOOKS['item_add']['processmaker'] = array(
-         'Ticket' => array('PluginProcessmakerProcessmaker', 'plugin_item_add_processmaker')
-      );
+      $hooks = [];
+      foreach($objects as $obj){
+         $hooks[$obj] = ['PluginProcessmakerProcessmaker', 'plugin_item_add_processmaker'];
+      }
+      $PLUGIN_HOOKS['item_add']['processmaker'] = $hooks;
+      //$PLUGIN_HOOKS['item_add']['processmaker'] = array(
+      //   'Ticket' => array('PluginProcessmakerProcessmaker', 'plugin_item_add_processmaker'),
+      //   'Problem' => array('PluginProcessmakerProcessmaker', 'plugin_item_add_processmaker'),
+      //   'Change' => array('PluginProcessmakerProcessmaker', 'plugin_item_add_processmaker')
+      //);
 
+
+      // TODO notifications for Problem and for Change
       $PLUGIN_HOOKS['item_get_datas']['processmaker'] = array(
          'NotificationTargetTicket' => array('PluginProcessmakerProcessmaker', 'plugin_item_get_datas_processmaker')
       );
@@ -71,12 +102,27 @@ function plugin_init_processmaker() {
         'PluginPdfTicketTask' => array('PluginProcessmakerProcessmaker', 'plugin_item_get_pdfdatas_processmaker')
       );
 
-      $PLUGIN_HOOKS['pre_item_purge']['processmaker'] = array(
-         'Ticket_User' => 'plugin_pre_item_purge_processmaker'
-      );
-      $PLUGIN_HOOKS['item_purge']['processmaker'] = array(
-         'Ticket_User' => 'plugin_item_purge_processmaker'
-      );
+      $hooks = [];
+      foreach($objects as $obj){
+         $hooks[$obj.'_User'] = 'plugin_pre_item_purge_processmaker';
+      }
+      $PLUGIN_HOOKS['pre_item_purge']['processmaker'] = $hooks;
+      //$PLUGIN_HOOKS['pre_item_purge']['processmaker'] = array(
+      //   'Ticket_User' => 'plugin_pre_item_purge_processmaker',
+      //   'Problem_User' => 'plugin_pre_item_purge_processmaker',
+      //   'Change_User' => 'plugin_pre_item_purge_processmaker'
+      //);
+
+      $hooks = [];
+      foreach($objects as $obj){
+         $hooks[$obj.'_User'] = 'plugin_item_purge_processmaker';
+      }
+      $PLUGIN_HOOKS['item_purge']['processmaker'] = $hooks;
+      //$PLUGIN_HOOKS['item_purge']['processmaker'] = array(
+      //   'Ticket_User' => 'plugin_item_purge_processmaker',
+      //   'Problem_User' => 'plugin_item_purge_processmaker',
+      //   'Change_User' => 'plugin_item_purge_processmaker'
+      //);
 
       $PLUGIN_HOOKS['add_javascript']['processmaker'] = array("js/domain.js.php");
       $url      = explode("/", $_SERVER['PHP_SELF']);
@@ -89,7 +135,7 @@ function plugin_init_processmaker() {
       }
 
       $PLUGIN_HOOKS['use_massive_action']['processmaker'] = 1;
-      
+
       $CFG_GLPI['planning_types'][] = 'PluginProcessmakerTask';
       $PLUGIN_HOOKS['post_init']['processmaker'] = 'plugin_processmaker_post_init';
    }
