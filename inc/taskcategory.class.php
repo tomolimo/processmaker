@@ -25,33 +25,54 @@ class PluginProcessmakerTaskCategory extends CommonDBTM
 
    static function displayTabContentForItem(CommonGLPI $item, $tabnum=1, $withtemplate=0) {
 
-      global $LANG, $DB;
+      global $LANG, $DB, $CFG_GLPI;
 
       self::title($item);
 
       echo "<div class='center'><br><table class='tab_cadre_fixehov'>";
-      echo "<tr><th colspan='5'>".$LANG['processmaker']['title'][3]."</th></tr>";
+      echo "<tr><th colspan='6'>".$LANG['processmaker']['title'][3]."</th></tr>";
       echo "<tr><th>".$LANG['processmaker']['process']['taskcategories']['name']."</th>".
       "<th>".$LANG['processmaker']['process']['taskcategories']['completename']."</th>" .
-      "<th>".$LANG['processmaker']['process']['taskcategories']['guid']."</th>" .
       "<th>".$LANG['processmaker']['process']['taskcategories']['start']."</th>" .
-      "<th>".$LANG['processmaker']['process']['taskcategories']['comment']."</th></tr>";
+      "<th>".$LANG['processmaker']['process']['taskcategories']['guid']."</th>" .
+      "<th>".$LANG['processmaker']['process']['taskcategories']['comment']."</th>" .
+      "<th>".$LANG['processmaker']['process']['taskcategories']['is_active']."</th>" .
+      "</tr>";
 
-      $query = "SELECT pm.pm_task_guid, pm.taskcategories_id, pm.`start`, gl.name, gl.completename, gl.`comment` FROM glpi_plugin_processmaker_taskcategories AS pm
+      $query = "SELECT pm.pm_task_guid, pm.taskcategories_id, pm.`start`, gl.name, gl.completename, gl.`comment`, pm.is_active FROM glpi_plugin_processmaker_taskcategories AS pm
                     LEFT JOIN glpi_taskcategories AS gl ON pm.taskcategories_id=gl.id
                     WHERE pm.processes_id=".$item->getID().";";
 
       foreach ($DB->request($query) as $taskCat) {
-         echo "<tr class='tab_bg_1'><td class='b'><a href='".
+         echo "<tr class='tab_bg_1'>";
+
+         echo "<td class='b'><a href='".
          Toolbox::getItemTypeFormURL( 'TaskCategory' )."?id=".
          $taskCat['taskcategories_id']."'>".str_replace(" ", "&nbsp;", $taskCat['name']);
          if ($_SESSION["glpiis_ids_visible"]) {
             echo " (".$taskCat['taskcategories_id'].")";
          }
-         echo "</a></td><td >".str_replace(" ", "&nbsp;", $taskCat['completename'])."</td>
-             <td >".$taskCat['pm_task_guid']."</td>".
-            "<td>".($taskCat['start']?'x':'')."</td><td >".
-         $taskCat['comment']."</td></tr>";
+         echo "</a></td>";
+
+         echo "<td >".str_replace(" ", "&nbsp;", $taskCat['completename'])."</td>";
+
+         echo "<td class='center'>";
+         if ($taskCat['start']) {
+            echo "<img src='".$CFG_GLPI["root_doc"]."/pics/ok.png' width='14' height='14' alt=\"".
+            $LANG['processmaker']['process']['taskcategories']['start']."\">";
+         }
+         echo "</td>";
+
+         echo "<td >".$taskCat['pm_task_guid']."</td>";
+
+         echo "<td>".$taskCat['comment']."</td>";
+
+         echo "<td class='center'>";
+         if ($taskCat['is_active']) {
+         echo "<img src='".$CFG_GLPI["root_doc"]."/pics/ok.png' width='14' height='14' alt=\"".
+            $LANG['processmaker']['process']['taskcategories']['is_active']."\">";
+         }
+         echo "</td></tr>";
       }
       echo "</table></div>";
 

@@ -70,7 +70,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
          $lang = locale_get_primary_language( $CFG_GLPI['language'] );
          $query = "SELECT TASK.TAS_UID, TASK.TAS_START, CONTENT.CON_LANG, CONTENT.CON_CATEGORY, CONTENT.CON_VALUE FROM TASK
                         INNER JOIN CONTENT ON CONTENT.CON_ID=TASK.TAS_UID
-                        WHERE TASK.PRO_UID = '".$this->fields['process_guid']."' AND CONTENT.CON_CATEGORY IN ('TAS_TITLE', 'TAS_DESCRIPTION') ".($translates ? "" : " AND CONTENT.CON_LANG='$lang'")." ;";
+                        WHERE TASK.TAS_TYPE = 'NORMAL' AND TASK.PRO_UID = '".$this->fields['process_guid']."' AND CONTENT.CON_CATEGORY IN ('TAS_TITLE', 'TAS_DESCRIPTION') ".($translates ? "" : " AND CONTENT.CON_LANG='$lang'")." ;";
          $taskArray = array();
          $defaultLangTaskArray=array();
          foreach ($PM_DB->request( $query ) as $task) {
@@ -81,6 +81,33 @@ class PluginProcessmakerProcess extends CommonDBTM {
                foreach ($mapLangs[ $task['CON_LANG'] ] as $valL) {
                   $taskArray[ $task['TAS_UID'] ][ $valL ][ $task['CON_CATEGORY'] ]  = $task['CON_VALUE'];
                }
+            }
+         }
+
+         $pmtask = new PluginProcessmakerTaskCategory;
+         $currentasksinprocess = getAllDatasFromTable($pmtask->getTable(), 'is_active = 1 AND processes_id = '.$this->getID());
+         foreach($currentasksinprocess as $task){
+            $tasks[$task['pm_task_guid']] = $task;
+         }
+         $inactivetasks = array_diff_key($tasks, $defaultLangTaskArray);
+         foreach($inactivetasks as $taskkey => $task) {
+            // must verify if this taskcategory are used in a task somewhere
+            $objs = ['TicketTask', 'ProblemTask', 'ChangeTask'];
+            $countElt = 0 ;
+            foreach($objs as $obj) {
+               $countElt += countElementsInTable( getTableForItemType($obj), "taskcategories_id = ".$task['taskcategories_id'] );
+               if ($countElt != 0) {
+                  // just set 'is_active' to 0
+                  $pmtask->Update( array( 'id' => $task['id'], 'start' => 0, 'is_active' => 0 ) );
+                  break;
+               }
+            }
+            if ($countElt == 0) {
+               // purge this category as it is not used anywhere
+               $taskCat = new TaskCategory;
+               $taskCat->delete(array( 'id' => $task['taskcategories_id'] ), 1);
+               $pmTaskCat = new PluginProcessmakerTaskCategory;
+               $pmTaskCat->delete(array( 'id' => $task['id'] ), 1);
             }
          }
 
@@ -108,7 +135,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
                // taskcat must be created
                $taskCat->add( array( 'is_recursive' => true, 'name' => $PM_DB->escape($task['TAS_TITLE']), 'comment' => $PM_DB->escape($task['TAS_DESCRIPTION']), 'taskcategories_id' => $this->fields['taskcategories_id'] ) );
                // pmTaskCat must be created too
-               $pmTaskCat->add( array( 'processes_id' => $this->getID(), 'pm_task_guid' => $taskGUID, 'taskcategories_id' => $taskCat->getID(), 'start' => $task['start'] ) );
+               $pmTaskCat->add( array( 'processes_id' => $this->getID(), 'pm_task_guid' => $taskGUID, 'taskcategories_id' => $taskCat->getID(), 'start' => $task['start'], 'is_active' => 1 ) );
             }
             // here we should take into account translations if any
             if ($translates && isset($taskArray[ $taskGUID ])) {
@@ -150,6 +177,30 @@ class PluginProcessmakerProcess extends CommonDBTM {
 
    }
 
+   function prepareInputForAdd($input){
+      global $PM_DB;
+      if (isset($input['name'])) {
+         $input['name'] = $PM_DB->escape($input['name']);
+      }
+      return $input;
+   }
+
+   function prepareInputForUpdate($input){
+      global $PM_DB;
+      if (isset($input['name'])) {
+         $input['name'] = $PM_DB->escape($input['name']);
+      }
+      return $input;
+   }
+
+   function post_addItem() {
+      $this->getFromDB($this->getID());
+   }
+
+   function post_updateItem($history = 1) {
+      $this->getFromDB($this->getID());
+   }
+
    /**
    * Summary of refresh
    * used to refresh process list and task category list
@@ -171,7 +222,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
             if ($glpiprocess->getFromDBbyExternalID($process->guid)) {
                // then update it only if name has changed
                if ($glpiprocess->fields['name'] != $process->name) {
-                  $glpiprocess->update( array( 'id' => $glpiprocess->getID(), 'name' => $process->name ) );
+                  $glpiprocess->update( array( 'id' => $glpiprocess->getID(), 'name' => $process->name) );
                }
                // and check if main task category needs update
                if (!$glpiprocess->fields['taskcategories_id']) {
@@ -207,9 +258,10 @@ class PluginProcessmakerProcess extends CommonDBTM {
    * @return boolean true if update is done, false otherwise
    */
    function updateTaskCategory( $pmMainTaskCat ) {
+      global $PM_DB;
       $taskCat = new TaskCategory;
       if ($taskCat->getFromDB( $this->fields['taskcategories_id'] ) && $taskCat->fields['name'] != $this->fields['name']) {
-         return $taskCat->update( array( 'id' => $taskCat->getID(), 'taskcategories_id' => $pmMainTaskCat, 'name' => $this->fields['name'] ) );
+         return $taskCat->update( array( 'id' => $taskCat->getID(), 'taskcategories_id' => $pmMainTaskCat, 'name' => $PM_DB->escape($this->fields['name'])) );
       }
       return false;
    }
@@ -221,8 +273,9 @@ class PluginProcessmakerProcess extends CommonDBTM {
    * @return boolean true if TaskCategory has been created and updated into $this process, else otherwise
    */
    function addTaskCategory( $pmMainTaskCat ) {
+      global $PM_DB;
       $taskCat = new TaskCategory;
-      if ($taskCat->add( array( 'is_recursive' => true, 'taskcategories_id' => $pmMainTaskCat, 'name' => $this->fields['name']) )) {
+      if ($taskCat->add( array( 'is_recursive' => true, 'taskcategories_id' => $pmMainTaskCat, 'name' => $PM_DB->escape($this->fields['name'])) )) {
          return $this->update( array( 'id' => $this->getID(), 'taskcategories_id' => $taskCat->getID() ) );
       }
       return false;

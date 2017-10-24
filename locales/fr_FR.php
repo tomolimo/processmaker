@@ -25,6 +25,7 @@ $LANG['processmaker']['process']['taskcategories']['name']="Nom de la Tâche";
 $LANG['processmaker']['process']['taskcategories']['completename']="Nom complet";
 $LANG['processmaker']['process']['taskcategories']['start']="Début";
 $LANG['processmaker']['process']['taskcategories']['comment']="Commentaire";
+$LANG['processmaker']['process']['taskcategories']['is_active']="Active";
 $LANG['processmaker']['process']['profile']="Effacer définitivement";
 
 $LANG['processmaker']['config']['name']="Nom";

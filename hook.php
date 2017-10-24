@@ -331,6 +331,7 @@ function plugin_processmaker_install() {
 	               `pm_task_guid` VARCHAR(32) NOT NULL,
 	               `taskcategories_id` INT(11) NOT NULL,
 	               `start` BIT(1) NOT NULL DEFAULT b'0',
+	               `is_active` TINYINT(1) NOT NULL DEFAULT '1',
 	               PRIMARY KEY (`id`),
 	               UNIQUE INDEX `pm_task_guid` (`pm_task_guid`),
 	               UNIQUE INDEX `items` (`taskcategories_id`),
@@ -342,8 +343,14 @@ function plugin_processmaker_install() {
 		";
 
       $DB->query($query) or die("error creating glpi_plugin_processmaker_taskcategories" . $DB->error());
+   } 
 
+   if (!FieldExists('glpi_plugin_processmaker_taskcategories', 'is_active'))  {
+      $query = "ALTER TABLE `glpi_plugin_processmaker_taskcategories`
+	               ADD COLUMN `is_active` TINYINT(1) NOT NULL DEFAULT '1' AFTER `start`;" ;
+      $DB->query($query) or die("error adding field is_active to glpi_plugin_processmaker_taskcategories table" . $DB->error());
    }
+   
 
    if (!$DB->TableExists("glpi_plugin_processmaker_crontaskactions")) {
       $query = "CREATE TABLE `glpi_plugin_processmaker_crontaskactions` (
