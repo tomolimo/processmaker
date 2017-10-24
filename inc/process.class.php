@@ -92,21 +92,21 @@ class PluginProcessmakerProcess extends CommonDBTM {
                if ($taskCat->getFromDB( $pmTaskCat->fields['taskcategories_id'] )) {
                   // found it must test if should be updated
                   if ($taskCat->fields['name'] != $task['TAS_TITLE'] || $taskCat->fields['comment'] != $task['TAS_DESCRIPTION']) {
-                     $taskCat->update( array( 'id' => $taskCat->getID(), 'name' => $task['TAS_TITLE'], 'comment' => $task['TAS_DESCRIPTION'], 'taskcategories_id' => $this->fields['taskcategories_id'] ) );
+                     $taskCat->update( array( 'id' => $taskCat->getID(), 'name' => $PM_DB->escape($task['TAS_TITLE']), 'comment' => $PM_DB->escape($task['TAS_DESCRIPTION']), 'taskcategories_id' => $this->fields['taskcategories_id'] ) );
                   }
                   if ($pmTaskCat->fields['start'] != $task['start']) {
                          $pmTaskCat->update( array( 'id' =>  $pmTaskCat->getID(), 'start' => $task['start'] ) );
                   }
                } else {
                   // taskcat must be created
-                  $taskCat->add( array( 'is_recursive' => true, 'name' => $task['TAS_TITLE'], 'comment' => $task['TAS_DESCRIPTION'], 'taskcategories_id' => $this->fields['taskcategories_id'] ) );
+                  $taskCat->add( array( 'is_recursive' => true, 'name' => $PM_DB->escape($task['TAS_TITLE']), 'comment' => $PM_DB->escape($task['TAS_DESCRIPTION']), 'taskcategories_id' => $this->fields['taskcategories_id'] ) );
                   // update pmTaskCat
                   $pmTaskCat->update( array( 'id' => $pmTaskCat->getID(), 'taskcategories_id' => $taskCat->getID(), 'start' => $task['start'] ) );
                }
             } else {
                // should create a new one
                // taskcat must be created
-               $taskCat->add( array( 'is_recursive' => true, 'name' => $task['TAS_TITLE'], 'comment' => $task['TAS_DESCRIPTION'], 'taskcategories_id' => $this->fields['taskcategories_id'] ) );
+               $taskCat->add( array( 'is_recursive' => true, 'name' => $PM_DB->escape($task['TAS_TITLE']), 'comment' => $PM_DB->escape($task['TAS_DESCRIPTION']), 'taskcategories_id' => $this->fields['taskcategories_id'] ) );
                // pmTaskCat must be created too
                $pmTaskCat->add( array( 'processes_id' => $this->getID(), 'pm_task_guid' => $taskGUID, 'taskcategories_id' => $taskCat->getID(), 'start' => $task['start'] ) );
             }
