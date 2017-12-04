@@ -553,7 +553,7 @@ class PluginProcessmakerCase extends CommonDBTM {
       global $DB;
          $ret = false;
 
-         $query = "DELETE from glpi_".$this->fields['itemtype']."tasks where id in (select items_id from glpi_plugin_processmaker_tasks where case_id='".$this->fields['id']."')";
+         $query = "DELETE from glpi_".strtolower($this->fields['itemtype'])."tasks where id in (select items_id from glpi_plugin_processmaker_tasks where case_id='".$this->fields['id']."')";
       if ($DB->query( $query )) {
          $query = "DELETE from glpi_plugin_processmaker_tasks where case_id='".$this->fields['id']."'";
          if ($DB->query( $query )) {

@@ -146,7 +146,7 @@ function plugin_version_processmaker() {
    global $LANG;
 
    return array ('name'           => 'Process Maker',
-                'version'        => '3.1.6',
+                'version'        => '3.1.7',
                 'author'         => 'Olivier Moron',
                 'homepage'       => '',
                 'minGlpiVersion' => '9.1');
