@@ -95,7 +95,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    *
    * @return string
    **/
-   static function getTable() {
+   static function getTable($classname = null) {
 
       return "glpi_plugin_processmaker_processes";
    }
@@ -193,7 +193,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                   $gusr->getFromDBbyName( $admin_or_user !== false ? $admin_or_user : $_SESSION["glpiname"]);
                }
                $pmusr->getFromDB( $gusr->getID() );
-               if (!isset($pmusr->fields['password']) || $pmusr->fields['password'] == "") {
+               //if (!isset($pmusr->fields['password']) || $pmusr->fields['password'] == "") {
                   $pass = md5(Toolbox::encrypt( $gusr->getID().$gusr->getName().time(), GLPIKEY) );
                   $pmusr->update( array('id' => $pmusr->getID(), 'password' => $pass) );
                   //$DB->query( "UPDATE glpi_plugin_processmaker_users SET password = '".$pass."' WHERE glpi_users_id = ".$pmusr->getID().";" ) ;
@@ -201,7 +201,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                   // and must be updated also in PM db
                   $PM_DB->query("UPDATE RBAC_USERS SET USR_PASSWORD='".$pass."' WHERE USR_UID='".$pmusr->fields['pm_users_id']."' ");
                   $PM_DB->query("UPDATE USERS SET USR_PASSWORD='".$pass."' WHERE USR_UID='".$pmusr->fields['pm_users_id']."' ");
-               }
+               //}
                $locSession = $this->pmSoapClient->login( array( 'userid' => $gusr->fields['name'], 'password' => 'md5:'.$pmusr->fields['password']) );
                if (is_object( $locSession ) && $locSession->status_code == 0) {
                   $_SESSION["pluginprocessmaker"]["session"]["id"] = $locSession->message;
@@ -945,7 +945,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       $existingpmsession = isset($_SESSION["pluginprocessmaker"]["session"]);
       $formerusers_id = 0;
       // get the list of taskactions to be done
-      foreach ($DB->request( getTableForItemType('PluginProcessmakerCrontaskaction'), ' `state` = '.PluginProcessmakerCrontaskaction::DATAS_READY ) as $taskaction) {
+      foreach ($DB->request( getTableForItemType('PluginProcessmakerCrontaskaction'), ' `state` = '.PluginProcessmakerCrontaskaction::DATA_READY ) as $taskaction) {
 
          try {
 
@@ -955,11 +955,24 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
             $pm->login($taskaction['users_id']);
 
-            $postdatas = json_decode($taskaction['postdatas'], true);
+            $postdata = json_decode($taskaction['postdata'], true);
 
-            if ($taskaction['toclaim']) {
+            // must filter arrays as arrays are grids and index must start at 1 instead of 0 like in json
+            foreach($postdata['form'] as &$field) {
+               if (is_array($field)) {
+                  if (count($field) > 0){
+                     // then must reindex the array starting to 1 instead of 0
+                     array_unshift($field, '');
+                     unset($field[0]);
+                  } else {
+                     $field[] = "";
+                  }
+               }
+            }
+
+            if ($taskaction['is_targettoclaim']) {
                // must do a claim before solving task
-               if (!$pm->claimCase( $postdatas['APP_UID'], $postdatas['DEL_INDEX'] )) {
+               if (!$pm->claimCase( $postdata['APP_UID'], $postdata['DEL_INDEX'] )) {
                   throw new Exception("Can't claim case");
                }
 
@@ -967,16 +980,16 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                $CFG_GLPI["use_mailing"] = false;
 
                // now manage tasks associated with item
-               $pm->claimTask( $postdatas['APP_UID'], $postdatas['DEL_INDEX'], $taskaction['users_id'] );
+               $pm->claimTask( $postdata['APP_UID'], $postdata['DEL_INDEX'], $taskaction['users_id'] );
 
                $CFG_GLPI["use_mailing"] = $donotif;
 
             }
             $myCase = new PluginProcessmakerCase;
-            if ($myCase->getFromDB( $postdatas['APP_UID'] )) {
+            if ($myCase->getFromDB( $postdata['APP_UID'] )) {
 
                //$cookies = json_decode($taskaction['cookies'], true) ;
-               $pm->derivateCase( $myCase, $postdatas, $taskaction['users_id'] );
+               $pm->derivateCase( $myCase, $postdata, $taskaction['users_id'] );
             }
 
             $tkaction = new PluginProcessmakerCrontaskaction;

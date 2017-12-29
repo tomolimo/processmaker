@@ -7,7 +7,7 @@
    <description>
       <short>
 		 <fr>Ce plugin fournit la possibilité d'intégrer un processus (workflow) aux tickets.</fr>
-         <en>This plugin provides a process (workflow) management linked to tickets></en>
+         <en>This plugin provides a process (workflow) management linked to tickets.</en>
       </short>
       <long>
          <en>This plugin is dedicated to provide a process (workflow) management linked to tickets. This goal is achieved using ProcessMaker (URL: http://www.processmaker.com/). ProcessMaker will provide Process design and Workflow execution. This plugin is the glue between GLPI and ProcessMaker.</en>
@@ -22,8 +22,12 @@
       <author>Olivier Moron</author>
    </authors>
    <versions>
-   <version>
-          <num>3.1.6</num>
+      <version>
+         <num>3.2.1</num>
+         <compatibility>9.2</compatibility>
+      </version>
+      <version>
+          <num>3.2.1</num>
           <compatibility>9.1</compatibility>
       </version>
    </versions>

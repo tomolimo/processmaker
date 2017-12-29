@@ -25,33 +25,54 @@ class PluginProcessmakerTaskCategory extends CommonDBTM
 
    static function displayTabContentForItem(CommonGLPI $item, $tabnum=1, $withtemplate=0) {
 
-      global $LANG, $DB;
+      global $LANG, $DB, $CFG_GLPI;
 
       self::title($item);
 
       echo "<div class='center'><br><table class='tab_cadre_fixehov'>";
-      echo "<tr><th colspan='5'>".$LANG['processmaker']['title'][3]."</th></tr>";
+      echo "<tr><th colspan='6'>".$LANG['processmaker']['title'][3]."</th></tr>";
       echo "<tr><th>".$LANG['processmaker']['process']['taskcategories']['name']."</th>".
       "<th>".$LANG['processmaker']['process']['taskcategories']['completename']."</th>" .
-      "<th>".$LANG['processmaker']['process']['taskcategories']['guid']."</th>" .
       "<th>".$LANG['processmaker']['process']['taskcategories']['start']."</th>" .
-      "<th>".$LANG['processmaker']['process']['taskcategories']['comment']."</th></tr>";
+      "<th>".$LANG['processmaker']['process']['taskcategories']['guid']."</th>" .
+      "<th>".$LANG['processmaker']['process']['taskcategories']['comment']."</th>" .
+      "<th>".$LANG['processmaker']['process']['taskcategories']['is_active']."</th>" .
+      "</tr>";
 
-      $query = "SELECT pm.pm_task_guid, pm.taskcategories_id, pm.`start`, gl.name, gl.completename, gl.`comment` FROM glpi_plugin_processmaker_taskcategories AS pm
+      $query = "SELECT pm.pm_task_guid, pm.taskcategories_id, pm.`start`, gl.name, gl.completename, gl.`comment`, pm.is_active FROM glpi_plugin_processmaker_taskcategories AS pm
                     LEFT JOIN glpi_taskcategories AS gl ON pm.taskcategories_id=gl.id
                     WHERE pm.processes_id=".$item->getID().";";
 
       foreach ($DB->request($query) as $taskCat) {
-         echo "<tr class='tab_bg_1'><td class='b'><a href='".
+         echo "<tr class='tab_bg_1'>";
+
+         echo "<td class='b'><a href='".
          Toolbox::getItemTypeFormURL( 'TaskCategory' )."?id=".
-         $taskCat['taskcategories_id']."'>".str_replace(" ", "&nbsp;", $taskCat['name']);
+         $taskCat['taskcategories_id']."'>".$taskCat['name']; //str_replace(" ", "&nbsp;", $taskCat['name']);
          if ($_SESSION["glpiis_ids_visible"]) {
             echo " (".$taskCat['taskcategories_id'].")";
          }
-         echo "</a></td><td >".str_replace(" ", "&nbsp;", $taskCat['completename'])."</td>
-             <td >".$taskCat['pm_task_guid']."</td>".
-            "<td>".($taskCat['start']?'x':'')."</td><td >".
-         $taskCat['comment']."</td></tr>";
+         echo "</a></td>";
+
+         echo "<td >".$taskCat['completename']."</td>"; //str_replace(" ", "&nbsp;", $taskCat['completename'])."</td>";
+
+         echo "<td class='center'>";
+         if ($taskCat['start']) {
+            echo "<img src='".$CFG_GLPI["root_doc"]."/pics/ok.png' width='14' height='14' alt=\"".
+            $LANG['processmaker']['process']['taskcategories']['start']."\">";
+         }
+         echo "</td>";
+
+         echo "<td >".$taskCat['pm_task_guid']."</td>";
+
+         echo "<td>".$taskCat['comment']."</td>";
+
+         echo "<td class='center'>";
+         if ($taskCat['is_active']) {
+         echo "<img src='".$CFG_GLPI["root_doc"]."/pics/ok.png' width='14' height='14' alt=\"".
+            $LANG['processmaker']['process']['taskcategories']['is_active']."\">";
+         }
+         echo "</td></tr>";
       }
       echo "</table></div>";
 
@@ -136,5 +157,58 @@ class PluginProcessmakerTaskCategory extends CommonDBTM
       }
       return false;
    }
+
+   ///**
+   // * Summary of dropdown
+   // * @param mixed $options
+   // * @return mixed
+   // */
+   //static function dropdown($options=array()) {
+   //   global $CFG_GLPI;
+   //   if (isset($options['value'])) {
+   //      $that = new self;
+   //      $that->getFromDB($options['value']);
+   //      $options['value'] = $that->fields['taskcategories_id'];
+   //   }
+
+   //   $options['url'] = $CFG_GLPI["root_doc"].'/plugins/processmaker/ajax/dropdownTaskcategories.php';
+   //   return Dropdown::show( 'TaskCategory', $options );
+
+   //}
+
+   ///**
+   // * Execute the query to select ProcesssmakerTaskcategories
+   // *
+   // * @param $count true if execute an count(*),
+   // * @param $search pattern
+   // *
+   // * @return mysql result set.
+   // **/
+   //static function getSqlSearchResult ($count=true, $search='') {
+   //   global $DB, $CFG_GLPI;
+
+   //   $orderby = '';
+
+   //   $where = ' WHERE glpi_plugin_processmaker_taskcategories.is_active=1 ';
+
+   //   $join = ' LEFT JOIN glpi_taskcategories ON glpi_taskcategories.id = glpi_plugin_processmaker_taskcategories.taskcategories_id';
+
+   //   if ($count) {
+   //      $fields = " COUNT(DISTINCT glpi_plugin_processmaker_taskcategories.id) AS cpt ";
+   //   } else {
+   //      $fields = " DISTINCT glpi_taskcategories.id, glpi_taskcategories.completename AS name ";
+   //      $orderby = " ORDER BY glpi_taskcategories.completename ASC";
+   //   }
+
+   //   if (strlen($search)>0 && $search!=$CFG_GLPI["ajax_wildcard"]) {
+   //      $where .= " AND (glpi_taskcategories.completename $search
+   //                     OR glpi_taskcategories.comment $search) ";
+   //   }
+
+   //   $query = "SELECT $fields FROM glpi_plugin_processmaker_taskcategories $join ".$where." ".$orderby.";";
+
+   //   return $DB->query($query);
+   //}
+
 
 }

@@ -22,7 +22,7 @@ if (isset($_REQUEST["update"])) {
 
 } else {
 
-   Html::header($LANG['processmaker']['title'][1], $_SERVER["PHP_SELF"], "plugins", "processmaker");
+   Html::header($LANG['processmaker']['title'][1], $_SERVER['PHP_SELF'], "tools", "PluginProcessmakerMenu", "processes");
 
    $PluginProcess->display($_REQUEST);
 

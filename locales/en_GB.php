@@ -4,6 +4,9 @@ $LANG['processmaker']['title'][1]="ProcessMaker";
 $LANG['processmaker']['title'][2]="Process";
 $LANG['processmaker']['title'][3]="Task List";
 $LANG['processmaker']['title'][4]="Authorizations";
+$LANG['processmaker']['title'][5]="Processes";
+$LANG['processmaker']['title'][6]="Case-link";
+$LANG['processmaker']['title'][7]="Case-links";
 
 $LANG['processmaker']['profile']['rightmgt']="Rights Management";
 $LANG['processmaker']['profile']['process_config']="Process configuration";
@@ -25,6 +28,7 @@ $LANG['processmaker']['process']['taskcategories']['name']="Task name";
 $LANG['processmaker']['process']['taskcategories']['completename']="Complete name";
 $LANG['processmaker']['process']['taskcategories']['start']="Start";
 $LANG['processmaker']['process']['taskcategories']['comment']="Comment";
+$LANG['processmaker']['process']['taskcategories']['is_active']="Active";
 $LANG['processmaker']['process']['profile']="Delete permanently";
 
 $LANG['processmaker']['config']['name']="Name";
@@ -79,10 +83,10 @@ $LANG['processmaker']['item']['case']['casehistory']='Case history' ;
 $LANG['processmaker']['item']['case']['dynaforms']='Dynaforms';
 $LANG['processmaker']['item']['case']['changelog']='Change log';
 $LANG['processmaker']['item']['case']['caseinfo']='Case info';
-$LANG['processmaker']['item']['case']['viewcasemap']='View case map';
-$LANG['processmaker']['item']['case']['viewcasehistory']='View case history';
-$LANG['processmaker']['item']['case']['viewdynaforms']='View dynaforms';
-$LANG['processmaker']['item']['case']['viewcasechangeloghistory']='View change log' ;
+$LANG['processmaker']['item']['case']['viewcasemap']='View: case map';
+$LANG['processmaker']['item']['case']['viewcasehistory']='View: case history';
+$LANG['processmaker']['item']['case']['viewdynaforms']='View: dynaforms';
+$LANG['processmaker']['item']['case']['viewcasechangeloghistory']='View: change log' ;
 $LANG['processmaker']['item']['case']['casechangeloghistory']='Change log history' ;
 
 $LANG['processmaker']['item']['error'][11]="Error creating case!";

@@ -1,7 +1,7 @@
 ﻿//debugger;
-// To manage submits to cases.front.php
+// To manage submits to case.front.php
 var loc_split = window.location.href.split('/');
-var GLPI_HTTP_CASE_FORM = window.location.href.split('/', loc_split.length-2 ).join('/') + '/plugins/processmaker/front/cases.front.php'; // http://hostname/glpi/...
+var GLPI_HTTP_CASE_FORM = window.location.href.split('/', loc_split.length-2 ).join('/') + '/plugins/processmaker/front/case.front.php'; // http://hostname/glpi/...
 // to manage reloads
 var GLPI_RELOAD_PARENT = window; //.location;
 var GLPI_DURING_RELOAD = false;
@@ -43,6 +43,7 @@ function displayOverlay() {
 
 function onTaskFrameLoad(event, delIndex, hideClaimButton, csrf) {
    //alert("Loaded frame " + delIndex);
+   //debugger;
    var taskFrameId = event.target.id; //"caseiframe-" + delIndex;
    var bShowHideNextStep = false; // not done yet!
    var bHideClaimCancelButton = false; // To manage 'Claim' button
@@ -93,9 +94,6 @@ function onTaskFrameLoad(event, delIndex, hideClaimButton, csrf) {
                   csrfElt.setAttribute("name", "_glpi_csrf_token");
                   csrfElt.setAttribute("value", csrf);
                   node.appendChild(csrfElt);
-
-                  // add showMask function to submit event
-                  //node.addEventListener('submit', displayOverlay, true);
                } else {
                   // then hide the button itself
                   locElt.style.display = 'none';
@@ -107,6 +105,7 @@ function onTaskFrameLoad(event, delIndex, hideClaimButton, csrf) {
             // Hide 'Cancel' button on 'Claim' form
             var cancelButton = locContentDocument.getElementById('form[BTN_CANCEL]');
             if (cancelButton != undefined && !bHideClaimCancelButton) {
+               //debugger;
                cancelButton.style.display = 'none';
                // hides claim button if asked for
                if (hideClaimButton) {
@@ -119,7 +118,15 @@ function onTaskFrameLoad(event, delIndex, hideClaimButton, csrf) {
                node.setAttribute('actionBackup', node.action);
 
                var action = node.action.split('?');
-               node.action = GLPI_HTTP_CASE_FORM + '?' + action[1] + '&DEL_INDEX=' + delIndex;
+               //debugger;
+               node.action = GLPI_HTTP_CASE_FORM + '?' + (action[1]?action[1]+'&':'') + 'DEL_INDEX=' + delIndex;
+               // add an element that will be the csrf data code for the POST
+               //debugger;
+               var csrfElt = document.createElement("input");
+               csrfElt.setAttribute("type", "hidden");
+               csrfElt.setAttribute("name", "_glpi_csrf_token");
+               csrfElt.setAttribute("value", csrf);
+               node.appendChild(csrfElt);
 
                bHideClaimCancelButton = true;
                // TODO

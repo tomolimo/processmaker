@@ -4,6 +4,9 @@ $LANG['processmaker']['title'][1]="ProcessMaker";
 $LANG['processmaker']['title'][2]="Processus";
 $LANG['processmaker']['title'][3]="Liste des tâches";
 $LANG['processmaker']['title'][4]="Autorisations";
+$LANG['processmaker']['title'][5]="Processus";
+$LANG['processmaker']['title'][6]="Lien-cas";
+$LANG['processmaker']['title'][7]="Liens-cas";
 
 $LANG['processmaker']['profile']['rightmgt']="Gestion des droits";
 $LANG['processmaker']['profile']['process_config']="Configuration des Processus";
@@ -25,6 +28,7 @@ $LANG['processmaker']['process']['taskcategories']['name']="Nom de la Tâche";
 $LANG['processmaker']['process']['taskcategories']['completename']="Nom complet";
 $LANG['processmaker']['process']['taskcategories']['start']="Début";
 $LANG['processmaker']['process']['taskcategories']['comment']="Commentaire";
+$LANG['processmaker']['process']['taskcategories']['is_active']="Active";
 $LANG['processmaker']['process']['profile']="Effacer définitivement";
 
 $LANG['processmaker']['config']['name']="Nom";
@@ -79,10 +83,10 @@ $LANG['processmaker']['item']['case']['casehistory']='Historique du cas' ;
 $LANG['processmaker']['item']['case']['dynaforms']='Dynaforms';
 $LANG['processmaker']['item']['case']['changelog']='Historique des modifications';
 $LANG['processmaker']['item']['case']['caseinfo']='Infos du cas';
-$LANG['processmaker']['item']['case']['viewcasemap']='Voir carte du cas';
-$LANG['processmaker']['item']['case']['viewcasehistory']='Voir historique du cas';
-$LANG['processmaker']['item']['case']['viewdynaforms']='Voir dynaforms';
-$LANG['processmaker']['item']['case']['viewcasechangeloghistory']='Voir historique évolutions' ;
+$LANG['processmaker']['item']['case']['viewcasemap']='Voir: carte du cas';
+$LANG['processmaker']['item']['case']['viewcasehistory']='Voir: historique du cas';
+$LANG['processmaker']['item']['case']['viewdynaforms']='Voir: dynaforms';
+$LANG['processmaker']['item']['case']['viewcasechangeloghistory']='Voir: historique évolutions' ;
 $LANG['processmaker']['item']['case']['casechangeloghistory']='Historique évolutions' ;
 
 $LANG['processmaker']['item']['error'][11]="Erreur à la création du cas !";
