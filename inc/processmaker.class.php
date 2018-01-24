@@ -931,7 +931,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    *     0 : nothing to do
    */
    static function cronPMTaskActions($task) {
-      global $DB, $CFG_GLPI, $PM_DB;
+      global $DB, $PM_DB;
 
       if (!isset($PM_DB)) {
          $PM_DB = new PluginProcessmakerDB;
@@ -976,13 +976,13 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                   throw new Exception("Can't claim case");
                }
 
-               $donotif = $CFG_GLPI["use_mailing"];
-               $CFG_GLPI["use_mailing"] = false;
+               // do not send notifications
+               $donotif = self::saveNotification(false);
 
                // now manage tasks associated with item
                $pm->claimTask( $postdata['APP_UID'], $postdata['DEL_INDEX'], $taskaction['users_id'] );
 
-               $CFG_GLPI["use_mailing"] = $donotif;
+               self::restoreNotification($donotif);
 
             }
             $myCase = new PluginProcessmakerCase;
@@ -1449,27 +1449,24 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    * @return boolean true if added,
    */
    public static function addWatcher( $itemType, $itemId, $techId ) {
-      global $CFG_GLPI; // currently use $CFG_GLPI to disable notif
-      //$plug = new Plugin;
-      if ($techId && $itemType != '' && $itemId > 0) { //!$plug->isActivated('arbehaviours') &&
+      if ($techId && $itemType != '' && $itemId > 0) {
          $glpi_item = getItemForItemtype( $itemType );
          $glpi_item->getFromDB( $itemId );
 
          // then we should check if this user has rights on the item, if not then we must add it to the watcher list!
          $glpi_item = getItemForItemtype( $itemType );
          $glpi_item->getFromDB( $itemId );
-         //$user_entities = Profile_User::getUserEntities( $techId, true, true );
-         //$user_can_view = in_array( $glpi_item->fields['entities_id'], $user_entities );
          if (!$glpi_item->isUser( CommonITILActor::REQUESTER, $techId )
                && !$glpi_item->isUser( CommonITILActor::OBSERVER, $techId )
                && !$glpi_item->isUser( CommonITILActor::ASSIGN, $techId ) ) {
-               //&& !$user_can_view ) {
+
             // then we must add this tech user to watcher list
             $glpi_item_user = getItemForItemtype( $glpi_item->getType() . "_User" );
-            $donotif = $CFG_GLPI["use_mailing"];
-            $CFG_GLPI["use_mailing"] = false;
-            $glpi_item_user->add( array( $glpi_item::getForeignKeyField() => $glpi_item->getId(), 'users_id' => $techId, 'type' => CommonITILActor::OBSERVER, '_disablenotif' => true ) ); // , '_no_notif' => true
-            $CFG_GLPI["use_mailing"]= $donotif;
+
+            // do not send notifications
+            $donotif = self::saveNotification(false);
+            $glpi_item_user->add( array( $glpi_item::getForeignKeyField() => $glpi_item->getId(), 'users_id' => $techId, 'type' => CommonITILActor::OBSERVER, '_disablenotif' => true ) );
+            self::restoreNotification($donotif);
             return true;
          }
       }
@@ -1496,7 +1493,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    * @return
    */
    public function addTask( $itemType, $itemId,  $caseInfo, $delIndex, $techId, $groupId, $pmTaskId, $options=array() ) {
-      global $DB, $PM_DB, $LANG, $CFG_GLPI, $_SESSION;
+      global $DB, $PM_DB, $LANG, $_SESSION;
 
       $default_options = array(
         'txtTaskContent' => '',
@@ -1610,19 +1607,33 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
          $input['groups_id_tech'] = $groups_id_tech;
       }
 
-      $donotif = $CFG_GLPI["use_mailing"];
-      if (!$options['notif']) {
-         //$input['_no_notif'] = true;
-         $CFG_GLPI["use_mailing"] = false;
-      }
+      $donotif = self::saveNotification($options['notif']);
       $glpi_task->add( Toolbox::addslashes_deep( $input ) );
-      $CFG_GLPI["use_mailing"] = $donotif;
+      self::restoreNotification($donotif);
 
       if ($glpi_task->getId() > 0) {
          // stores link to task in DB
          $query = "INSERT INTO glpi_plugin_processmaker_tasks (items_id, itemtype, case_id, del_index) VALUES (".$glpi_task->getId().", '".$glpi_task->getType()."', '".$caseInfo->caseId."', ".$delIndex.");";
          $DB->query( $query );
       }
+   }
+
+
+   private static function saveNotification($donotif) {
+      global $CFG_GLPI;
+      // $CFG_GLPI["use_notifications"] is available since 9.2
+      $savenotif = isset($CFG_GLPI["use_notifications"]) ? $CFG_GLPI["use_notifications"] : $CFG_GLPI["use_mailing"];
+      if (!$donotif) {
+         isset($CFG_GLPI["use_notifications"]) ? $CFG_GLPI["use_notifications"] = false : $CFG_GLPI["use_mailing"] = false;
+      }
+      return $savenotif;
+   }
+
+
+   private static function restoreNotification($savenotif) {
+      global $CFG_GLPI;
+      // $CFG_GLPI["use_notifications"] is available since 9.2
+      isset($CFG_GLPI["use_notifications"]) ? $CFG_GLPI["use_notifications"] = $savenotif : $CFG_GLPI["use_mailing"] = $savenotif;
    }
 
    /**
@@ -1714,7 +1725,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
     * @param mixed $newTech
    */
    public function reassignTask ( $caseId, $delIndex, $newDelIndex, $newTech) {
-      global $DB, $CFG_GLPI; // $CFG_GLPI is only used to _disablenotif
+      global $DB;
 
       $query = "SELECT * FROM glpi_plugin_processmaker_tasks WHERE case_id='$caseId' and del_index=$delIndex; ";
       $res = $DB->query($query);
@@ -1725,23 +1736,6 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
          $itemType = str_replace( 'Task', '', $row['itemtype'] );
          $foreignkey = getForeignKeyFieldForItemType( $itemType );
-
-         //$glpi_item = getItemForItemtype( $itemType );
-         //$glpi_item->getFromDB( $glpi_task->fields[ getForeignKeyFieldForItemType( $itemType ) ] ) ;
-
-         //$plug = new Plugin;
-         //if( !$plug->isActivated('arbehaviours') ) { // check is done during Task update in this plugin
-         //    $user_entities = Profile_User::getUserEntities( $newTech, true, true ) ;
-         //    $user_can_view = in_array( $glpi_item->fields['entities_id'], $user_entities );
-         //    if( !$glpi_item->isUser( CommonITILActor::REQUESTER, $newTech ) && !$glpi_item->isUser( CommonITILActor::OBSERVER, $newTech ) && !$glpi_item->isUser( CommonITILActor::ASSIGN, $newTech ) && !$user_can_view ) {
-         //        // then we must add this tech user to watcher list
-         //        $glpi_item_user = getItemForItemtype( "{$itemType}_User" );
-         //        $donotif = $CFG_GLPI["use_mailing"] ;
-         //        $CFG_GLPI["use_mailing"] = false;
-         //        $glpi_item_user->add( array( $glpi_item->getForeignKeyField() => $glpi_item->getId() , 'users_id' => $newTech, 'type' => CommonITILActor::OBSERVER ) ) ; // , '_no_notif' => true
-         //        $CFG_GLPI["use_mailing"] = $donotif;
-         //    }
-         //}
 
          self::addWatcher( $itemType, $glpi_task->fields[ $foreignkey ], $newTech );
 
@@ -1771,7 +1765,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
     *                'users_id_tech'   => is the users_id of the tech that solved the task
    */
    public function solveTask( $caseId, $delIndex, $options=array() ) {
-      global $DB, $CFG_GLPI;
+      global $DB;
 
       // change current glpi_currenttime to be sure that date_mode for solved task will not be identical than date_mode of the newly started task
       $start_date = new DateTime( $_SESSION["glpi_currenttime"] );
@@ -1812,13 +1806,9 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                         'groups_id_tech' => 0,
                         'content' => $DB->escape($glpi_task->fields[ 'content' ].$options['txtToAppend'])
                         );
-         $donotif = $CFG_GLPI["use_mailing"];
-         if (!$options['notif']) {
-            $CFG_GLPI["use_mailing"] = false;
-            //               $params['_no_notif']=true;
-         }
+         $donotif = self::saveNotification($options['notif']);
          $glpi_task->update( $params );
-         $CFG_GLPI["use_mailing"]= $donotif;
+         self::restoreNotification($donotif);
       }
 
       // restore current glpi time

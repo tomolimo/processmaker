@@ -23,11 +23,11 @@
    </authors>
    <versions>
       <version>
-         <num>3.2.1</num>
+         <num>3.2.2</num>
          <compatibility>9.2</compatibility>
       </version>
       <version>
-          <num>3.2.1</num>
+          <num>3.2.2</num>
           <compatibility>9.1</compatibility>
       </version>
    </versions>

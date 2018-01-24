@@ -51,7 +51,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
          //$config = PluginProcessmakerConfig::getInstance() ;
          //$database = $config->fields['pm_workspace'] ;
          $translates = false;
-         $mapLangs = array( );
+         $mapLangs = [];
 //         if (class_exists('DropdownTranslation')) {
             // to force rights to add translations
             $_SESSION['glpi_dropdowntranslations']['TaskCategory']['name'] = 'name';
@@ -67,8 +67,8 @@ class PluginProcessmakerProcess extends CommonDBTM {
          $query = "SELECT TASK.TAS_UID, TASK.TAS_START, CONTENT.CON_LANG, CONTENT.CON_CATEGORY, CONTENT.CON_VALUE FROM TASK
                         INNER JOIN CONTENT ON CONTENT.CON_ID=TASK.TAS_UID
                         WHERE TASK.TAS_TYPE = 'NORMAL' AND TASK.PRO_UID = '".$this->fields['process_guid']."' AND CONTENT.CON_CATEGORY IN ('TAS_TITLE', 'TAS_DESCRIPTION') ".($translates ? "" : " AND CONTENT.CON_LANG='$lang'")." ;";
-         $taskArray = array();
-         $defaultLangTaskArray=array();
+         $taskArray = [];
+         $defaultLangTaskArray = [];
          foreach ($PM_DB->request( $query ) as $task) {
             if ($task['CON_LANG'] == $lang) {
                $defaultLangTaskArray[ $task['TAS_UID'] ][ $task['CON_CATEGORY'] ]  = $task['CON_VALUE'];
@@ -82,6 +82,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
 
          $pmtask = new PluginProcessmakerTaskCategory;
          $currentasksinprocess = getAllDatasFromTable($pmtask->getTable(), 'is_active = 1 AND processes_id = '.$this->getID());
+         $tasks=[];
          foreach($currentasksinprocess as $task){
             $tasks[$task['pm_task_guid']] = $task;
          }
