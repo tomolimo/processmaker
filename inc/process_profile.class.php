@@ -11,6 +11,11 @@
 class PluginProcessmakerProcess_Profile extends CommonDBTM
 {
    function can($ID, $right, array &$input = NULL) {
+      switch ($right) {
+         case DELETE :
+         case PURGE :
+            return (Session::haveRight('plugin_processmaker_config', UPDATE));
+      }
       return Session::haveRight('plugin_processmaker_config', $right);
    }
 
