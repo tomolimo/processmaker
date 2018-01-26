@@ -343,20 +343,15 @@ class PluginProcessmakerCase extends CommonDBTM {
                      echo "<script>$('#divUsers-".$caseUser->delIndex."').load( '".$CFG_GLPI["root_doc"]."/plugins/processmaker/ajax/task_users.php?caseId=".$caseInfo->caseId."&itemId=".$item_id."&itemType=".$item_type."&userId=".$caseUser->userId."&taskId=".$caseUser->taskId."&delIndex=".$caseUser->delIndex."&delThread=".$caseUser->delThread."&rand=$rand' ); </script>";
                   }
                   echo "<iframe id='caseiframe-task-".$caseUser->delIndex."' onload='onTaskFrameLoad( event, ".$caseUser->delIndex.", ".($hide_claim_button?"true":"false").", \"$csrf\" );' style='border:none;' class='tab_bg_2' width='100%' src='";
-                  $url = $myProcessMaker->serverURL."/cases/cases_Open?sid=".$_SESSION["pluginprocessmaker"]["session"]["id"]."&APP_UID=".$caseInfo->caseId."&DEL_INDEX=".$caseUser->delIndex."&action=TO_DO";
-                  //if( $caseUser->userId == $GLPICurrentPMUserId || $caseUser->userId == '' ) {
-                      echo $url;
-                  //} else {
-                  //    echo $CFG_GLPI["root_doc"]."/plugins/processmaker/ajax/task_resume.php?username=".urlencode( $caseUser->userName )."&taskname=".urlencode( $caseUser->taskName )."&url=".urlencode( $url ) ;
-                  //}
-                  echo "&rand=$rand'></iframe></div>";
+                  echo $myProcessMaker->serverURL."/cases/cases_Open?sid=".$_SESSION["pluginprocessmaker"]["session"]["id"]."&APP_UID=".$caseInfo->caseId."&DEL_INDEX=".$caseUser->delIndex."&action=TO_DO";
+                  echo "&rand=$rand&glpi_domain={$config->fields['domain']}'></iframe></div>";
                }
             } else {
                 // no user means CANCELLED or COMPLETED
                 // then create artificial panel to host case infos
                 echo "<div id='caseInfo'>";
                 $url = $myProcessMaker->serverURL."/cases/cases_Open?sid=".$_SESSION["pluginprocessmaker"]["session"]["id"]."&APP_UID=".$caseInfo->caseId."&".$paramsURL."&action=TO_DO";
-                echo "<iframe id=\"caseiframe-caseInfo\" onload=\"onOtherFrameLoad( 'caseInfo', 'caseiframe-caseInfo', 'body' );\" style=\"border:none;\" class=\"tab_bg_2\" width=\"100%\" src=\"$url&rand=$rand\"></iframe></div>";
+                echo "<iframe id=\"caseiframe-caseInfo\" onload=\"onOtherFrameLoad( 'caseInfo', 'caseiframe-caseInfo', 'body' );\" style=\"border:none;\" class=\"tab_bg_2\" width=\"100%\" src=\"$url&rand=$rand&glpi_domain={$config->fields['domain']}\"></iframe></div>";
             }
             // default panels
             // map, history, log and dynaforms
@@ -373,7 +368,7 @@ class PluginProcessmakerCase extends CommonDBTM {
             } else {
                 $activePanel = 'caseInfo';
             }
-            $caseMapUrl = $myProcessMaker->serverURL.($project_type=='bpmn' ? "/designer?prj_uid=".$caseInfo->processId."&prj_readonly=true&app_uid=".$caseInfo->caseId : "/cases/ajaxListener?action=processMap&rand=$rand");
+            $caseMapUrl = $myProcessMaker->serverURL.($project_type=='bpmn' ? "/designer?prj_uid=".$caseInfo->processId."&prj_readonly=true&app_uid=".$caseInfo->caseId : "/cases/ajaxListener?action=processMap&rand=$rand")."&glpi_domain={$config->fields['domain']}";
             echo "<script>
                 function addTabPanel( name, title, html ){
                     //debugger ;
@@ -404,13 +399,13 @@ class PluginProcessmakerCase extends CommonDBTM {
                            if( actionToDo == 'caseHistory' ) {
                                 addTabPanel( actionToDo,
                                         '".$LANG['processmaker']['item']['case']['casehistory']."',
-                                        '<iframe id=\'caseiframe-' + actionToDo + '\' style=\'border: none;\' onload=\'onOtherFrameLoad( \"'+actionToDo+'\", \"caseiframe-' + actionToDo + '\", \"body\", 0 );\' height=\'600px\' width=\'100%\' src=\'".$myProcessMaker->serverURL."/cases/ajaxListener?action=caseHistory&rand=$rand\' ></iframe>'
+                                        '<iframe id=\'caseiframe-' + actionToDo + '\' style=\'border: none;\' onload=\'onOtherFrameLoad( \"'+actionToDo+'\", \"caseiframe-' + actionToDo + '\", \"body\", 0 );\' height=\'600px\' width=\'100%\' src=\'".$myProcessMaker->serverURL."/cases/ajaxListener?action=caseHistory&rand=$rand&glpi_domain={$config->fields['domain']}\' ></iframe>'
                                         );
                             } else
                            if( actionToDo == 'caseChangeLogHistory' ) {
                                 addTabPanel( actionToDo,
                                         '".$LANG['processmaker']['item']['case']['casechangeloghistory']."',
-                                        '<iframe id=\'caseiframe-' + actionToDo + '\' style=\'border: none;\' onload=\'onOtherFrameLoad( \"'+actionToDo+'\", \"caseiframe-' + actionToDo + '\", \"body\", 0 );\' height=\'600px\' width=\'100%\' src=\'".$myProcessMaker->serverURL."/cases/ajaxListener?action=changeLogHistory&rand=$rand\' ></iframe>'
+                                        '<iframe id=\'caseiframe-' + actionToDo + '\' style=\'border: none;\' onload=\'onOtherFrameLoad( \"'+actionToDo+'\", \"caseiframe-' + actionToDo + '\", \"body\", 0 );\' height=\'600px\' width=\'100%\' src=\'".$myProcessMaker->serverURL."/cases/ajaxListener?action=changeLogHistory&rand=$rand&glpi_domain={$config->fields['domain']}\' ></iframe>'
                                         );
                             } else
                            if( actionToDo == 'dynaformViewFromHistory' ) {
@@ -418,20 +413,20 @@ class PluginProcessmakerCase extends CommonDBTM {
                                 ajaxResponse = $.parseJSON(historyGridListChangeLogGlobal.viewDynaformName);
                                 addTabPanel( actionToDo,
                                         ajaxResponse.dynTitle + ' <sup>(' + historyGridListChangeLogGlobal.dynDate + ')</sup>',
-                                        '<iframe id=\'caseiframe-' + actionToDo + '\' style=\'border: none;\' onload=\'onOtherFrameLoad( \"'+actionToDo+'\", \"caseiframe-' + actionToDo + '\", \"body\", 0 );\' width=\'100%\' src=\'".$myProcessMaker->serverURL."/cases/ajaxListener?action=dynaformViewFromHistory&DYN_UID=' + historyGridListChangeLogGlobal.viewIdDin + \"&HISTORY_ID=\" + historyGridListChangeLogGlobal.viewIdHistory + '&rand=$rand\' ></iframe>'
+                                        '<iframe id=\'caseiframe-' + actionToDo + '\' style=\'border: none;\' onload=\'onOtherFrameLoad( \"'+actionToDo+'\", \"caseiframe-' + actionToDo + '\", \"body\", 0 );\' width=\'100%\' src=\'".$myProcessMaker->serverURL."/cases/ajaxListener?action=dynaformViewFromHistory&DYN_UID=' + historyGridListChangeLogGlobal.viewIdDin + \"&HISTORY_ID=\" + historyGridListChangeLogGlobal.viewIdHistory + '&rand=$rand&glpi_domain={$config->fields['domain']}\' ></iframe>'
                                         );
                             } else
                            if( actionToDo == 'historyDynaformPage' ) {
                                 addTabPanel( actionToDo,
                                         '".$LANG['processmaker']['item']['case']['dynaforms']."',
-                                        '<iframe id=\'caseiframe-' + actionToDo + '\' style=\'border: none;\' onload=\'onOtherFrameLoad( \"'+actionToDo+'\", \"caseiframe-' + actionToDo + '\", \"body\", 0 );\' width=\'100%\' src=\'".$myProcessMaker->serverURL."/cases/casesHistoryDynaformPage_Ajax?actionAjax=historyDynaformPage&rand=$rand\' ></iframe>'
+                                        '<iframe id=\'caseiframe-' + actionToDo + '\' style=\'border: none;\' onload=\'onOtherFrameLoad( \"'+actionToDo+'\", \"caseiframe-' + actionToDo + '\", \"body\", 0 );\' width=\'100%\' src=\'".$myProcessMaker->serverURL."/cases/casesHistoryDynaformPage_Ajax?actionAjax=historyDynaformPage&rand=$rand&glpi_domain={$config->fields['domain']}\' ></iframe>'
                                         );
                             } else
                             if( actionToDo.search( '^changeLog' ) == 0 ) {
                                 actionToDo = 'changeLog' ;
                                 addTabPanel( actionToDo,
                                         '".$LANG['processmaker']['item']['case']['changelog']."',
-                                        '<iframe id=\'caseiframe-' + actionToDo + '\' style=\'border: none;\' onload=\'onOtherFrameLoad( \"'+actionToDo+'\", \"caseiframe-' + actionToDo + '\", \"body\", 0 );\' height=\'600px\' width=\'100%\' src=\'".$myProcessMaker->serverURL."/cases/ajaxListener?action=changeLogTab&idHistory=' + historyGridListChangeLogGlobal.idHistory + '&rand=$rand\' ></iframe>'
+                                        '<iframe id=\'caseiframe-' + actionToDo + '\' style=\'border: none;\' onload=\'onOtherFrameLoad( \"'+actionToDo+'\", \"caseiframe-' + actionToDo + '\", \"body\", 0 );\' height=\'600px\' width=\'100%\' src=\'".$myProcessMaker->serverURL."/cases/ajaxListener?action=changeLogTab&idHistory=' + historyGridListChangeLogGlobal.idHistory + '&rand=$rand&glpi_domain={$config->fields['domain']}\' ></iframe>'
                                         );
                             } else
                             if( actionToDo.search( '^historyDynaformGridPreview' ) == 0 ) {
@@ -439,7 +434,7 @@ class PluginProcessmakerCase extends CommonDBTM {
                                     var act = actionToDo.replace( '$', '&DYN_UID=') ;
                                 addTabPanel( actionToDo,
                                         ActionTabFrameGlobal.tabTitle,
-                                        '<iframe id=\'caseiframe-' + actionToDo + '\' style=\'border: none;\' onload=\'onOtherFrameLoad( \"'+actionToDo+'\", \"caseiframe-' + actionToDo + '\", \"form\", 0 );\' width=\'100%\' src=\'".$myProcessMaker->serverURL."/cases/casesHistoryDynaformPage_Ajax?actionAjax=' + act + '&rand=$rand\' ></iframe>'
+                                        '<iframe id=\'caseiframe-' + actionToDo + '\' style=\'border: none;\' onload=\'onOtherFrameLoad( \"'+actionToDo+'\", \"caseiframe-' + actionToDo + '\", \"form\", 0 );\' width=\'100%\' src=\'".$myProcessMaker->serverURL."/cases/casesHistoryDynaformPage_Ajax?actionAjax=' + act + '&rand=$rand&glpi_domain={$config->fields['domain']}\' ></iframe>'
                                         );
                             } else
                             if( actionToDo.search( '^historyDynaformGridHistory' ) == 0) {
@@ -447,7 +442,7 @@ class PluginProcessmakerCase extends CommonDBTM {
                                     var act = 'showDynaformListHistory&PRO_UID=' + ajaxResponse.PRO_UID + '&APP_UID=' + ajaxResponse.APP_UID + '&TAS_UID=-1&DYN_UID=' + ajaxResponse.DYN_UID;
                                 addTabPanel( actionToDo,
                                         ActionTabFrameGlobal.tabTitle,
-                                        '<iframe id=\'caseiframe-' + actionToDo + '\' style=\'border: none;\' onload=\'onOtherFrameLoad( \"'+actionToDo+'\", \"caseiframe-' + actionToDo + '\", \"body\", 0 );\' height=\'600px\' width=\'100%\' src=\'".$myProcessMaker->serverURL."/cases/casesHistoryDynaformPage_Ajax?actionAjax=' + act + '&rand=$rand\' ></iframe>'
+                                        '<iframe id=\'caseiframe-' + actionToDo + '\' style=\'border: none;\' onload=\'onOtherFrameLoad( \"'+actionToDo+'\", \"caseiframe-' + actionToDo + '\", \"body\", 0 );\' height=\'600px\' width=\'100%\' src=\'".$myProcessMaker->serverURL."/cases/casesHistoryDynaformPage_Ajax?actionAjax=' + act + '&rand=$rand&glpi_domain={$config->fields['domain']}\' ></iframe>'
                                         );
                             } else
                             if( actionToDo.search( '^dynaformChangeLogViewHistory' ) == 0) {
@@ -457,7 +452,7 @@ class PluginProcessmakerCase extends CommonDBTM {
                                     var act = 'dynaformChangeLogViewHistory&DYN_UID=' + ajaxResponse.dynUID + '&HISTORY_ID=' + ajaxResponse.tablename;
                                 addTabPanel( actionToDo,
                                         ActionTabFrameGlobal.tabTitle,
-                                        '<iframe id=\'caseiframe-' + actionToDo + '\' style=\'border: none;\' onload=\'onOtherFrameLoad( \"'+actionToDo+'\", \"caseiframe-' + actionToDo + '\", \"form\", 0 );\' width=\'100%\' src=\'".$myProcessMaker->serverURL."/cases/casesHistoryDynaformPage_Ajax?actionAjax=' + act + '&rand=$rand\' ></iframe>'
+                                        '<iframe id=\'caseiframe-' + actionToDo + '\' style=\'border: none;\' onload=\'onOtherFrameLoad( \"'+actionToDo+'\", \"caseiframe-' + actionToDo + '\", \"form\", 0 );\' width=\'100%\' src=\'".$myProcessMaker->serverURL."/cases/casesHistoryDynaformPage_Ajax?actionAjax=' + act + '&rand=$rand&glpi_domain={$config->fields['domain']}\' ></iframe>'
                                         );
                            }
                         }
@@ -517,8 +512,6 @@ class PluginProcessmakerCase extends CommonDBTM {
 
             echo    "</script>";
 
-            //////echo "<iframe id='caseiframe' onload='onGLPILoadFrame( event ) ;' height='1080px' style='border:none;' width='100%' src='".$myProcessMaker->serverURL."/cases/open?sid=".$_SESSION["pluginprocessmaker"]["session"]["id"]."&APP_UID=".$caseInfo->caseId."&".$paramsURL."&rand=$rand' >" ;
-            //////echo "</iframe>";
             echo "</td></tr>";
 
          } else {
