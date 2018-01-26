@@ -50,7 +50,7 @@ class PluginProcessmakerUser extends CommonDBTM {
              break;
       }
 
-      $where .= " AND `glpi_users`.`realname` <> '' AND `glpi_users`.`firstname` <> ''  AND `glpi_useremails`.`email` <> '' AND glpi_plugin_processmaker_users.pm_users_id IN ('".join("', '", $pmUsers)."') ";
+      $where .= " AND glpi_plugin_processmaker_users.pm_users_id IN ('".join("', '", $pmUsers)."') ";
 
       $where .= " AND `glpi_users`.`is_deleted` = '0'
                   AND `glpi_users`.`is_active` = '1' ";
