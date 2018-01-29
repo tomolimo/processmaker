@@ -943,6 +943,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
          $usr->getFromDB($config->fields['users_id']);
          $save_session = $_SESSION;
          $usr->loadMinimalSession(0, true);
+         $_SESSION['glpiparententities'] = [];
       }
 
       $actionCode = 0; // by default
