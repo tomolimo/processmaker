@@ -933,8 +933,16 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    static function cronPMTaskActions($task) {
       global $DB, $PM_DB;
 
+      $usr = false; // by default
       if (!isset($PM_DB)) {
          $PM_DB = new PluginProcessmakerDB;
+
+         // also create a GLPI session with the processmaker task writer
+         $usr = new User;
+         $config = PluginProcessmakerConfig::getInstance();
+         $usr->getFromDB($config->fields['users_id']);
+         $save_session = $_SESSION;
+         $usr->loadMinimalSession(0, true);
       }
 
       $actionCode = 0; // by default
@@ -1011,6 +1019,13 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
          if (!Session::isCron()) {
             $pm->login(); // re-log default user
          }
+      }
+
+      if ($usr) {
+         // restore previous session
+         Session::destroy();
+         Session::start();
+         $_SESSION = $save_session;
       }
 
       if ($error) {
@@ -2259,13 +2274,14 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       $ch = curl_init();
 
       //to be able to trace network traffic with a local proxy
-        // curl_setopt($ch, CURLOPT_HTTPPROXYTUNNEL, 1 ) ;
-      //curl_setopt($ch, CURLOPT_PROXY, "localhost:8888");
-        curl_setopt($ch, CURLOPT_HEADER, 1);
+      //curl_setopt($ch, CURLOPT_HTTPPROXYTUNNEL, 1 ) ;
+      //curl_setopt($ch, CURLOPT_PROXY, "localhost:8889");
+
+      curl_setopt($ch, CURLOPT_HEADER, 1);
       //		curl_setopt($ch, CURLOPT_VERBOSE, 1);
       //		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
 
-        curl_setopt($ch, CURLOPT_HEADERFUNCTION, "HandleHeaderLine");
+      curl_setopt($ch, CURLOPT_HEADERFUNCTION, "HandleHeaderLine");
 
       curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 
