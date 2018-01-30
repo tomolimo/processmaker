@@ -470,7 +470,7 @@ function showFormHelpdesk($ID, $pmItem, $caseInfo, $ticket_template=false) {
    $rand = rand();
    $pmCaseUser = $caseInfo->currentUsers[0]; // by default
    $paramsURL = "DEL_INDEX=".$pmCaseUser->delIndex."&action=".$caseInfo->caseStatus;
-   echo "<iframe onload='onLoadFrame( event, \"".$caseInfo->caseId."\", ".$pmCaseUser->delIndex.", ".$caseInfo->caseNumber.", \"".$caseInfo->processName."\") ;'  id='caseiframe' width=100% style='border:none;' src='".$pmItem->serverURL."/cases/cases_Open?sid=". $_SESSION["pluginprocessmaker"]["session"]["id"]."&APP_UID=".$caseInfo->caseId."&".$paramsURL."&rand=$rand' ></iframe>";
+   echo "<iframe onload='onLoadFrame( event, \"".$caseInfo->caseId."\", ".$pmCaseUser->delIndex.", ".$caseInfo->caseNumber.", \"".$caseInfo->processName."\") ;'  id='caseiframe' width=100% style='border:none;' src='".$pmItem->serverURL."/cases/cases_Open?sid=". $_SESSION["pluginprocessmaker"]["session"]["id"]."&APP_UID=".$caseInfo->caseId."&".$paramsURL."&rand=$rand&glpi_domain={$pmItem->config->fields['domain']}' ></iframe>";
    echo "</td></tr>";
 
    // File upload system
