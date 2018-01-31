@@ -556,14 +556,22 @@ function processMakerShowCase( $ID, $from_helpdesk ) {
 
       $tkt = new Ticket;
 
+      // as showFormHelpdesk uses $_POST, we must set it
+      $_POST = $_REQUEST;
+
+      // must be using bare text
+      $save_rich_text = $CFG_GLPI["use_rich_text"];
+      $CFG_GLPI["use_rich_text"] = false;
+
       // to get the HTML code for the helpdesk form
       $saved_ob_level = ob_get_level();
       ob_start();
 
-      // as showFormHelpdesk uses $_POST, we must set it
-      $_POST = $_REQUEST;
       $tkt->showFormHelpdesk($ID);
+
       $buffer = ob_get_clean();
+
+      $CFG_GLPI["use_rich_text"] = $save_rich_text;
 
       // 9.1 only: hack to fix an issue with the initEditorSystem which calls scriptStart without calling scriptEnd
       if (ob_get_level() > $saved_ob_level) {
