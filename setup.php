@@ -37,6 +37,11 @@ function plugin_init_processmaker() {
       $PLUGIN_HOOKS['pre_show_item']['processmaker']
          = array('PluginProcessmakerProcessmaker', 'pre_show_item_processmakerticket');
 
+      //$PLUGIN_HOOKS['pre_item_form']['processmaker']
+      //   = array('PluginProcessmakerProcessmaker', 'pre_item_form_processmakerticket');
+      //$PLUGIN_HOOKS['post_item_form']['processmaker']
+      //   = array('PluginProcessmakerProcessmaker', 'post_item_form_processmakerticket');
+
       $PLUGIN_HOOKS['pre_show_tab']['processmaker']
          = array('PluginProcessmakerProcessmaker', 'pre_show_tab_processmaker');
       $PLUGIN_HOOKS['post_show_tab']['processmaker']
@@ -114,7 +119,7 @@ function plugin_version_processmaker() {
    global $LANG;
 
    return array ('name'           => 'Process Maker',
-                'version'        => '3.2.3',
+                'version'        => '3.2.4',
                 'author'         => 'Olivier Moron',
                 'homepage'       => 'https://github.com/tomolimo/processmaker',
                 'minGlpiVersion' => '9.1');

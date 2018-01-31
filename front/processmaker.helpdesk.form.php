@@ -30,506 +30,511 @@ function processMakerShowProcessList ($ID, $from_helpdesk) {
 }
 
 
-function showFormHelpdesk($ID, $pmItem, $caseInfo, $ticket_template=false) {
-   global $DB, $CFG_GLPI;
-
-   if (!Ticket::canCreate()) {
-      return false;
-   }
-
-   if (!$ticket_template
-       && Session::haveRightsOr('ticketvalidation', TicketValidation::getValidateRights())) {
-
-      $opt                  = array();
-      $opt['reset']         = 'reset';
-      $opt['criteria'][0]['field']      = 55; // validation status
-      $opt['criteria'][0]['searchtype'] = 'equals';
-      $opt['criteria'][0]['value']      = CommonITILValidation::WAITING;
-      $opt['criteria'][0]['link']       = 'AND';
-
-      $opt['criteria'][1]['field']      = 59; // validation aprobator
-      $opt['criteria'][1]['searchtype'] = 'equals';
-      $opt['criteria'][1]['value']      = Session::getLoginUserID();
-      $opt['criteria'][1]['link']       = 'AND';
-
-      $url_validate = $CFG_GLPI["root_doc"]."/front/ticket.php?".Toolbox::append_params($opt,
-                                                                                        '&amp;');
-
-      if (TicketValidation::getNumberToValidate(Session::getLoginUserID()) > 0) {
-         echo "<a href='$url_validate' title=\"".__s('Ticket waiting for your approval')."\"
-                   alt=\"".__s('Ticket waiting for your approval')."\">".
-         __('Tickets awaiting approval')."</a><br><br>";
-      }
-   }
-
-   $email  = UserEmail::getDefaultForUser($ID);
-   $default_use_notif = Entity::getUsedConfig('is_notif_enable_default', $_REQUEST['entities_id'], '', 1);
-
-   // Set default values...
-   $default_values = array('_users_id_requester_notif'
-                                                 => array('use_notification'
-                                                           => (($email == "")?0:$default_use_notif)),
-                           'nodelegate'          => 1,
-                           '_users_id_requester' => 0,
-                           '_users_id_observer'  => array(0),
-                           '_users_id_observer_notif'
-                                                 => array('use_notification' => $default_use_notif),
-                           'name'                => '',
-                           'content'             => '',
-                           'itilcategories_id'   => 0,
-                           'locations_id'        => 0,
-                           'urgency'             => 3,
-
-                           'items_id'            => 0,
-                           'entities_id'         => $_REQUEST['entities_id'],
-                           'plan'                => array(),
-                           'global_validation'   => CommonITILValidation::NONE,
-                           '_add_validation'     => 0,
-                           'type'                => Entity::getUsedConfig('tickettype',
-                                                                          $_REQUEST['entities_id'],
-                                                                          '', Ticket::INCIDENT_TYPE),
-                           '_right'              => "id",
-                           '_filename'           => array(),
-                           '_tag_filename'       => array());
-
-   // Get default values from posted values on reload form
-   if (!$ticket_template) {
-      if (isset($_POST)) {
-         $values = Html::cleanPostForTextArea($_POST);
-      }
-   }
-
-   $ticket = new Ticket();
-   // Restore saved value or override with page parameter
-   if (!function_exists('restoreInput')) {
-      function restoreInput(Array $default=array()) {
-
-         if (isset($_SESSION['saveInput']['Ticket'])) {
-            $saved = Html::cleanPostForTextArea($_SESSION['saveInput']['Ticket']);
-
-            // clear saved data when restored (only need once)
-            unset($_SESSION['saveInput']['Ticket']);
-
-            return $saved;
-         }
-
-         return $default;
-      }
-   }
-   $saved = restoreInput();
-   foreach ($default_values as $name => $value) {
-      if (!isset($values[$name])) {
-         if (isset($saved[$name])) {
-            $values[$name] = $saved[$name];
-         } else {
-            $values[$name] = $value;
-         }
-      }
-   }
-
-   // Check category / type validity
-   if ($values['itilcategories_id']) {
-      $cat = new ITILCategory();
-      if ($cat->getFromDB($values['itilcategories_id'])) {
-         switch ($values['type']) {
-            case Ticket::INCIDENT_TYPE :
-               if (!$cat->getField('is_incident')) {
-                  $values['itilcategories_id'] = 0;
-               }
-               break;
-
-            case Ticket::DEMAND_TYPE :
-               if (!$cat->getField('is_request')) {
-                  $values['itilcategories_id'] = 0;
-               }
-               break;
-
-            default :
-               break;
-         }
-      }
-   }
-
-   if (!$ticket_template) {
-      echo "<form method='post' name='helpdeskform' action='".
-      $CFG_GLPI["root_doc"]."/front/tracking.injector.php' enctype='multipart/form-data'>";
-   }
-
-   $delegating = User::getDelegateGroupsForUser($values['entities_id']);
-
-   if (count($delegating)) {
-      echo "<div class='center'><table class='tab_cadre_fixe'>";
-      echo "<tr><th colspan='2'>".__('This ticket concerns me')." ";
-
-      $rand   = Dropdown::showYesNo("nodelegate", $values['nodelegate']);
-
-      $params = array('nodelegate' => '__VALUE__',
-                      'rand'       => $rand,
-                      'right'      => "delegate",
-                      '_users_id_requester'
-                                   => $values['_users_id_requester'],
-                      '_users_id_requester_notif'
-                                   => $values['_users_id_requester_notif'],
-                      'use_notification'
-                                   => $values['_users_id_requester_notif']['use_notification'],
-                      'entity_restrict'
-                                   => $_REQUEST['entities_id']);
-
-      Ajax::UpdateItemOnSelectEvent("dropdown_nodelegate".$rand, "show_result".$rand,
-                                    $CFG_GLPI["root_doc"]."/ajax/dropdownDelegationUsers.php",
-                                    $params);
-
-      $class = 'right';
-      if ($CFG_GLPI['use_check_pref'] && $values['nodelegate']) {
-         echo "</th><th>".__('Check your personnal information');
-         $class = 'center';
-      }
-
-      echo "</th></tr>";
-      echo "<tr class='tab_bg_1'><td colspan='2' class='".$class."'>";
-      echo "<div id='show_result$rand'>";
-
-      $self = $ticket; // new self();
-      if ($values["_users_id_requester"] == 0) {
-         $values['_users_id_requester'] = Session::getLoginUserID();
-      } else {
-         $values['_right'] = "delegate";
-      }
-      $self->showActorAddFormOnCreate(CommonITILActor::REQUESTER, $values);
-      echo "</div>";
-      if ($CFG_GLPI['use_check_pref'] && $values['nodelegate']) {
-         echo "</td><td class='center'>";
-         User::showPersonalInformation(Session::getLoginUserID());
-      }
-      echo "</td></tr>";
-
-      echo "</table></div>";
-      echo "<input type='hidden' name='_users_id_recipient' value='".Session::getLoginUserID()."'>";
-
-   } else {
-      // User as requester
-      $values['_users_id_requester'] = Session::getLoginUserID();
-
-      if ($CFG_GLPI['use_check_pref']) {
-         echo "<div class='center'><table class='tab_cadre_fixe'>";
-         echo "<tr><th>".__('Check your personnal information')."</th></tr>";
-         echo "<tr class='tab_bg_1'><td class='center'>";
-         User::showPersonalInformation(Session::getLoginUserID());
-         echo "</td></tr>";
-         echo "</table></div>";
-      }
-   }
-
-   echo "<input type='hidden' name='_from_helpdesk' value='1'>";
-   echo "<input type='hidden' name='requesttypes_id' value='".RequestType::getDefault('helpdesk').
-   "'>";
-
-   // Load ticket template if available :
-   $tt = $ticket->getTicketTemplateToUse($ticket_template, $values['type'],
-                                       $values['itilcategories_id'],
-                                       $_REQUEST['entities_id']);
-
-   // Predefined fields from template : reset them
-   if (isset($values['_predefined_fields'])) {
-      $values['_predefined_fields']
-                     = Toolbox::decodeArrayFromInput($values['_predefined_fields']);
-   } else {
-      $values['_predefined_fields'] = array();
-   }
-
-   // Store predefined fields to be able not to take into account on change template
-   $predefined_fields = array();
-
-   if (isset($tt->predefined) && count($tt->predefined)) {
-      foreach ($tt->predefined as $predeffield => $predefvalue) {
-         if (isset($values[$predeffield]) && isset($default_values[$predeffield])) {
-            // Is always default value : not set
-            // Set if already predefined field
-            // Set if ticket template change
-            if (((count($values['_predefined_fields']) == 0)
-                 && ($values[$predeffield] == $default_values[$predeffield]))
-                || (isset($values['_predefined_fields'][$predeffield])
-                    && ($values[$predeffield] == $values['_predefined_fields'][$predeffield]))
-                || (isset($values['_tickettemplates_id'])
-                    && ($values['_tickettemplates_id'] != $tt->getID()))) {
-               $values[$predeffield]            = $predefvalue;
-               $predefined_fields[$predeffield] = $predefvalue;
-            }
-         } else { // Not defined options set as hidden field
-            echo "<input type='hidden' name='$predeffield' value='$predefvalue'>";
-         }
-      }
-      // All predefined override : add option to say predifined exists
-      if (count($predefined_fields) == 0) {
-         $predefined_fields['_all_predefined_override'] = 1;
-      }
-   } else { // No template load : reset predefined values
-      if (count($values['_predefined_fields'])) {
-         foreach ($values['_predefined_fields'] as $predeffield => $predefvalue) {
-            if ($values[$predeffield] == $predefvalue) {
-               $values[$predeffield] = $default_values[$predeffield];
-            }
-         }
-      }
-   }
-
-   if (($CFG_GLPI['urgency_mask'] == (1<<3))
-       || $tt->isHiddenField('urgency')) {
-      // Dont show dropdown if only 1 value enabled or field is hidden
-      echo "<input type='hidden' name='urgency' value='".$values['urgency']."'>";
-   }
-
-   // Display predefined fields if hidden
-   if ($tt->isHiddenField('items_id')) {
-
-      if (!empty($values['items_id'])) {
-         foreach ($values['items_id'] as $itemtype => $items) {
-            foreach ($items as $items_id) {
-               echo "<input type='hidden' name='items_id[$itemtype][$items_id]' value='$items_id'>";
-            }
-         }
-      }
-   }
-   if ($tt->isHiddenField('locations_id')) {
-      echo "<input type='hidden' name='locations_id' value='".$values['locations_id']."'>";
-   }
-   echo "<input type='hidden' name='entities_id' value='".$_REQUEST['entities_id']."'>";
-   echo "<input type='hidden' name='processId' value='".$caseInfo->processId."'>";
-   echo "<div class='center'><table class='tab_cadre_fixe'>";
-
-   echo "<tr><th width='30%'>".$caseInfo->processName."</th><th>";
-
-   if (Session::isMultiEntitiesMode()) {
-      echo "(".Dropdown::getDropdownName("glpi_entities", $_REQUEST['entities_id']).")";
-   }
-   echo "</th></tr>";
-
-   echo "<tr class='tab_bg_1' style='display:none;'>";
-   echo "<td>".sprintf(__('%1$s%2$s'), __('Type'), $tt->getMandatoryMark('type'))."</td>";
-   echo "<td>";
-   Ticket::dropdownType('type', array('value'     => $values['type'],
-                                    'on_change' => 'this.form.submit()'));
-   echo "</td></tr>";
-
-   echo "<tr class='tab_bg_1' style='display:none;'>";
-   echo "<td>".sprintf(__('%1$s%2$s'), __('Category'),
-                       $tt->getMandatoryMark('itilcategories_id'))."</td>";
-   echo "<td>";
-
-   $condition = "`is_helpdeskvisible`='1'";
-   switch ($values['type']) {
-      case Ticket::DEMAND_TYPE :
-         $condition .= " AND `is_request`='1'";
-         break;
-
-      default: // Ticket::INCIDENT_TYPE :
-         $condition .= " AND `is_incident`='1'";
-   }
-   $opt = array('value'     => $values['itilcategories_id'],
-                'condition' => $condition,
-                'entity'    => $_REQUEST['entities_id'],
-                'on_change' => 'this.form.submit()');
-
-   if ($values['itilcategories_id'] && $tt->isMandatoryField("itilcategories_id")) {
-      $opt['display_emptychoice'] = false;
-   }
-
-   ITILCategory::dropdown($opt);
-   echo "</td></tr>";
-
-   if ($CFG_GLPI['urgency_mask'] != (1<<3)) {
-      if (!$tt->isHiddenField('urgency')) {
-         echo "<tr class='tab_bg_1'>";
-         echo "<td>".sprintf(__('%1$s%2$s'), __('Urgency'), $tt->getMandatoryMark('urgency')).
-         "</td>";
-         echo "<td>";
-         Ticket::dropdownUrgency(array('value' => $values["urgency"]));
-         echo "</td></tr>";
-      }
-   }
-
-   if (empty($delegating)
-       && NotificationTargetTicket::isAuthorMailingActivatedForHelpdesk()) {
-      echo "<tr class='tab_bg_1'>";
-      echo "<td>".__('Inform me about the actions taken')."</td>";
-      echo "<td>";
-      if ($values["_users_id_requester"] == 0) {
-         $values['_users_id_requester'] = Session::getLoginUserID();
-      }
-      $_POST['value']            = $values['_users_id_requester'];
-      $_POST['field']            = '_users_id_requester_notif';
-      $_POST['use_notification'] = $values['_users_id_requester_notif']['use_notification'];
-      include (GLPI_ROOT."/ajax/uemailUpdate.php");
-
-      echo "</td></tr>";
-   }
-   if (($_SESSION["glpiactiveprofile"]["helpdesk_hardware"] != 0)
-       && (count($_SESSION["glpiactiveprofile"]["helpdesk_item_type"]))) {
-      if (!$tt->isHiddenField('itemtype')) {
-         echo "<tr class='tab_bg_1' style='display:none;'>";
-         echo "<td>".sprintf(__('%1$s%2$s'), __('Hardware type'),
-                             $tt->getMandatoryMark('items_id'))."</td>";
-         echo "<td>";
-
-         $values['_canupdate'] = Session::haveRight('ticket', CREATE);
-         Item_Ticket::itemAddForm($ticket, $values);
-         echo "</td></tr>";
-      }
-   }
-
-   if (!$tt->isHiddenField('locations_id')) {
-      echo "<tr class='tab_bg_1' style='display:none;'><td>";
-      printf(__('%1$s%2$s'), __('Location'), $tt->getMandatoryMark('locations_id'));
-      echo "</td><td>";
-      Location::dropdown(array('value'  => $values["locations_id"]));
-      echo "</td></tr>";
-   }
-
-   if (!$tt->isHiddenField('_users_id_observer')
-       || $tt->isPredefinedField('_users_id_observer')) {
-      echo "<tr class='tab_bg_1'>";
-      echo "<td>".sprintf(__('%1$s%2$s'), _n('Watcher', 'Watchers', 2),
-                          $tt->getMandatoryMark('_users_id_observer'))."</td>";
-      echo "<td>";
-      $values['_right'] = "groups";
-
-      if (!$tt->isHiddenField('_users_id_observer')) {
-         // Observer
-
-         if ($tt->isPredefinedField('_users_id_observer')
-            && !is_array($values['_users_id_observer'])) {
-
-            //convert predefined value to array
-            $values['_users_id_observer'] = array($values['_users_id_observer']);
-            $values['_users_id_observer_notif']['use_notification'] =
-               array($values['_users_id_observer_notif']['use_notification']);
-
-            // add new line to permit adding more observers
-            $values['_users_id_observer'][1] = 0;
-            $values['_users_id_observer_notif']['use_notification'][1] = 1;
-         }
-
-         echo "<div class='actor_single first-actor'>";
-         if (isset($values['_users_id_observer'])) {
-            $observers = $values['_users_id_observer'];
-            foreach ($observers as $index_observer => $observer) {
-               $options = array_merge($values, array('_user_index' => $index_observer));
-               Ticket::showFormHelpdeskObserver($options);
-            }
-         }
-         echo "</div>";
-
-      } else { // predefined value
-         if (isset($values["_users_id_observer"]) && $values["_users_id_observer"]) {
-            echo Ticket::getActorIcon('user', CommonITILActor::OBSERVER)."&nbsp;";
-            echo Dropdown::getDropdownName("glpi_users", $values["_users_id_observer"]);
-            echo "<input type='hidden' name='_users_id_observer' value=\"".
-            $values["_users_id_observer"]."\">";
-
-         }
-      }
-      echo "</td></tr>";
-   }
-
-   if (!$tt->isHiddenField('name')
-       || $tt->isPredefinedField('name')) {
-      echo "<tr class='tab_bg_1' style='display:none;'>";
-      echo "<td>".sprintf(__('%1$s%2$s'), __('Title'), $tt->getMandatoryMark('name'))."<td>";
-      if (!$tt->isHiddenField('name')) {
-         echo "<input type='text' maxlength='250' size='80' name='name'
-                       value=\"".$values['name']."\">";
-      } else {
-         echo $values['name'];
-         echo "<input type='hidden' name='name' value=\"".$values['name']."\">";
-      }
-      echo "</td></tr>";
-   }
-
-   if (!$tt->isHiddenField('content')
-       || $tt->isPredefinedField('content')) {
-      echo "<tr class='tab_bg_1' style='display:none;'>";
-      echo "<td>".sprintf(__('%1$s%2$s'), __('Description'), $tt->getMandatoryMark('content')).
-      "</td><td>";
-      $rand      = mt_rand();
-      $rand_text = mt_rand();
-
-      $cols       = 90;
-      $rows       = 6;
-      $content_id = "content$rand";
-
-      $values["content"] = $ticket->setSimpleTextContent($values["content"]);
-
-      echo "<div id='content$rand_text'>";
-      echo "<textarea id='$content_id' name='content' cols='$cols' rows='$rows'>".
-      $values['content']."</textarea></div>";
-      echo "</td></tr>";
-   }
-
-   echo "<tr class='tab_bg_1'>";
-   echo "<td class='center' colspan='2'>";
-   $rand = rand();
-   $pmCaseUser = $caseInfo->currentUsers[0]; // by default
-   $paramsURL = "DEL_INDEX=".$pmCaseUser->delIndex."&action=".$caseInfo->caseStatus;
-   echo "<iframe onload='onLoadFrame( event, \"".$caseInfo->caseId."\", ".$pmCaseUser->delIndex.", ".$caseInfo->caseNumber.", \"".$caseInfo->processName."\") ;'  id='caseiframe' width=100% style='border:none;' src='".$pmItem->serverURL."/cases/cases_Open?sid=". $_SESSION["pluginprocessmaker"]["session"]["id"]."&APP_UID=".$caseInfo->caseId."&".$paramsURL."&rand=$rand&glpi_domain={$pmItem->config->fields['domain']}' ></iframe>";
-   echo "</td></tr>";
-
-   // File upload system
-   $width = '100%';
-   if ($CFG_GLPI['use_rich_text']) {
-      $width = '50%';
-   }
-   echo "<tr class='tab_bg_1'>";
-   echo "<td class='top'>".sprintf(__('%1$s (%2$s)'), __('File'), Document::getMaxUploadSize());
-   DocumentType::showAvailableTypesLink();
-   echo "</td>";
-   echo "<td class='top'>";
-   echo "<div id='fileupload_info'></div>";
-   echo "</td>";
-   echo "</tr>";
-
-   echo "<tr class='tab_bg_1'>";
-   echo "<td colspan='2'>";
-   echo "<table width='100%'><tr>";
-   echo "<td width='$width '>";
-
-   echo Html::file(array('multiple' => true,
-                         'values' => array('filename' => $values['_filename'],
-                                           'tag' => $values['_tag_filename'])
-                  ));
-   //       "<div id='uploadfiles'><input type='file' name='filename[]' value='' size='60'></div>";
-   echo "</td>";
-   if ($CFG_GLPI['use_rich_text']) {
-      echo "<td width='$width '>";
-      if (!isset($rand)) {
-         $rand = mt_rand();
-      }
-
-      echo Html::initImagePasteSystem($content_id, $rand);
-      echo "</td>";
-   }
-   echo "</tr></table>";
-
-   echo "</td>";
-   echo "</tr>";
-
-   if (!$ticket_template) {
-      echo "<tr class='tab_bg_1' style='display:none;'>";
-      echo "<td colspan='2' class='center'>";
-
-      if ($tt->isField('id') && ($tt->fields['id'] > 0)) {
-         echo "<input type='hidden' name='_tickettemplates_id' value='".$tt->fields['id']."'>";
-         echo "<input type='hidden' name='_predefined_fields'
-                   value=\"".Toolbox::prepareArrayForInput($predefined_fields)."\">";
-      }
-      echo "<input type='submit' name='add' value=\"".__s('Submit message')."\" class='submit'>";
-      echo "</td></tr>";
-   }
-
-   echo "</table></div>";
-   if (!$ticket_template) {
-      Html::closeForm();
-   }
-}
+//function showFormHelpdesk($ID, $pmItem, $caseInfo, $ticket_template=false) {
+//   global $DB, $CFG_GLPI;
+
+//   if (!Ticket::canCreate()) {
+//      return false;
+//   }
+
+//   if (!$ticket_template
+//       && Session::haveRightsOr('ticketvalidation', TicketValidation::getValidateRights())) {
+
+//      $opt                  = array();
+//      $opt['reset']         = 'reset';
+//      $opt['criteria'][0]['field']      = 55; // validation status
+//      $opt['criteria'][0]['searchtype'] = 'equals';
+//      $opt['criteria'][0]['value']      = CommonITILValidation::WAITING;
+//      $opt['criteria'][0]['link']       = 'AND';
+
+//      $opt['criteria'][1]['field']      = 59; // validation aprobator
+//      $opt['criteria'][1]['searchtype'] = 'equals';
+//      $opt['criteria'][1]['value']      = Session::getLoginUserID();
+//      $opt['criteria'][1]['link']       = 'AND';
+
+//      $url_validate = $CFG_GLPI["root_doc"]."/front/ticket.php?".Toolbox::append_params($opt,
+//                                                                                        '&amp;');
+
+//      if (TicketValidation::getNumberToValidate(Session::getLoginUserID()) > 0) {
+//         echo "<a href='$url_validate' title=\"".__s('Ticket waiting for your approval')."\"
+//                   alt=\"".__s('Ticket waiting for your approval')."\">".
+//         __('Tickets awaiting approval')."</a><br><br>";
+//      }
+//   }
+
+//   $email  = UserEmail::getDefaultForUser($ID);
+//   $default_use_notif = Entity::getUsedConfig('is_notif_enable_default', $_REQUEST['entities_id'], '', 1);
+
+//   // Set default values...
+//   $default_values = array('_users_id_requester_notif'
+//                                                 => array('use_notification'
+//                                                           => (($email == "")?0:$default_use_notif)),
+//                           'nodelegate'          => 1,
+//                           '_users_id_requester' => 0,
+//                           '_users_id_observer'  => array(0),
+//                           '_users_id_observer_notif'
+//                                                 => array('use_notification' => $default_use_notif),
+//                           'name'                => '',
+//                           'content'             => '',
+//                           'itilcategories_id'   => 0,
+//                           'locations_id'        => 0,
+//                           'urgency'             => 3,
+
+//                           'items_id'            => 0,
+//                           'entities_id'         => $_REQUEST['entities_id'],
+//                           'plan'                => array(),
+//                           'global_validation'   => CommonITILValidation::NONE,
+//                           '_add_validation'     => 0,
+//                           'type'                => Entity::getUsedConfig('tickettype',
+//                                                                          $_REQUEST['entities_id'],
+//                                                                          '', Ticket::INCIDENT_TYPE),
+//                           '_right'              => "id",
+//                           '_filename'           => array(),
+//                           '_tag_filename'       => array());
+
+//   // Get default values from posted values on reload form
+//   if (!$ticket_template) {
+//      if (isset($_POST)) {
+//         $values = Html::cleanPostForTextArea($_POST);
+//      }
+//   }
+
+//   $ticket = new Ticket();
+//   // Restore saved value or override with page parameter
+//   if (!function_exists('restoreInput')) {
+//      function restoreInput(Array $default=array()) {
+
+//         if (isset($_SESSION['saveInput']['Ticket'])) {
+//            $saved = Html::cleanPostForTextArea($_SESSION['saveInput']['Ticket']);
+
+//            // clear saved data when restored (only need once)
+//            unset($_SESSION['saveInput']['Ticket']);
+
+//            return $saved;
+//         }
+
+//         return $default;
+//      }
+//   }
+//   $saved = restoreInput();
+//   foreach ($default_values as $name => $value) {
+//      if (!isset($values[$name])) {
+//         if (isset($saved[$name])) {
+//            $values[$name] = $saved[$name];
+//         } else {
+//            $values[$name] = $value;
+//         }
+//      }
+//   }
+
+//   // Check category / type validity
+//   if ($values['itilcategories_id']) {
+//      $cat = new ITILCategory();
+//      if ($cat->getFromDB($values['itilcategories_id'])) {
+//         switch ($values['type']) {
+//            case Ticket::INCIDENT_TYPE :
+//               if (!$cat->getField('is_incident')) {
+//                  $values['itilcategories_id'] = 0;
+//               }
+//               break;
+
+//            case Ticket::DEMAND_TYPE :
+//               if (!$cat->getField('is_request')) {
+//                  $values['itilcategories_id'] = 0;
+//               }
+//               break;
+
+//            default :
+//               break;
+//         }
+//      }
+//   }
+
+//   if (!$ticket_template) {
+//      echo "<form method='post' name='helpdeskform' action='".
+//      $CFG_GLPI["root_doc"]."/front/tracking.injector.php' enctype='multipart/form-data'>";
+//   }
+
+//   $delegating = User::getDelegateGroupsForUser($values['entities_id']);
+
+//   if (count($delegating)) {
+//      echo "<div class='center'><table class='tab_cadre_fixe'>";
+//      echo "<tr><th colspan='2'>".__('This ticket concerns me')." ";
+
+//      $rand   = Dropdown::showYesNo("nodelegate", $values['nodelegate']);
+
+//      $params = array('nodelegate' => '__VALUE__',
+//                      'rand'       => $rand,
+//                      'right'      => "delegate",
+//                      '_users_id_requester'
+//                                   => $values['_users_id_requester'],
+//                      '_users_id_requester_notif'
+//                                   => $values['_users_id_requester_notif'],
+//                      'use_notification'
+//                                   => $values['_users_id_requester_notif']['use_notification'],
+//                      'entity_restrict'
+//                                   => $_REQUEST['entities_id']);
+
+//      Ajax::UpdateItemOnSelectEvent("dropdown_nodelegate".$rand, "show_result".$rand,
+//                                    $CFG_GLPI["root_doc"]."/ajax/dropdownDelegationUsers.php",
+//                                    $params);
+
+//      $class = 'right';
+//      if ($CFG_GLPI['use_check_pref'] && $values['nodelegate']) {
+//         echo "</th><th>".__('Check your personnal information');
+//         $class = 'center';
+//      }
+
+//      echo "</th></tr>";
+//      echo "<tr class='tab_bg_1'><td colspan='2' class='".$class."'>";
+//      echo "<div id='show_result$rand'>";
+
+//      $self = $ticket; // new self();
+//      if ($values["_users_id_requester"] == 0) {
+//         $values['_users_id_requester'] = Session::getLoginUserID();
+//      } else {
+//         $values['_right'] = "delegate";
+//      }
+//      $self->showActorAddFormOnCreate(CommonITILActor::REQUESTER, $values);
+//      echo "</div>";
+//      if ($CFG_GLPI['use_check_pref'] && $values['nodelegate']) {
+//         echo "</td><td class='center'>";
+//         User::showPersonalInformation(Session::getLoginUserID());
+//      }
+//      echo "</td></tr>";
+
+//      echo "</table></div>";
+//      echo "<input type='hidden' name='_users_id_recipient' value='".Session::getLoginUserID()."'>";
+
+//   } else {
+//      // User as requester
+//      $values['_users_id_requester'] = Session::getLoginUserID();
+
+//      if ($CFG_GLPI['use_check_pref']) {
+//         echo "<div class='center'><table class='tab_cadre_fixe'>";
+//         echo "<tr><th>".__('Check your personnal information')."</th></tr>";
+//         echo "<tr class='tab_bg_1'><td class='center'>";
+//         User::showPersonalInformation(Session::getLoginUserID());
+//         echo "</td></tr>";
+//         echo "</table></div>";
+//      }
+//   }
+
+//   echo "<input type='hidden' name='_from_helpdesk' value='1'>";
+//   echo "<input type='hidden' name='requesttypes_id' value='".RequestType::getDefault('helpdesk').
+//   "'>";
+
+//   // Load ticket template if available :
+//   $tt = $ticket->getTicketTemplateToUse($ticket_template, $values['type'],
+//                                       $values['itilcategories_id'],
+//                                       $_REQUEST['entities_id']);
+
+//   // Predefined fields from template : reset them
+//   if (isset($values['_predefined_fields'])) {
+//      $values['_predefined_fields']
+//                     = Toolbox::decodeArrayFromInput($values['_predefined_fields']);
+//   } else {
+//      $values['_predefined_fields'] = array();
+//   }
+
+//   // Store predefined fields to be able not to take into account on change template
+//   $predefined_fields = array();
+
+//   if (isset($tt->predefined) && count($tt->predefined)) {
+//      foreach ($tt->predefined as $predeffield => $predefvalue) {
+//         if (isset($values[$predeffield]) && isset($default_values[$predeffield])) {
+//            // Is always default value : not set
+//            // Set if already predefined field
+//            // Set if ticket template change
+//            if (((count($values['_predefined_fields']) == 0)
+//                 && ($values[$predeffield] == $default_values[$predeffield]))
+//                || (isset($values['_predefined_fields'][$predeffield])
+//                    && ($values[$predeffield] == $values['_predefined_fields'][$predeffield]))
+//                || (isset($values['_tickettemplates_id'])
+//                    && ($values['_tickettemplates_id'] != $tt->getID()))) {
+//               $values[$predeffield]            = $predefvalue;
+//               $predefined_fields[$predeffield] = $predefvalue;
+//            }
+//         } else { // Not defined options set as hidden field
+//            echo "<input type='hidden' name='$predeffield' value='$predefvalue'>";
+//         }
+//      }
+//      // All predefined override : add option to say predifined exists
+//      if (count($predefined_fields) == 0) {
+//         $predefined_fields['_all_predefined_override'] = 1;
+//      }
+//   } else { // No template load : reset predefined values
+//      if (count($values['_predefined_fields'])) {
+//         foreach ($values['_predefined_fields'] as $predeffield => $predefvalue) {
+//            if ($values[$predeffield] == $predefvalue) {
+//               $values[$predeffield] = $default_values[$predeffield];
+//            }
+//         }
+//      }
+//   }
+
+//   if (($CFG_GLPI['urgency_mask'] == (1<<3))
+//       || $tt->isHiddenField('urgency')) {
+//      // Dont show dropdown if only 1 value enabled or field is hidden
+//      echo "<input type='hidden' name='urgency' value='".$values['urgency']."'>";
+//   }
+
+//   // Display predefined fields if hidden
+//   if ($tt->isHiddenField('items_id')) {
+
+//      if (!empty($values['items_id'])) {
+//         foreach ($values['items_id'] as $itemtype => $items) {
+//            foreach ($items as $items_id) {
+//               echo "<input type='hidden' name='items_id[$itemtype][$items_id]' value='$items_id'>";
+//            }
+//         }
+//      }
+//   }
+//   if ($tt->isHiddenField('locations_id')) {
+//      echo "<input type='hidden' name='locations_id' value='".$values['locations_id']."'>";
+//   }
+//   echo "<input type='hidden' name='entities_id' value='".$_REQUEST['entities_id']."'>";
+//   echo "<input type='hidden' name='processId' value='".$caseInfo->processId."'>";
+//   echo "<div class='center'><table class='tab_cadre_fixe'>";
+
+//   echo "<tr><th width='30%'>".$caseInfo->processName."</th><th>";
+
+//   if (Session::isMultiEntitiesMode()) {
+//      echo "(".Dropdown::getDropdownName("glpi_entities", $_REQUEST['entities_id']).")";
+//   }
+//   echo "</th></tr>";
+
+//   echo "<tr class='tab_bg_1' style='display:none;'>";
+//   echo "<td>".sprintf(__('%1$s%2$s'), __('Type'), $tt->getMandatoryMark('type'))."</td>";
+//   echo "<td>";
+//   Ticket::dropdownType('type', array('value'     => $values['type'],
+//                                    'on_change' => 'this.form.submit()'));
+//   echo "</td></tr>";
+
+//   echo "<tr class='tab_bg_1' style='display:none;'>";
+//   echo "<td>".sprintf(__('%1$s%2$s'), __('Category'),
+//                       $tt->getMandatoryMark('itilcategories_id'))."</td>";
+//   echo "<td>";
+
+//   $condition = "`is_helpdeskvisible`='1'";
+//   switch ($values['type']) {
+//      case Ticket::DEMAND_TYPE :
+//         $condition .= " AND `is_request`='1'";
+//         break;
+
+//      default: // Ticket::INCIDENT_TYPE :
+//         $condition .= " AND `is_incident`='1'";
+//   }
+//   $opt = array('value'     => $values['itilcategories_id'],
+//                'condition' => $condition,
+//                'entity'    => $_REQUEST['entities_id'],
+//                'on_change' => 'this.form.submit()');
+
+//   if ($values['itilcategories_id'] && $tt->isMandatoryField("itilcategories_id")) {
+//      $opt['display_emptychoice'] = false;
+//   }
+
+//   ITILCategory::dropdown($opt);
+//   echo "</td></tr>";
+
+//   if ($CFG_GLPI['urgency_mask'] != (1<<3)) {
+//      if (!$tt->isHiddenField('urgency')) {
+//         echo "<tr class='tab_bg_1'>";
+//         echo "<td>".sprintf(__('%1$s%2$s'), __('Urgency'), $tt->getMandatoryMark('urgency')).
+//         "</td>";
+//         echo "<td>";
+//         Ticket::dropdownUrgency(array('value' => $values["urgency"]));
+//         echo "</td></tr>";
+//      }
+//   }
+
+//   if (empty($delegating)
+//       && NotificationTargetTicket::isAuthorMailingActivatedForHelpdesk()) {
+//      echo "<tr class='tab_bg_1'>";
+//      echo "<td>".__('Inform me about the actions taken')."</td>";
+//      echo "<td>";
+//      if ($values["_users_id_requester"] == 0) {
+//         $values['_users_id_requester'] = Session::getLoginUserID();
+//      }
+//      $_POST['value']            = $values['_users_id_requester'];
+//      $_POST['field']            = '_users_id_requester_notif';
+//      $_POST['use_notification'] = $values['_users_id_requester_notif']['use_notification'];
+//      include (GLPI_ROOT."/ajax/uemailUpdate.php");
+
+//      echo "</td></tr>";
+//   }
+//   if (($_SESSION["glpiactiveprofile"]["helpdesk_hardware"] != 0)
+//       && (count($_SESSION["glpiactiveprofile"]["helpdesk_item_type"]))) {
+//      if (!$tt->isHiddenField('itemtype')) {
+//         echo "<tr class='tab_bg_1' style='display:none;'>";
+//         echo "<td>".sprintf(__('%1$s%2$s'), __('Hardware type'),
+//                             $tt->getMandatoryMark('items_id'))."</td>";
+//         echo "<td>";
+
+//         $values['_canupdate'] = Session::haveRight('ticket', CREATE);
+//         Item_Ticket::itemAddForm($ticket, $values);
+//         echo "</td></tr>";
+//      }
+//   }
+
+//   if (!$tt->isHiddenField('locations_id')) {
+//      echo "<tr class='tab_bg_1' style='display:none;'><td>";
+//      printf(__('%1$s%2$s'), __('Location'), $tt->getMandatoryMark('locations_id'));
+//      echo "</td><td>";
+//      Location::dropdown(array('value'  => $values["locations_id"]));
+//      echo "</td></tr>";
+//   }
+
+//   if (!$tt->isHiddenField('_users_id_observer')
+//       || $tt->isPredefinedField('_users_id_observer')) {
+//      echo "<tr class='tab_bg_1'>";
+//      echo "<td>".sprintf(__('%1$s%2$s'), _n('Watcher', 'Watchers', 2),
+//                          $tt->getMandatoryMark('_users_id_observer'))."</td>";
+//      echo "<td>";
+//      $values['_right'] = "groups";
+
+//      if (!$tt->isHiddenField('_users_id_observer')) {
+//         // Observer
+
+//         if ($tt->isPredefinedField('_users_id_observer')
+//            && !is_array($values['_users_id_observer'])) {
+
+//            //convert predefined value to array
+//            $values['_users_id_observer'] = array($values['_users_id_observer']);
+//            $values['_users_id_observer_notif']['use_notification'] =
+//               array($values['_users_id_observer_notif']['use_notification']);
+
+//            // add new line to permit adding more observers
+//            $values['_users_id_observer'][1] = 0;
+//            $values['_users_id_observer_notif']['use_notification'][1] = 1;
+//         }
+
+//         echo "<div class='actor_single first-actor'>";
+//         if (isset($values['_users_id_observer'])) {
+//            $observers = $values['_users_id_observer'];
+//            foreach ($observers as $index_observer => $observer) {
+//               $options = array_merge($values, array('_user_index' => $index_observer));
+//               Ticket::showFormHelpdeskObserver($options);
+//            }
+//         }
+//         echo "</div>";
+
+//      } else { // predefined value
+//         if (isset($values["_users_id_observer"]) && $values["_users_id_observer"]) {
+//            echo Ticket::getActorIcon('user', CommonITILActor::OBSERVER)."&nbsp;";
+//            echo Dropdown::getDropdownName("glpi_users", $values["_users_id_observer"]);
+//            echo "<input type='hidden' name='_users_id_observer' value=\"".
+//            $values["_users_id_observer"]."\">";
+
+//         }
+//      }
+//      echo "</td></tr>";
+//   }
+
+//   if (!$tt->isHiddenField('name')
+//       || $tt->isPredefinedField('name')) {
+//      echo "<tr class='tab_bg_1' style='display:none;'>";
+//      echo "<td>".sprintf(__('%1$s%2$s'), __('Title'), $tt->getMandatoryMark('name'))."<td>";
+//      if (!$tt->isHiddenField('name')) {
+//         echo "<input type='text' maxlength='250' size='80' name='name'
+//                       value=\"".$values['name']."\">";
+//      } else {
+//         echo $values['name'];
+//         echo "<input type='hidden' name='name' value=\"".$values['name']."\">";
+//      }
+//      echo "</td></tr>";
+//   }
+
+//   if (!$tt->isHiddenField('content')
+//       || $tt->isPredefinedField('content')) {
+//      echo "<tr class='tab_bg_1' style='display:none;'>";
+//      echo "<td>".sprintf(__('%1$s%2$s'), __('Description'), $tt->getMandatoryMark('content')).
+//      "</td><td>";
+//      $rand      = mt_rand();
+//      $rand_text = mt_rand();
+
+//      $cols       = 90;
+//      $rows       = 6;
+//      $content_id = "content$rand";
+
+//      //if (method_exists('Html', 'setSimpleTextContent')) {
+//      //   // in GLPI 9.2
+//      //   $values["content"] = Html::setSimpleTextContent($values["content"]);
+//      //} else {
+//         $values["content"] = $ticket->setSimpleTextContent($values["content"]);
+//      //}
+
+//      echo "<div id='content$rand_text'>";
+//      echo "<textarea id='$content_id' name='content' cols='$cols' rows='$rows'>".
+//      $values['content']."</textarea></div>";
+//      echo "</td></tr>";
+//   }
+
+//   echo "<tr class='tab_bg_1'>";
+//   echo "<td class='center' colspan='2'>";
+//   $rand = rand();
+//   $pmCaseUser = $caseInfo->currentUsers[0]; // by default
+//   $paramsURL = "DEL_INDEX=".$pmCaseUser->delIndex."&action=".$caseInfo->caseStatus;
+//   echo "<iframe onload='onLoadFrame( event, \"".$caseInfo->caseId."\", ".$pmCaseUser->delIndex.", ".$caseInfo->caseNumber.", \"".$caseInfo->processName."\") ;'  id='caseiframe' width=100% style='border:none;' src='".$pmItem->serverURL."/cases/cases_Open?sid=". $_SESSION["pluginprocessmaker"]["session"]["id"]."&APP_UID=".$caseInfo->caseId."&".$paramsURL."&rand=$rand&glpi_domain={$pmItem->config->fields['domain']}' ></iframe>";
+//   echo "</td></tr>";
+
+//   // File upload system
+//   $width = '100%';
+//   if ($CFG_GLPI['use_rich_text']) {
+//      $width = '50%';
+//   }
+//   echo "<tr class='tab_bg_1'>";
+//   echo "<td class='top'>".sprintf(__('%1$s (%2$s)'), __('File'), Document::getMaxUploadSize());
+//   DocumentType::showAvailableTypesLink();
+//   echo "</td>";
+//   echo "<td class='top'>";
+//   echo "<div id='fileupload_info'></div>";
+//   echo "</td>";
+//   echo "</tr>";
+
+//   echo "<tr class='tab_bg_1'>";
+//   echo "<td colspan='2'>";
+//   echo "<table width='100%'><tr>";
+//   echo "<td width='$width '>";
+
+//   echo Html::file(array('multiple' => true,
+//                         'values' => array('filename' => $values['_filename'],
+//                                           'tag' => $values['_tag_filename'])
+//                  ));
+//   //       "<div id='uploadfiles'><input type='file' name='filename[]' value='' size='60'></div>";
+//   echo "</td>";
+//   if ($CFG_GLPI['use_rich_text']) {
+//      echo "<td width='$width '>";
+//      if (!isset($rand)) {
+//         $rand = mt_rand();
+//      }
+
+//      echo Html::initImagePasteSystem($content_id, $rand);
+//      echo "</td>";
+//   }
+//   echo "</tr></table>";
+
+//   echo "</td>";
+//   echo "</tr>";
+
+//   if (!$ticket_template) {
+//      echo "<tr class='tab_bg_1' style='display:none;'>";
+//      echo "<td colspan='2' class='center'>";
+
+//      if ($tt->isField('id') && ($tt->fields['id'] > 0)) {
+//         echo "<input type='hidden' name='_tickettemplates_id' value='".$tt->fields['id']."'>";
+//         echo "<input type='hidden' name='_predefined_fields'
+//                   value=\"".Toolbox::prepareArrayForInput($predefined_fields)."\">";
+//      }
+//      echo "<input type='submit' name='add' value=\"".__s('Submit message')."\" class='submit'>";
+//      echo "</td></tr>";
+//   }
+
+//   echo "</table></div>";
+//   if (!$ticket_template) {
+//      Html::closeForm();
+//   }
+//}
 
 
 
@@ -547,12 +552,86 @@ function processMakerShowCase( $ID, $from_helpdesk ) {
 
       $rand = rand();
 
-      echo "<script type='text/javascript' src='".$CFG_GLPI["root_doc"]."/plugins/processmaker/js/cases.helpdesk.js?rand=$rand'></script>"; //?rand=$rand'
+      echo "<script type='text/javascript' src='".$CFG_GLPI["root_doc"]."/plugins/processmaker/js/cases.helpdesk.js?rand=$rand'></script>";
 
-      showFormHelpdesk(Session::getLoginUserID(), $pmItem, $caseInfo);
+      $tkt = new Ticket;
+
+      // to get the HTML code for the helpdesk form
+      $saved_ob_level = ob_get_level();
+      ob_start();
+
+      // as showFormHelpdesk uses $_POST, we must set it
+      $_POST = $_REQUEST;
+      $tkt->showFormHelpdesk($ID);
+      $buffer = ob_get_clean();
+
+      // 9.1 only: hack to fix an issue with the initEditorSystem which calls scriptStart without calling scriptEnd
+      if (ob_get_level() > $saved_ob_level) {
+         $buffer = ob_get_clean().$buffer;
+      }
+
+      //echo $buffer;
+      //return;
+
+      // to change this HTML code
+      $dom = new DOMDocument();
+      $dom->loadHTML($buffer, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD | LIBXML_NOXMLDECL);
+      $xpath = new DOMXPath($dom);
+
+      // hide some fields
+      $list = [ 'name', 'type', 'locations_id', 'itilcategories_id', 'items_id', 'add' ] ;
+      $xpath_str = '//*[@name="'.implode( '"]/ancestor::tr[1] | //*[@name="', $list ).'"]/ancestor::tr[1]';
+      $res = $xpath->query($xpath_str);
+      foreach($res as $elt) {
+         $elt->setAttribute( 'style', 'display:none;');
+      }
+
+      // special case for content textarea which is in the same tr than the file upload
+      $res = $xpath->query('//*[@name="content"]/ancestor::div[1] | //*[@name="content"]/ancestor::tr[1]/td[1]');
+      foreach($res as $elt) {
+         $elt->setAttribute( 'style', 'display:none;');
+      }
+
+      $res = $xpath->query('//*[@name="content"]/ancestor::td[1]');
+      foreach($res as $elt) {
+         // there should be only one td
+         $elt->setAttribute( 'colspan', '2');
+      }
+
+      //$res = $xpath->query('//*[@name="content"]/ancestor::tr[1]');
+      $res = $xpath->query('//*[@name="add"]/ancestor::tr[@class="tab_bg_1"]/preceding-sibling::tr[1]');
+      $table = $xpath->query('//*[@name="add"]/ancestor::table[1]');
+
+      $tr = $table->item(0)->insertBefore(new DOMElement('tr'), $res->item(0));
+      //$tr = $table->item(0)->appendChild(new DOMElement('tr'));
+
+      $td = $tr->appendChild(new DOMElement('td'));
+      $td->setAttribute('colspan', '2');
+
+      $iframe = $td->appendChild(new DOMElement('iframe'));
+
+      $pmCaseUser = $caseInfo->currentUsers[0]; // by default
+      $paramsURL = "DEL_INDEX={$pmCaseUser->delIndex}&action={$caseInfo->caseStatus}";
+
+      $iframe->setAttribute('id', 'caseiframe' ) ;
+      $iframe->setAttribute('onload', "onLoadFrame( event, '{$caseInfo->caseId}', {$pmCaseUser->delIndex}, {$caseInfo->caseNumber}, '{$caseInfo->processName}') ;" ) ;
+      $iframe->setAttribute('width', '100%' ) ;
+      $iframe->setAttribute('style', 'border:none;' ) ;
+      $iframe->setAttribute('src', "{$pmItem->serverURL}/cases/cases_Open?sid={$_SESSION["pluginprocessmaker"]["session"]["id"]}&APP_UID={$caseInfo->caseId}&{$paramsURL}&rand=$rand&glpi_domain={$pmItem->config->fields['domain']}" ) ;
+
+      // set the width and the title of the  first table th
+      $th = $xpath->query('//*[@name="add"]/ancestor::table[1]/*/th[1]');
+      $th->item(0)->setAttribute('width', '30%');
+      $th->item(0)->nodeValue = $caseInfo->processName;
+
+      $buffer = $dom->saveHTML();
+
+      echo $buffer;
+      //showFormHelpdesk($ID, $pmItem, $caseInfo);
    }
 
 }
+
 
 function in_array_recursive($needle, $haystack) {
 

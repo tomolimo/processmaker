@@ -11,7 +11,7 @@ if( isset($config->fields['domain']) && $config->fields['domain'] != '' ) {
           g = d.createElement('script'), 
           s = d.getElementsByTagName('script')[0]; 
       g.type = 'text/javascript';
-      g.text = 'document.domain = \'".$config->fields['domain']."\';'; 
+      g.text = 'try { document.domain = \'".$config->fields['domain']."\'; } catch(ev) { /*console.log(ev);*/ }'; 
       s.parentNode.insertBefore(g, s);
    " ;
 }
