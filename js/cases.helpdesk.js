@@ -14,6 +14,7 @@ function onClickContinue(obj) {
    }
 
    // call old handler if any
+   //debugger;
    if (obj != undefined && oldHandler) {
       oldHandler(obj.target);
    }
@@ -65,15 +66,10 @@ function onLoadFrame( evt, caseId, delIndex, caseNumber, processName ) {
             //debugger;
 
             bGLPIHideElement(linkList, 'href', 'cases_Step?TYPE=ASSIGN_TASK&UID=-1&POSITION=10000&ACTION=ASSIGN');
-
-            //buttonContinue.form.action = null; //'';
-            //if (buttonContinue.addEventListener)
-            //    buttonContinue.addEventListener("click", onClickContinue, false);
-            //else
-            //    buttonContinue.attachEvent("onclick", onClickContinue);
+            
             oldHandler = buttonContinue.onclick;
             buttonContinue.onclick = onClickContinue;
-
+            
             submitButton = $("input[name='add'][type=submit]")[0];
             submitButton.insertAdjacentHTML('beforebegin', "<input type='hidden' name='processmaker_action' value='routecase'/>");
             submitButton.insertAdjacentHTML('beforebegin', "<input type='hidden' name='processmaker_caseid' value='" + caseId + "'/>");

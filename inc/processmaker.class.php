@@ -2704,4 +2704,22 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
       echo Html::scriptBlock($scriptblock);
    }
+
+   //static protected $saved_ob_level;
+
+   //static function pre_item_form_processmakerticket($item) {
+   //   self::$saved_ob_level = ob_get_level();
+   //   ob_start();
+
+   //}
+
+   //static function post_item_form_processmakerticket($item) {
+   //   $buffer = ob_get_clean();
+   //   // 9.1 only: hack to fix an issue with the initEditorSystem which calls scriptStart without calling scriptEnd
+   //   if (ob_get_level() > self::$saved_ob_level) {
+   //      $buffer = ob_get_clean().$buffer;
+   //   }
+   //   echo $buffer;
+   //}
+
 }

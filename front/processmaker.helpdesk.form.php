@@ -583,7 +583,17 @@ function processMakerShowCase( $ID, $from_helpdesk ) {
 
       // to change this HTML code
       $dom = new DOMDocument();
-      $dom->loadHTML($buffer, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD | LIBXML_NOXMLDECL);
+
+      // will convert '&' to '&amp;', '<' to '&lt;' and '>' to '&gt;'
+      $buffer = htmlspecialchars($buffer, ENT_NOQUOTES);
+      // will restore '&lt;' to '<' and '&gt;' to '>'
+      // so that only the already escaped entites will get the double encoding
+      $buffer = str_replace(['&lt;', '&gt;'], ['<', '>'], $buffer);
+
+      // will convert any UTF-8 char that can't be expressed in ASCII into an HTML entity
+      $buffer = mb_convert_encoding($buffer, 'HTML-ENTITIES');
+
+      $dom->loadHTML($buffer, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD );
       $xpath = new DOMXPath($dom);
 
       // hide some fields
@@ -606,8 +616,8 @@ function processMakerShowCase( $ID, $from_helpdesk ) {
          $elt->setAttribute( 'colspan', '2');
       }
 
-      //$res = $xpath->query('//*[@name="content"]/ancestor::tr[1]');
-      $res = $xpath->query('//*[@name="add"]/ancestor::tr[@class="tab_bg_1"]/preceding-sibling::tr[1]');
+      $res = $xpath->query('//*[@name="content"]/ancestor::tr[1]');
+      //$res = $xpath->query('//*[@name="add"]/ancestor::tr[@class="tab_bg_1"]/preceding-sibling::tr[1]');
       $table = $xpath->query('//*[@name="add"]/ancestor::table[1]');
 
       $tr = $table->item(0)->insertBefore(new DOMElement('tr'), $res->item(0));
@@ -634,8 +644,9 @@ function processMakerShowCase( $ID, $from_helpdesk ) {
 
       $buffer = $dom->saveHTML();
 
+      // will revert back any char converted above
+      $buffer = mb_convert_encoding($buffer, 'UTF-8', 'HTML-ENTITIES');
       echo $buffer;
-      //showFormHelpdesk($ID, $pmItem, $caseInfo);
    }
 
 }
