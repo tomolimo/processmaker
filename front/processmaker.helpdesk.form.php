@@ -588,7 +588,9 @@ function processMakerShowCase( $ID, $from_helpdesk ) {
       $buffer = htmlspecialchars($buffer, ENT_NOQUOTES);
       // will restore '&lt;' to '<' and '&gt;' to '>'
       // so that only the already escaped entites will get the double encoding
-      $buffer = str_replace(['&lt;', '&gt;'], ['<', '>'], $buffer);
+      // will also change </b> end of bold into a local identifier
+      $endOfBold = 'end_of_bold'.rand();
+      $buffer = str_replace(['&lt;', '&gt;', '</b>'], ['<', '>', $endOfBold], $buffer);
 
       // will convert any UTF-8 char that can't be expressed in ASCII into an HTML entity
       $buffer = mb_convert_encoding($buffer, 'HTML-ENTITIES');
@@ -603,6 +605,14 @@ function processMakerShowCase( $ID, $from_helpdesk ) {
       foreach($res as $elt) {
          $elt->setAttribute( 'style', 'display:none;');
       }
+
+      // add an input for processId in the form
+      // echo "<input type='hidden' name='processId' value='".$caseInfo->processId."'>";
+      $res = $xpath->query('//form[@name="helpdeskform"]');
+      $input = $res->item(0)->appendChild(new DOMElement('input'));
+      $input->setAttribute('name', 'processId');
+      $input->setAttribute('type', 'hidden');
+      $input->setAttribute('value', $caseInfo->processId);
 
       // special case for content textarea which is in the same tr than the file upload
       $res = $xpath->query('//*[@name="content"]/ancestor::div[1] | //*[@name="content"]/ancestor::tr[1]/td[1]');
@@ -643,6 +653,9 @@ function processMakerShowCase( $ID, $from_helpdesk ) {
       $th->item(0)->nodeValue = $caseInfo->processName;
 
       $buffer = $dom->saveHTML();
+
+      // revert back </b>
+      $buffer = str_replace($endOfBold, '</b>', $buffer);
 
       // will revert back any char converted above
       $buffer = mb_convert_encoding($buffer, 'UTF-8', 'HTML-ENTITIES');

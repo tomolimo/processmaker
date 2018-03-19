@@ -7,6 +7,9 @@
 if( isset( $_REQUEST['_glpi_csrf_token'] ) ) {
    define('GLPI_KEEP_CSRF_TOKEN', true) ;
 }
+$PM_POST = $_POST;
+$PM_REQUEST = $_REQUEST;
+$PM_GET = $_GET;
 include( "../../../inc/includes.php" );
 
 if (empty($_POST["_type"])
@@ -58,4 +61,8 @@ if( isset($_POST["_from_helpdesk"]) && $_POST["_from_helpdesk"] == 1
 // prepare environment for std tracking.injector.php
 // switch to front dir
 chdir(GLPI_ROOT."/front");
+// revert back $_POST, $_GET and $_REQUEST
+$_GET = $PM_GET;
+$_POST = $PM_POST;
+$_REQUEST = $PM_REQUEST;
 include (GLPI_ROOT . "/front/tracking.injector.php");

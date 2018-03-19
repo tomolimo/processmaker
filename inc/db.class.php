@@ -18,7 +18,7 @@ class PluginProcessmakerDB extends DBmysql {
          $this->dbhost = $config->fields['pm_dbserver_name'];
          $this->dbuser = $config->fields['pm_dbserver_user'];
          $this->dbpassword = Toolbox::decrypt($config->fields['pm_dbserver_passwd'], GLPIKEY);
-         $this->dbdefault = "wf_".$config->fields['pm_workspace'];
+         $this->dbdefault = $config->fields['pm_dbname'];
          parent::__construct();
       }
    }

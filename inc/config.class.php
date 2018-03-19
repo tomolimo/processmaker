@@ -143,6 +143,8 @@ class PluginProcessmakerConfig extends CommonDBTM {
    static function showConfigForm($item) {
       global $LANG, $PM_DB, $CFG_GLPI;
 
+      $setup_ok = false;
+
       $ui_theme = array(
         'glpi_classic' => 'glpi_classic',
         'glpi_neoclassic' => 'glpi_neoclassic'
@@ -150,7 +152,7 @@ class PluginProcessmakerConfig extends CommonDBTM {
 
       $config = self::getInstance();
 
-      $config->showFormHeader();
+      $config->showFormHeader(['colspan' => 4]);
 
       echo "<tr class='tab_bg_1'>";
       echo "<td >".$LANG['processmaker']['config']['URL']."</td><td >";
@@ -220,6 +222,7 @@ class PluginProcessmakerConfig extends CommonDBTM {
          && $config->fields["pm_admin_user"] != ''
          && ($pm->login(true))) {
          echo "<font color='green'>".__('Test successful');
+         $setup_ok = true;
       } else {
          echo "<font color='red'>".__('Test failed')."<br>".print_r($pm->lasterror, true);
       }
@@ -230,6 +233,11 @@ class PluginProcessmakerConfig extends CommonDBTM {
       echo "<tr class='tab_bg_1'>";
       echo "<td >" . __('SQL server (MariaDB or MySQL)') . "</td>";
       echo "<td ><input type='text' size=50 name='pm_dbserver_name' value='".$config->fields["pm_dbserver_name"]."'>";
+      echo "</td></tr>\n";
+
+      echo "<tr class='tab_bg_1'>";
+      echo "<td >" . __('Database name') . "</td>";
+      echo "<td ><input type='text' size=50 name='pm_dbname' value='".$config->fields["pm_dbname"]."'>";
       echo "</td></tr>\n";
 
       echo "<tr class='tab_bg_1'>";
@@ -310,6 +318,23 @@ class PluginProcessmakerConfig extends CommonDBTM {
        Dropdown::showYesNo("maintenance", $config->fields['maintenance']);
        echo "</td></tr>";
 
+       echo "<tr><td colspan='4'></td></tr>";
+
+       echo "<tr><th  colspan='4'>".__('Processmaker system information')."</th></tr>";
+       if ($setup_ok) {
+          $info = $pm->systemInformation( );
+          echo '<tr><td>'._('Version').'</td><td>'.$info->version.'</td></tr>';
+          echo '<tr><td>'._('Web server').'</td><td>'.$info->webServer.'</td></tr>';
+          echo '<tr><td>'._('Server name').'</td><td>'.$info->serverName.'</td></tr>';
+          echo '<tr><td>'._('PHP version').'</td><td>'.$info->phpVersion.'</td></tr>';
+          echo '<tr><td>'._('DB version').'</td><td>'.$info->databaseVersion.'</td></tr>';
+          echo '<tr><td>'._('DB server IP').'</td><td>'.$info->databaseServerIp.'</td></tr>';
+          echo '<tr><td>'._('DB name').'</td><td>'.$info->databaseName.'</td></tr>';
+          echo '<tr><td>'._('User browser').'</td><td>'.$info->userBrowser.'</td></tr>';
+          echo '<tr><td>'._('User IP').'</td><td>'.$info->userIp.'</td></tr>';
+       } else {
+          echo '<tr><td>'._('Version').'</td><td>'.__('Not yet!').'</td></tr>';
+       }
       $config->showFormButtons(array('candel'=>false));
 
       return false;

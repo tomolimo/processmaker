@@ -452,6 +452,24 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    }
 
    /**
+    * Summary of systemInformation
+    *      returns information about the PM system
+    *      Embedded systemInformation() PM web service call (definition: http://wiki.processmaker.com/index.php/ProcessMaker_WSDL_Web_Services#systemInformation.28.29)
+    *      A session must be open before with login()
+    * @return an object containing information, or false when exception occured
+    */
+   function systemInformation( ) {
+      try {
+         $pmSystemInfo = $this->pmSoapClient->systemInformation( array( 'sessionId' => $_SESSION["pluginprocessmaker"]["session"]["id"]) );
+         return $pmSystemInfo;
+      }
+      catch (Exception $e) {
+         Toolbox::logDebug( $e );
+         return false;
+      }
+   }
+
+   /**
    * Summary of reassignCase
    *      reassigns a case to a different user. Note that the logged-in user needs to have the PM_REASSIGNCASE permission in his/her role in order to be able to reassign the case.
    *      Embedded caseList() PM web service call (definition: http://wiki.processmaker.com/index.php/2.0/ProcessMaker_WSDL_Web_Services#reassignCase.28.29)
@@ -1380,7 +1398,10 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
          if (property_exists( $pmRouteCaseResponse, 'routing' )) {
             // now tries to get some variables to setup content for new task and to append text to solved task
             $txtForTasks = $myProcessMaker->getVariables( $myCase->getID(), array( "GLPI_ITEM_APPEND_TO_TASK",
-                                                                                  "GLPI_ITEM_SET_STATUS" ) );
+                                                                                  "GLPI_ITEM_SET_STATUS",
+                                                                                  "GLPI_TICKET_FOLLOWUP_CONTENT",
+                                                                                  "GLPI_TICKET_FOLLOWUP_IS_PRIVATE",
+                                                                                  "GLPI_TICKET_FOLLOWUP_REQUESTTYPES_ID" ) );
             $itemSetStatus = '';
             if (array_key_exists( 'GLPI_ITEM_SET_STATUS', $txtForTasks )) {
                $itemSetStatus = $txtForTasks[ 'GLPI_ITEM_SET_STATUS' ];
@@ -1390,13 +1411,25 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
             } else {
                $txtToAppendToTask  = '';
             }
+            $createFollowup = false; // by default
+            if (array_key_exists( 'GLPI_TICKET_FOLLOWUP_CONTENT', $txtForTasks ) && $txtForTasks[ 'GLPI_TICKET_FOLLOWUP_CONTENT' ] != '') {
+               $createFollowup = true;
+            }
 
             // reset those variables
             $resultSave = $myProcessMaker->sendVariables( $myCase->getID(), array( "GLPI_ITEM_APPEND_TO_TASK" => '',
-                                                                                   "GLPI_ITEM_SET_STATUS" => '' ) );
+                                                                                   "GLPI_ITEM_SET_STATUS" => '',
+                                                                                   "GLPI_TICKET_FOLLOWUP_CONTENT" => '',
+                                                                                   "GLPI_TICKET_FOLLOWUP_IS_PRIVATE" => '',
+                                                                                   "GLPI_TICKET_FOLLOWUP_REQUESTTYPES_ID" => '' ) );
 
             // routing has been done, then solve 1st task
             $myProcessMaker->solveTask(  $myCase->getID(), $parm->input['processmaker_delindex'], array( 'txtToAppend' => $txtToAppendToTask, 'notif' => false) );
+
+            // create a followup if requested
+            if ($createFollowup && $itemType == 'Ticket') {
+               $myProcessMaker->addTicketFollowup( $itemId, $txtForTasks );
+            }
 
             // and create GLPI tasks for the newly created PM tasks.
             foreach ($pmRouteCaseResponse->routing as $route) {

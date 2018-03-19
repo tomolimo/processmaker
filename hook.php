@@ -123,6 +123,7 @@ function plugin_processmaker_install() {
                   `pm_group_guid` VARCHAR(32) NULL DEFAULT NULL,
                   `comment` TEXT NULL,
                   `pm_dbserver_name` VARCHAR(255) NULL DEFAULT 'localhost',
+	               `pm_dbname` VARCHAR(50) NULL DEFAULT 'wf_workflow',
                   `pm_dbserver_user` VARCHAR(255) NULL DEFAULT NULL,
                   `pm_dbserver_passwd` VARCHAR(255) NULL DEFAULT NULL,
                   `domain` VARCHAR(50) NULL DEFAULT '',
@@ -162,6 +163,13 @@ function plugin_processmaker_install() {
                	ADD COLUMN `maintenance` TINYINT(1) NOT NULL DEFAULT '0' AFTER `domain`;
                ;";
       $DB->query($query) or die("error adding fields maintenance to glpi_plugin_processmaker_configs" . $DB->error());
+   }
+
+   if (!arFieldExists("glpi_plugin_processmaker_configs", "pm_dbname" )) {
+      $query = "ALTER TABLE `glpi_plugin_processmaker_configs`
+	               ADD COLUMN `pm_dbname` VARCHAR(50) NULL DEFAULT 'wf_workflow' AFTER `pm_dbserver_name`;
+               ;";
+      $DB->query($query) or die("error adding field pm_dbname to glpi_plugin_processmaker_configs" . $DB->error());
    }
 
    if (arTableExists("glpi_plugin_processmaker_profiles")) {
