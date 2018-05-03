@@ -119,7 +119,7 @@ function plugin_version_processmaker() {
    global $LANG;
 
    return array ('name'           => 'Process Maker',
-                'version'        => '3.2.8',
+                'version'        => '3.3.0',
                 'author'         => 'Olivier Moron',
                 'homepage'       => 'https://github.com/tomolimo/processmaker',
                 'minGlpiVersion' => '9.1');
