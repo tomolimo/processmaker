@@ -1734,7 +1734,79 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       $item = getItemForItemtype( $itemtype );
       if ($item->getFromDB( $itemId )) { //&& $itemtype::isAllowedStatus( $item->fields['status'], $newstatus )) {
           //$item->fields['status'] = $newstatus ;
-          $item->update( array('id' => $item->getID(), 'status' => $newstatus) );
+         $item->update( array('id' => $itemId, 'status' => $newstatus) );
+      }
+   }
+
+
+   /**
+    * Summary of setItemTitle
+    * @param mixed $itemtype
+    * @param mixed $itemId
+    * @param mixed $newtitle
+    */
+   public function setItemTitle( $itemtype, $itemId, $newtitle ) {
+      $item = getItemForItemtype( $itemtype );
+      if ($item->getFromDB( $itemId )) {
+         $item->update( ['id' => $itemId, 'name' => $txtItemTitle] );
+      }
+   }
+
+
+   /**
+    * Summary of setItemSolution
+    * @param mixed $itemType 
+    * @param mixed $itemId 
+    * @param mixed $casevariablevalues 
+    */
+   public function setItemSolution($itemType, $itemId, $casevariablevalues) {
+      $item = getItemForItemtype( $itemType );
+      if ($item->getFromDB( $itemId )) {
+         // default values
+         $solutiontemplates_id = 0;
+         $solutiontypes_id = 0;
+         $solution = '';
+
+         // check solution template
+         if (array_key_exists( 'GLPI_ITEM_SET_SOLUTION_TEMPLATE_ID', $casevariablevalues )
+            && $casevariablevalues[ 'GLPI_ITEM_SET_SOLUTION_TEMPLATE_ID' ] != ''
+            && $casevariablevalues[ 'GLPI_ITEM_SET_SOLUTION_TEMPLATE_ID' ] != 0) {
+            // get template
+            $template = new SolutionTemplate;
+            $template->getFromDB($casevariablevalues[ 'GLPI_ITEM_SET_SOLUTION_TEMPLATE_ID' ]);
+            $entities = $template->isRecursive() ? getSonsOf(Entity::getTable(), $template->getEntityID()) : [$template->getEntityID()];
+            // and check entities
+            if (in_array($item->getEntityID(), $entities)) {
+               $solutiontemplates_id = $template->getID();
+               $solutiontypes_id = $template->fields['solutiontypes_id'];
+               $solution = $template->fields['content'];
+            }
+         }
+
+         // check solution type
+         if (array_key_exists( 'GLPI_ITEM_SET_SOLUTION_TYPE_ID', $casevariablevalues )
+            && $casevariablevalues[ 'GLPI_ITEM_SET_SOLUTION_TYPE_ID' ] != ''
+            && $casevariablevalues[ 'GLPI_ITEM_SET_SOLUTION_TYPE_ID' ] != 0) {
+            // get solution type
+            $type = new SolutionType;
+            $type->getFromDB($casevariablevalues[ 'GLPI_ITEM_SET_SOLUTION_TYPE_ID' ]);
+            $entities = $type->isRecursive() ? getSonsOf(Entity::getTable(), $type->getEntityID()) : [$type->getEntityID()];
+            // and check entities
+            if (in_array($item->getEntityID(), $entities)) {
+               $solutiontypes_id = $type->getID();
+            }
+         }
+
+         // Check solution description
+         if (array_key_exists( 'GLPI_ITEM_APPEND_TO_SOLUTION_DESCRIPTION', $casevariablevalues )
+            && $casevariablevalues[ 'GLPI_ITEM_APPEND_TO_SOLUTION_DESCRIPTION' ] != '') {
+            if ($solution != '') {
+               $solution .= "\n";
+            }
+            $solution .= $casevariablevalues[ 'GLPI_ITEM_APPEND_TO_SOLUTION_DESCRIPTION' ] ;
+         }
+
+         $item->update( ['id' => $itemId, 'solutiontemplates_id' => $solutiontemplates_id, 'solutiontypes_id' => $solutiontypes_id, 'solution' => $solution] );
       }
    }
 
@@ -2484,50 +2556,56 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       // now derivate the case !!!
       $pmRouteCaseResponse = $this->routeCase( $myCase->getID(), $request['DEL_INDEX']);
 
+      $casevariables = ["GLPI_ITEM_TASK_CONTENT",
+                        "GLPI_ITEM_APPEND_TO_TASK",
+                        "GLPI_NEXT_GROUP_TO_BE_ASSIGNED",
+                        "GLPI_ITEM_TITLE",
+                        "GLPI_TICKET_FOLLOWUP_CONTENT",
+                        "GLPI_TICKET_FOLLOWUP_IS_PRIVATE",
+                        "GLPI_TICKET_FOLLOWUP_REQUESTTYPES_ID",
+                        "GLPI_ITEM_TASK_ENDDATE",
+                        "GLPI_ITEM_TASK_STARTDATE",
+                        "GLPI_ITEM_SET_STATUS",
+                        "GLPI_ITEM_SET_SOLUTION_TEMPLATE_ID",
+                        "GLPI_ITEM_SET_SOLUTION_TYPE_ID",
+                        "GLPI_ITEM_APPEND_TO_SOLUTION_DESCRIPTION"
+                       ];
+
       // now tries to get some variables to setup content for new task and to append text to solved task
-      $infoForTasks = $this->getVariables( $myCase->getID(), array( "GLPI_ITEM_TASK_CONTENT",
-                                                                    "GLPI_ITEM_APPEND_TO_TASK",
-                                                                    "GLPI_NEXT_GROUP_TO_BE_ASSIGNED",
-                                                                    "GLPI_ITEM_TITLE",
-                                                                    "GLPI_TICKET_FOLLOWUP_CONTENT",
-                                                                    "GLPI_TICKET_FOLLOWUP_IS_PRIVATE",
-                                                                    "GLPI_TICKET_FOLLOWUP_REQUESTTYPES_ID",
-                                                                    "GLPI_ITEM_TASK_ENDDATE",
-                                                                    "GLPI_ITEM_TASK_STARTDATE",
-                                                                    "GLPI_ITEM_SET_STATUS"
-                                                                  ) );
+      $casevariablevalues = $this->getVariables($myCase->getID(), $casevariables);
+
       $itemSetStatus = '';
-      if (array_key_exists( 'GLPI_ITEM_SET_STATUS', $infoForTasks )) {
-         $itemSetStatus = $infoForTasks[ 'GLPI_ITEM_SET_STATUS' ];
+      if (array_key_exists( 'GLPI_ITEM_SET_STATUS', $casevariablevalues )) {
+         $itemSetStatus = $casevariablevalues[ 'GLPI_ITEM_SET_STATUS' ];
       }
 
       $txtItemTitle  = '';
-      if (array_key_exists( 'GLPI_ITEM_TITLE', $infoForTasks )) {
-         $txtItemTitle = $infoForTasks[ 'GLPI_ITEM_TITLE' ];
+      if (array_key_exists( 'GLPI_ITEM_TITLE', $casevariablevalues )) {
+         $txtItemTitle = $casevariablevalues[ 'GLPI_ITEM_TITLE' ];
       }
 
       $txtToAppendToTask  = '';
-      if (array_key_exists( 'GLPI_ITEM_APPEND_TO_TASK', $infoForTasks )) {
-         $txtToAppendToTask = $infoForTasks[ 'GLPI_ITEM_APPEND_TO_TASK' ];
+      if (array_key_exists( 'GLPI_ITEM_APPEND_TO_TASK', $casevariablevalues )) {
+         $txtToAppendToTask = $casevariablevalues[ 'GLPI_ITEM_APPEND_TO_TASK' ];
       }
 
       $txtTaskContent = '';
-      if (array_key_exists( 'GLPI_ITEM_TASK_CONTENT', $infoForTasks )) {
-         $txtTaskContent = $infoForTasks[ 'GLPI_ITEM_TASK_CONTENT' ];
+      if (array_key_exists( 'GLPI_ITEM_TASK_CONTENT', $casevariablevalues )) {
+         $txtTaskContent = $casevariablevalues[ 'GLPI_ITEM_TASK_CONTENT' ];
       }
 
       $groupId = 0;
-      if (array_key_exists( 'GLPI_NEXT_GROUP_TO_BE_ASSIGNED', $infoForTasks )) {
-         $groupId = $infoForTasks[ 'GLPI_NEXT_GROUP_TO_BE_ASSIGNED' ];
+      if (array_key_exists( 'GLPI_NEXT_GROUP_TO_BE_ASSIGNED', $casevariablevalues )) {
+         $groupId = $casevariablevalues[ 'GLPI_NEXT_GROUP_TO_BE_ASSIGNED' ];
       }
 
       $taskStartDate = '';
       $taskEndDate = '';
-      if (array_key_exists( 'GLPI_ITEM_TASK_ENDDATE', $infoForTasks )) {
-         $taskEndDate = $infoForTasks[ 'GLPI_ITEM_TASK_ENDDATE' ];
+      if (array_key_exists( 'GLPI_ITEM_TASK_ENDDATE', $casevariablevalues )) {
+         $taskEndDate = $casevariablevalues[ 'GLPI_ITEM_TASK_ENDDATE' ];
       }
-      if (array_key_exists( 'GLPI_ITEM_TASK_STARTDATE', $infoForTasks )) {
-         $taskStartDate = $infoForTasks[ 'GLPI_ITEM_TASK_STARTDATE' ];
+      if (array_key_exists( 'GLPI_ITEM_TASK_STARTDATE', $casevariablevalues )) {
+         $taskStartDate = $casevariablevalues[ 'GLPI_ITEM_TASK_STARTDATE' ];
          if ($taskEndDate == '') {
             // at least
             $taskEndDate = $taskStartDate;
@@ -2535,23 +2613,18 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       }
 
       $createFollowup = false; // by default
-      if (array_key_exists( 'GLPI_TICKET_FOLLOWUP_CONTENT', $infoForTasks ) && $infoForTasks[ 'GLPI_TICKET_FOLLOWUP_CONTENT' ] != '') {
+      if (array_key_exists( 'GLPI_TICKET_FOLLOWUP_CONTENT', $casevariablevalues ) && $casevariablevalues[ 'GLPI_TICKET_FOLLOWUP_CONTENT' ] != '') {
          //&& array_key_exists( 'GLPI_TICKET_FOLLOWUP_IS_PRIVATE', $infoForTasks )
          //&& array_key_exists( 'GLPI_TICKET_FOLLOWUP_REQUESTTYPES_ID', $infoForTasks )
          $createFollowup = true;
       }
 
       // reset those variables
-      $resultSave = $this->sendVariables( $myCase->getID(), array( "GLPI_ITEM_APPEND_TO_TASK" => '',
-                                                           "GLPI_ITEM_TASK_CONTENT" => '',
-                                                           "GLPI_NEXT_GROUP_TO_BE_ASSIGNED" => '',
-                                                           "GLPI_ITEM_TITLE" => '',
-                                                           "GLPI_TICKET_FOLLOWUP_CONTENT" => '',
-                                                           "GLPI_TICKET_FOLLOWUP_IS_PRIVATE" => '',
-                                                           "GLPI_TICKET_FOLLOWUP_REQUESTTYPES_ID" => '',
-                                                           "GLPI_ITEM_TASK_ENDDATE" => '',
-                                                           "GLPI_ITEM_TASK_STARTDATE" => '',
-                                                           "GLPI_ITEM_SET_STATUS" => '')  );
+      $resetcasevariables = [];
+      foreach($casevariables as $val) {
+         $resetcasevariables[$val] = '';
+      }
+      $resultSave = $this->sendVariables($myCase->getID(), $resetcasevariables);
 
       // print_r( $pmRouteCaseResponse ) ;
       // die() ;
@@ -2561,11 +2634,11 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       $itemId = $myCase->getField('items_id');
 
       // switch own task to 'done' and create a new one
-      $this->solveTask(  $myCase->getID(), $request['DEL_INDEX'], array( 'txtToAppend' => $txtToAppendToTask, 'users_id_tech' => $users_id ) );
+      $this->solveTask( $myCase->getID(), $request['DEL_INDEX'], array( 'txtToAppend' => $txtToAppendToTask, 'users_id_tech' => $users_id ) );
 
       // create a followup if requested
       if ($createFollowup && $itemType == 'Ticket') {
-         $this->addTicketFollowup( $itemId, $infoForTasks );
+         $this->addTicketFollowup( $itemId, $casevariablevalues );
       }
       $caseInfo = $this->getCaseInfo(  $myCase->getID(), $request['DEL_INDEX']);
       if (property_exists( $pmRouteCaseResponse, 'routing' )) {
@@ -2582,7 +2655,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                                              'end_date' => $taskEndDate)
                                     );
 
-            // if end date was specicied, then must change due date of the PM task
+            // if end date was specified, then must change due date of the PM task
             if ($taskEndDate != '') {
                $PM_DB->query( "UPDATE APP_DELEGATION SET DEL_TASK_DUE_DATE='$taskEndDate' WHERE APP_UID='".$caseInfo->caseId."' AND DEL_INDEX=".$route->delIndex);
             }
@@ -2591,13 +2664,18 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
       if ($txtItemTitle != '') {
          // we are going to change the title of current GLPI Item
-         $item = new $itemType;
-         $item->getFromDB( $itemId );
-         $item->update( array('id' => $itemId, 'name' => $txtItemTitle) );
+         $this->setItemTitle($itemType, $itemId, $txtItemTitle);
       }
 
       if ($itemSetStatus != '') {
          $this->setItemStatus($itemType, $itemId, $itemSetStatus );
+      }
+
+      if (array_key_exists( 'GLPI_ITEM_SET_SOLUTION_TEMPLATE_ID', $casevariablevalues )
+          || array_key_exists( 'GLPI_ITEM_SET_SOLUTION_TYPE_ID', $casevariablevalues )
+          || array_key_exists( 'GLPI_ITEM_APPEND_TO_SOLUTION_DESCRIPTION', $casevariablevalues )) {
+         // case requests to add a solution to ticket
+         $this->setItemSolution($itemType, $itemId, $casevariablevalues);
       }
 
       // evolution of case status: DRAFT, TO_DO, COMPLETED, CANCELLED
