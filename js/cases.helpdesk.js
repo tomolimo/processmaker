@@ -107,7 +107,7 @@ function redimTaskFrame(taskFrame) {
    var newHeight;
    try {
       //var locElt = locContentDocument.getElementsByTagName("table")[0];
-      var locElt = taskFrame.contentDocument.getElementsByTagName("body")[0];
+      var locElt = taskFrame.contentDocument.getElementsByTagName("html")[0];
       newHeight = parseInt(getComputedStyle(locElt, null).getPropertyValue('height'), 10);
       if (newHeight < 400) {
          newHeight = 400;

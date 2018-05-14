@@ -1629,21 +1629,17 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
       // manage task description
       $input['content'] = ""; // by default empty :)
-      if ($options['txtTaskContent'] != '') {
-         $input['content'] = $options['txtTaskContent'];
-      } else if (!$pmProcess->fields["hide_case_num_title"]) {
-         $input['content'] = $LANG['processmaker']['item']['task']['case'].$caseInfo->caseName;
-      }
 
       if ($pmProcess->fields["insert_task_comment"]) {
-         if ($input['content'] != '') {
-            $input['content'] .= "\n";
-         }
-         $input['content'] .= $LANG['processmaker']['item']['task']['comment'];
+         $input['content'] .= $LANG['processmaker']['item']['task']['comment']."\n";
       }
-      if ($input['content'] != '') {
-         $input['content'] .= "\n";
+
+      if ($options['txtTaskContent'] != '') {
+         $input['content'] .= $options['txtTaskContent']."\n";
+      } else if (!$pmProcess->fields["hide_case_num_title"]) {
+         $input['content'] .= $LANG['processmaker']['item']['task']['case'].$caseInfo->caseName."\n";
       }
+
       $input['content'] .= $LANG['processmaker']['item']['task']['manage'];
 
       $input['is_private'] = 0;
@@ -1954,22 +1950,16 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       return  $launch;
    }
 
-    /**
-     * Summary of pre_show_item_processmakerticket
-     * @param $parm
-     */
-    //private $pmCurrentCaseID = null ;
-
+   /**
+   * Summary of pre_show_item_processmakerticket
+   * @param $params
+   */
    public static function pre_show_item_processmakerticket($params) {
-      //global $LANG;
-
-      //$plug = new Plugin;
 
       if (!is_array($params['item']) && is_subclass_of( $params['item'], 'CommonITILTask')) {
          // must check if Task is bound to a PM task
          $pmTask = new PluginProcessmakerTask($params['item']->getType());
          if ($pmTask->getFromDBByQuery("WHERE itemtype='".$params['item']->getType()."' and items_id=".$params['item']->getId())) {
-            //echo 'Test' ;
             $params['item']->fields['can_edit'] = false; // to prevent task edition
 
             // replace ##ticket.url##_PluginProcessmakerCase$processmakercases by a setActiveTab to the Case panel
@@ -1983,51 +1973,28 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                $params['item']->fields['content'] = str_replace( '##processmaker.taskcomment##', $taskComment, $params['item']->fields['content'] );
             }
             $taskJSId = "viewitem".$params['item']->getType().$params['item']->getId().$params['options']['rand'];
+
+            // special case for <hr> which will provoke the rendering to be split into several <p>
+            // add <p></p> which othervise will be missing
+            if (stripos($params['item']->fields['content'], '<hr>') !== false) {
+               $params['item']->fields['content'] = str_ireplace('<hr>', '<hr><p>', $params['item']->fields['content']).'</p>';
+            }
+
             echo Html::scriptBlock( "
-                  $('#$taskJSId').on('click', function ( ) {
+                  $('#$taskJSId').find('.item_content').children().not('.read_more').on('click', function ( ) {
                      //debugger;
                      var tabindex = $('#tabspanel').next('div').find('a[href*=\"_glpi_tab=PluginProcessmaker\"]').parent().index();
                      $('#tabspanel').next('div').tabs( 'option', 'active', tabindex );
                   } ).css('cursor', 'pointer') ;
                  ");
-            $params['item']->fields['content'] = str_replace( '##ticket.url##_PluginProcessmakerCase$processmakercases', "", $params['item']->fields['content'] ); //"<a href=\"javascript:pmActiveTab( );\">".$LANG['processmaker']['item']['task']['manage_text']."</a>"
+
+            $params['item']->fields['content'] = str_replace( "\n##ticket.url##_PluginProcessmakerCase\$processmakercases", "", $params['item']->fields['content'] );
 
             if (isset( $params['item']->fields['tr_id'] )) {
                $trID = $params['item']->fields['tr_id'];
-               //$params['item']->fields['content'] .= "<script>var loc$trID = document.getElementById('$trID'); loc$trID.style.cursor = 'pointer'; if (loc$trID.addEventListener) { loc$trID.addEventListener('click', function(){tabpanel.setActiveTab('PluginProcessmakerCase\$processmakercases');}, false);} else {loc$trID.attachEvent('onclick', function(){tabpanel.setActiveTab('PluginProcessmakerCase\$processmakercases');});  } </script>";
             }
          }
       }
-
-      //if( ($plug = new Plugin)  && !$plug->isActivated('arbehaviours') ) {
-      //   if ($params['item']->getID() && is_subclass_of( $params['item'], 'CommonITILObject')) {
-      //        // then we are in a ticket
-      //        if (isset($_REQUEST['glpi_tab']) && $_SESSION['glpiactiveprofile']['interface'] != "helpdesk"  ) {
-      //            $data     = self::multiexplode(array('$','_'), $_REQUEST['glpi_tab']);
-      //            $itemtype = $data[0];
-      //            // Default set
-      //            $tabnum   = 1;
-      //            if (isset($data[1])) {
-      //                $tabnum = $data[1];
-      //            }
-      //            elseif( $itemtype == -1 )
-      //                $tabnum = -1 ;
-
-      //            if( $data[0] == "processmaker" && $tabnum == 1 ) {
-
-      //            }
-      //            if( ($data[0] == "Ticket" && $tabnum == 2) || $tabnum == -1) {
-      //                // then we are showing the Solution tab
-      //                // then we must prevent solving of ticket if a case is running
-      //               if( !PluginProcessmakerCase::canSolve( $params['item'] ) ) {
-      //                    // then output a new div to hide solution
-      //                    $pmHideSolution = true ;
-      //                    echo "<div id='toHideSolution' style='display: none;'>" ;
-      //                }
-      //            }
-      //        }
-      //    }
-      //}
    }
 
     /**

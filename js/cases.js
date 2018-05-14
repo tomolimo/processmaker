@@ -171,7 +171,7 @@ function redimTaskFrame(taskFrame, delIndex) {
    var newHeight;
    try {
       //var locElt = locContentDocument.getElementsByTagName("table")[0];
-      var locElt = taskFrame.contentDocument.getElementsByTagName("body")[0];
+      var locElt = taskFrame.contentDocument.getElementsByTagName("html")[0];
       newHeight = parseInt(getComputedStyle(locElt, null).getPropertyValue('height'), 10);
       if (newHeight < 500) {
          newHeight = 500;
@@ -199,7 +199,7 @@ function onTaskFrameActivation(delIndex) {
             // try to redim caseIFrame
             if (!redimIFrame) {
                var newHeight;
-               var locElt = locContentDocument.getElementsByTagName("body")[0];
+               var locElt = locContentDocument.getElementsByTagName("html")[0];
                newHeight = parseInt(getComputedStyle(locElt, null).getPropertyValue('height'), 10);
 
                tabs.getItem('task-' + delIndex).setHeight(newHeight);
