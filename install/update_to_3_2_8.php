@@ -192,5 +192,5 @@ function update_to_3_2_8(){
    //   $DB->query($query) or die("error creating glpi_plugin_processmaker_selfservicedrafts" . $DB->error());
    //}
 
-
+   return '3.2.8';
 }

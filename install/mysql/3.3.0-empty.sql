@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS `glpi_plugin_processmaker_caselinks` (
   KEY `is_active` (`is_active`),
   KEY `is_externaldata` (`is_externaldata`),
   KEY `is_self` (`is_self`)
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
 -- Dumping structure for table glpi.glpi_plugin_processmaker_cases
@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS `glpi_plugin_processmaker_cases` (
 	`case_num` INT(11) NOT NULL,
 	`case_status` VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
 	`plugin_processmaker_processes_id` INT(11) NULL DEFAULT NULL,
+   `is_subprocess` TINYINT(1) NOT NULL DEFAULT '0',
 	INDEX `items` (`itemtype`, `items_id`),
 	INDEX `case_status` (`case_status`),
 	PRIMARY KEY (`id`),
@@ -77,7 +78,7 @@ CREATE TABLE IF NOT EXISTS `glpi_plugin_processmaker_configs` (
   `maintenance` tinyint(1) NOT NULL DEFAULT '0',
   `db_version` varchar(10) NOT NULL DEFAULT '3.3.0',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
 -- Dumping structure for table glpi.glpi_plugin_processmaker_crontaskactions
@@ -93,7 +94,7 @@ CREATE TABLE IF NOT EXISTS `glpi_plugin_processmaker_crontaskactions` (
   `state` int(11) NOT NULL,
   `date_mod` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=164 DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8;
 
 
 -- Dumping structure for table glpi.glpi_plugin_processmaker_processes
@@ -112,7 +113,7 @@ CREATE TABLE IF NOT EXISTS `glpi_plugin_processmaker_processes` (
   `project_type` varchar(50) NOT NULL DEFAULT 'classic',
   PRIMARY KEY (`id`),
   UNIQUE KEY `process_guid` (`process_guid`)
-) ENGINE=InnoDB AUTO_INCREMENT=41 DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
 -- Dumping structure for table glpi.glpi_plugin_processmaker_processes_profiles
@@ -127,22 +128,23 @@ CREATE TABLE IF NOT EXISTS `glpi_plugin_processmaker_profiles` (
   KEY `profiles_id` (`profiles_id`),
   KEY `processes_id` (`processes_id`),
   KEY `is_recursive` (`is_recursive`)
-) ENGINE=InnoDB AUTO_INCREMENT=22 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ;
 
 
 -- Dumping structure for table glpi.glpi_plugin_processmaker_taskcategories
-CREATE TABLE IF NOT EXISTS `glpi_plugin_processmaker_taskcategories` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `processes_id` int(11) NOT NULL,
-  `pm_task_guid` varchar(32) NOT NULL,
-  `taskcategories_id` int(11) NOT NULL,
-  `start` bit(1) NOT NULL DEFAULT b'0',
-  `is_active` tinyint(1) NOT NULL DEFAULT '1',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `pm_task_guid` (`pm_task_guid`),
-  UNIQUE KEY `items` (`taskcategories_id`),
-  KEY `processes_id` (`processes_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=62 DEFAULT CHARSET=utf8;
+CREATE TABLE `glpi_plugin_processmaker_taskcategories` (
+	`id` INT(11) NOT NULL AUTO_INCREMENT,
+	`plugin_processmaker_processes_id` INT(11) NOT NULL,
+	`pm_task_guid` VARCHAR(32) NOT NULL,
+	`taskcategories_id` INT(11) NOT NULL,
+	`is_start` TINYINT(1) NOT NULL DEFAULT '0',
+	`is_active` TINYINT(1) NOT NULL DEFAULT '1',
+	`is_subprocess` TINYINT(1) NOT NULL DEFAULT '0',
+	PRIMARY KEY (`id`),
+	UNIQUE INDEX `pm_task_guid` (`pm_task_guid`),
+	UNIQUE INDEX `items` (`taskcategories_id`),
+	INDEX `plugin_processmaker_processes_id` (`plugin_processmaker_processes_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
 -- Dumping structure for table glpi.glpi_plugin_processmaker_tasks
@@ -152,10 +154,11 @@ CREATE TABLE IF NOT EXISTS `glpi_plugin_processmaker_tasks` (
   `itemtype` varchar(32) NOT NULL,
   `case_id` varchar(32) NOT NULL,
   `del_index` int(11) NOT NULL,
+  `thread_index` INT(11) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `case_id` (`case_id`,`del_index`),
   UNIQUE KEY `items` (`itemtype`,`items_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=473 DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
 -- Dumping structure for table glpi.glpi_plugin_processmaker_users
@@ -165,7 +168,7 @@ CREATE TABLE IF NOT EXISTS `glpi_plugin_processmaker_users` (
   `password` varchar(32) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `pm_users_id` (`pm_users_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=12918 DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
 /*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;
