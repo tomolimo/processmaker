@@ -20,7 +20,7 @@ class PluginProcessmakerUser extends CommonDBTM {
      * @param $right limit user who have specific right
      * @param $entity_restrict Restrict to a defined entity
      * @param $value default value
-     * @param $used Already used items ID: not to display in dropdown
+     * @param $used array: Already used items ID: not to display in dropdown
      * @param $search pattern
      *
      * @return mysql result set.
@@ -33,12 +33,16 @@ class PluginProcessmakerUser extends CommonDBTM {
       //$db_pm = PluginProcessmakerConfig::getInstance()->getProcessMakerDB();
       $pmQuery = "SELECT GROUP_USER.USR_UID AS pm_user_id FROM TASK_USER
                     JOIN GROUP_USER ON GROUP_USER.GRP_UID=TASK_USER.USR_UID AND TASK_USER.TU_RELATION = 2 AND TASK_USER.TU_TYPE=1
-                    WHERE TAS_UID = '$taskId'; ";
+                    WHERE TAS_UID = '$taskId'
+                  UNION
+                  SELECT TASK_USER.USR_UID AS pm_user_id FROM TASK_USER
+                     WHERE TAS_UID = '$taskId' AND TASK_USER.TU_RELATION = 1 AND TASK_USER.TU_TYPE=1 ; ";
       $pmUsers = array( );
       foreach ($PM_DB->request( $pmQuery ) as $pmUser) {
          $pmUsers[ ] = $pmUser[ 'pm_user_id' ];
       }
 
+      $where = '';
       $joinprofile = false;
       switch ($right) {
          case "id" :

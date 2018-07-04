@@ -30,36 +30,36 @@ class PluginProcessmakerTaskCategory extends CommonDBTM
       self::title($item);
 
       echo "<div class='center'><br><table class='tab_cadre_fixehov'>";
-      echo "<tr><th colspan='6'>".$LANG['processmaker']['title'][3]."</th></tr>";
+      echo "<tr><th colspan='7'>".$LANG['processmaker']['title'][3]."</th></tr>";
       echo "<tr><th>".$LANG['processmaker']['process']['taskcategories']['name']."</th>".
       "<th>".$LANG['processmaker']['process']['taskcategories']['completename']."</th>" .
-      "<th>".$LANG['processmaker']['process']['taskcategories']['start']."</th>" .
+      "<th>".$LANG['processmaker']['process']['taskcategories']['is_start']."</th>" .
       "<th>".$LANG['processmaker']['process']['taskcategories']['guid']."</th>" .
       "<th>".$LANG['processmaker']['process']['taskcategories']['comment']."</th>" .
       "<th>".$LANG['processmaker']['process']['taskcategories']['is_active']."</th>" .
+      "<th>".$LANG['processmaker']['process']['taskcategories']['is_subprocess']."</th>" .
       "</tr>";
 
-      $query = "SELECT pm.pm_task_guid, pm.taskcategories_id, pm.`start`, gl.name, gl.completename, gl.`comment`, pm.is_active FROM glpi_plugin_processmaker_taskcategories AS pm
+      $query = "SELECT pm.pm_task_guid, pm.taskcategories_id, pm.`is_start`, gl.name, gl.completename, gl.`comment`, pm.is_active, pm.is_subprocess FROM glpi_plugin_processmaker_taskcategories AS pm
                     LEFT JOIN glpi_taskcategories AS gl ON pm.taskcategories_id=gl.id
-                    WHERE pm.processes_id=".$item->getID().";";
+                    WHERE pm.plugin_processmaker_processes_id=".$item->getID().";";
 
       foreach ($DB->request($query) as $taskCat) {
          echo "<tr class='tab_bg_1'>";
 
          echo "<td class='b'><a href='".
-         Toolbox::getItemTypeFormURL( 'TaskCategory' )."?id=".
-         $taskCat['taskcategories_id']."'>".$taskCat['name']; //str_replace(" ", "&nbsp;", $taskCat['name']);
+         Toolbox::getItemTypeFormURL('TaskCategory') . "?id=" . $taskCat['taskcategories_id'] . "'>" . $taskCat['name']; 
          if ($_SESSION["glpiis_ids_visible"]) {
-            echo " (".$taskCat['taskcategories_id'].")";
+            echo " (" . $taskCat['taskcategories_id'] . ")";
          }
          echo "</a></td>";
 
-         echo "<td >".$taskCat['completename']."</td>"; //str_replace(" ", "&nbsp;", $taskCat['completename'])."</td>";
+         echo "<td>" . $taskCat['completename'] . "</td>"; 
 
          echo "<td class='center'>";
-         if ($taskCat['start']) {
+         if ($taskCat['is_start']) {
             echo "<img src='".$CFG_GLPI["root_doc"]."/pics/ok.png' width='14' height='14' alt=\"".
-            $LANG['processmaker']['process']['taskcategories']['start']."\">";
+            $LANG['processmaker']['process']['taskcategories']['is_start']."\">";
          }
          echo "</td>";
 
@@ -72,7 +72,16 @@ class PluginProcessmakerTaskCategory extends CommonDBTM
          echo "<img src='".$CFG_GLPI["root_doc"]."/pics/ok.png' width='14' height='14' alt=\"".
             $LANG['processmaker']['process']['taskcategories']['is_active']."\">";
          }
-         echo "</td></tr>";
+         echo "</td>";
+
+         echo "<td class='center'>";
+         if ($taskCat['is_subprocess']) {
+            echo "<img src='".$CFG_GLPI["root_doc"]."/pics/ok.png' width='14' height='14' alt=\"".
+            $LANG['processmaker']['process']['taskcategories']['is_subprocess']."\">";
+         }
+         echo "</td>";
+
+         echo "</tr>";
       }
       echo "</table></div>";
 
@@ -109,16 +118,16 @@ class PluginProcessmakerTaskCategory extends CommonDBTM
     /**
      * Retrieve a TaskCat from the database using its external id (unique index): pm_task_guid
      *
-     * @param $extid string externalid
+     * @param $task_guid string externalid
      *
      * @return true if succeed else false
      **/
-   function getFromDBbyExternalID($extid) {
+   function getFromGUID($task_guid) {
       global $DB;
 
       $query = "SELECT *
                 FROM `".$this->getTable()."`
-                WHERE `pm_task_guid` = '$extid'";
+                WHERE `pm_task_guid` = '$task_guid'";
 
       if ($result = $DB->query($query)) {
          if ($DB->numrows($result) != 1) {

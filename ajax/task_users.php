@@ -13,7 +13,7 @@ if (strpos($_SERVER['PHP_SELF'], "task_users.php")) {
 }
 
 if (!defined('GLPI_ROOT')) {
-   die("Can not acces directly to this file");
+   die("Can not access directly to this file");
 }
 
 Session::checkLoginUser();
@@ -24,22 +24,23 @@ $rand = rand();
 echo "<form style='margin-bottom: 0px' name='processmaker_form_task$rand-".$_REQUEST['delIndex']."' id='processmaker_form_task$rand-".$_REQUEST['delIndex']."' method='post' action='".Toolbox::getItemTypeFormURL("PluginProcessmakerProcessmaker")."'>";
 echo $LANG['processmaker']['item']['reassigncase']."&nbsp;";
 echo "<input type='hidden' name='action' value='unpausecase_or_reassign_or_delete'>";
-echo "<input type='hidden' name='id' value='".$_REQUEST['itemId']."'>";
-echo "<input type='hidden' name='itemtype' value='".$_REQUEST['itemType']."'>";
-echo "<input type='hidden' name='plugin_processmaker_caseId' value='".$_REQUEST['caseId']."'>";
-echo "<input type='hidden' name='plugin_processmaker_delIndex' value='".$_REQUEST['delIndex']."'>";
-echo "<input type='hidden' name='plugin_processmaker_userId' value='".$_REQUEST['userId']."'>";
-echo "<input type='hidden' name='plugin_processmaker_taskId' value='".$_REQUEST['taskId']."'>";
-echo "<input type='hidden' name='plugin_processmaker_delThread' value='".$_REQUEST['delThread']."'>";
+echo "<input type='hidden' name='items_id' value='".$_REQUEST['items_id']."'>";
+echo "<input type='hidden' name='itemtype' value='".$_REQUEST['itemtype']."'>";
+echo "<input type='hidden' name='cases_id' value='".$_REQUEST['cases_id']."'>";
+echo "<input type='hidden' name='delIndex' value='".$_REQUEST['delIndex']."'>";
+echo "<input type='hidden' name='users_id' value='".$_REQUEST['users_id']."'>";
+echo "<input type='hidden' name='taskGuid' value='".$_REQUEST['taskGuid']."'>";
+echo "<input type='hidden' name='delThread' value='".$_REQUEST['delThread']."'>";
 
 PluginProcessmakerUser::dropdown( array('name'   => 'users_id_recipient',
-                                          'value'  => PluginProcessmakerUser::getGLPIUserId( $_REQUEST['userId'] ),
+                                          'value'  => $_REQUEST['users_id'],
+                                          'used' => [$_REQUEST['users_id']],
                                           'entity' => 0, //$item->fields["entities_id"], // not used, as any user can be assigned to any tasks
                                           'entity_sons' => false, // not used, as any user can be assigned to any tasks
                                           'right'  => 'all',
                                           'rand'  => $rand,
                                           'width' => '',
-                                          'specific_tags' => array('pmTaskId' => $_REQUEST['taskId'])));
+                                          'specific_tags' => array('taskGuid' => $_REQUEST['taskGuid'])));
 echo "&nbsp;&nbsp;";
 echo "<input type='submit' name='reassign' value='".$LANG['processmaker']['item']['buttonreassigncase']."' class='submit'>";
 Html::closeForm(true);

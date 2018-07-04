@@ -89,12 +89,14 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    var $lasterror;
    var $lang;
 
+   static $rightname = '';
 
-   /**
-   * Return the table used to store this object
-   *
-   * @return string
-   **/
+
+   ///**
+   //* Return the table used to store this object
+   //*
+   //* @return string
+   //**/
    static function getTable($classname = null) {
 
       return "glpi_plugin_processmaker_processes";
@@ -144,7 +146,11 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
             $this->serverURL = trim($this->config->fields['pm_server_URL'], '/').'/sys'.$this->config->fields['pm_workspace'].'/'.$this->lang.'/'.$this->config->fields['pm_theme'];
             $this->taskWriter = $this->config->fields['users_id'];
             $this->pm_group_guid = $this->config->fields['pm_group_guid'];
-            $this->pmSoapClient = new SoapClient($this->serverURL."/services/wsdl2", array( 'soap_version'   => SOAP_1_2, 'compression' => SOAP_COMPRESSION_ACCEPT | SOAP_COMPRESSION_GZIP) );
+            $this->pmSoapClient = new SoapClient($this->serverURL."/services/wsdl2", [ 'soap_version'   => SOAP_1_2,
+                                                                                       'compression' => SOAP_COMPRESSION_ACCEPT | SOAP_COMPRESSION_GZIP,
+                                                                                      // 'proxy_host' => 'localhost',
+                                                                                      // 'proxy_port' => 8888
+                                                                                        ] );
          }
 
          return true;
@@ -157,12 +163,21 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
 
    /**
+    * Summary of getPMSessionID
+    * @param mixed $case_guid
+    * @return mixed
+    */
+   function getPMSessionID() {
+      return $_SESSION["pluginprocessmaker"]["session"]['id'];
+   }
+
+   /**
    * Summary of login
    * @param mixed $admin_or_user if true will be admin, otherwise is user name (or user id), or current user
    * @return true if login has been correctly done with current GLPI user, or if a PM session was already open
    *         false if an exception occured (like SOAP error or PM login error)
    */
-   function login( $admin_or_user=false ) {
+   function login( $admin_or_user=false, $case_guid='default' ) {
       global $DB, $PM_DB;
       try {
          $locSession = new stdClass; // by default empty object
@@ -192,17 +207,16 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                } else {
                   $gusr->getFromDBbyName( $admin_or_user !== false ? $admin_or_user : $_SESSION["glpiname"]);
                }
-               $pmusr->getFromDB( $gusr->getID() );
+               $pmusr->getFromDB($gusr->getID());
                //if (!isset($pmusr->fields['password']) || $pmusr->fields['password'] == "") {
                   $pass = md5(Toolbox::encrypt( $gusr->getID().$gusr->getName().time(), GLPIKEY) );
-                  $pmusr->update( array('id' => $pmusr->getID(), 'password' => $pass) );
-                  //$DB->query( "UPDATE glpi_plugin_processmaker_users SET password = '".$pass."' WHERE glpi_users_id = ".$pmusr->getID().";" ) ;
-                  //$pmusr->update( array( $pmusr->getIndexName() => $pmusr->getID(), 'password' => $pass) ) ;
+                  //$pmusr->update( array('id' => $pmusr->getID(), 'password' => $pass) );
                   // and must be updated also in PM db
                   $PM_DB->query("UPDATE RBAC_USERS SET USR_PASSWORD='".$pass."' WHERE USR_UID='".$pmusr->fields['pm_users_id']."' ");
                   $PM_DB->query("UPDATE USERS SET USR_PASSWORD='".$pass."' WHERE USR_UID='".$pmusr->fields['pm_users_id']."' ");
                //}
-               $locSession = $this->pmSoapClient->login( array( 'userid' => $gusr->fields['name'], 'password' => 'md5:'.$pmusr->fields['password']) );
+                  //$locSession = $this->pmSoapClient->login( array( 'userid' => $gusr->fields['name'], 'password' => 'md5:'.$pmusr->fields['password']) );
+               $locSession = $this->pmSoapClient->login( ['userid' => $gusr->fields['name'], 'password' => 'md5:'.$pass] );
                if (is_object( $locSession ) && $locSession->status_code == 0) {
                   $_SESSION["pluginprocessmaker"]["session"]["id"] = $locSession->message;
                   $_SESSION["pluginprocessmaker"]["session"]["date"] = $locSession->timestamp;
@@ -239,7 +253,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    */
    function processList( ) {
       try {
-         $pmProcessList = $this->pmSoapClient->processList( array( 'sessionId' => $_SESSION["pluginprocessmaker"]["session"]["id"]) );
+         $pmProcessList = $this->pmSoapClient->processList( array( 'sessionId' => $this->getPMSessionID()) );
          if (isset( $pmProcessList->processes )) {
             if (is_array( $pmProcessList->processes )) {
                return $pmProcessList->processes;
@@ -263,13 +277,13 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    *      A session must be open before with login()
    *      Normalizes output of currentUsers to an array, even when only one element is returned by PM,
    *      Note: currentUsers field doesn't exist when case is CANCELLED
-   * @param $caseId: The case ID, which can be obtained with the caseList() function
+   * @param $caseGuid: The case GUID, which can be obtained with the caseList() function
    * @param $delIndex: The delegation index, which is a positive integer to identify the current task of the case. If empty then use current delIndex.
    * @return a getCaseInfoResponse object, or false exception occured
    */
-   function getCaseInfo( $caseId, $delIndex='') {
+   function getCaseInfo($caseGuid, $delIndex='') {
       try {
-         $pmCaseInfo = $this->pmSoapClient->getCaseInfo( array( 'sessionId' => $_SESSION["pluginprocessmaker"]["session"]["id"], 'caseId' => $caseId, 'delIndex' => $delIndex) );
+         $pmCaseInfo = $this->pmSoapClient->getCaseInfo( array( 'sessionId' => $this->getPMSessionID(), 'caseId' => $caseGuid, 'delIndex' => $delIndex) );
          switch ($pmCaseInfo->caseStatus) {
             case 'DRAFT' :
             case 'TO_DO':
@@ -295,13 +309,13 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    *       routes a case (i.e., moves the case to the next task in the process according to its routing rules).
    *       Embedded routeCase() PM web service call (definition: http://wiki.processmaker.com/index.php/2.0/ProcessMaker_WSDL_Web_Services#routeCase.28.29)
    *       A session must be open before with login()
-   * @param $caseId The case ID, which can be obtained with the caseList() function
+   * @param $case_guid The case ID, which can be obtained with the caseList() function
    * @param $delIndex The delegation index, which is a positive integer to identify the current task of the case. If empty then use current delIndex.
    * @return a routeCaseResponse object, or false exception occured. routing is normalized to be always an array of routeListStruct
    */
-   function routeCase( $caseId, $delIndex) {
+   function routeCase($case_guid, $delIndex) {
       try {
-         $pmRouteCaseResponse = $this->pmSoapClient->routeCase( array( 'sessionId' => $_SESSION["pluginprocessmaker"]["session"]["id"], 'caseId' => $caseId, 'delIndex' => $delIndex) );
+         $pmRouteCaseResponse = $this->pmSoapClient->routeCase( array( 'sessionId' => $this->getPMSessionID(), 'caseId' => $case_guid, 'delIndex' => $delIndex) );
          if ($pmRouteCaseResponse->status_code != 0) {
              Toolbox::logDebug( 'routeCase res:', $pmRouteCaseResponse );
          }
@@ -327,7 +341,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    */
    function triggerList( ) {
       try {
-         $pmTriggerList = $this->pmSoapClient->triggerList( array( 'sessionId' => $_SESSION["pluginprocessmaker"]["session"]["id"]) );
+         $pmTriggerList = $this->pmSoapClient->triggerList( array( 'sessionId' => $this->getPMSessionID()) );
          if (is_array(  $pmTriggerList->triggers  )) {
              return  $pmTriggerList->triggers;
          } else {
@@ -349,7 +363,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    */
    function taskList( ) {
       try {
-         $pmTaskList = $this->pmSoapClient->taskList( array( 'sessionId' => $_SESSION["pluginprocessmaker"]["session"]["id"]) );
+         $pmTaskList = $this->pmSoapClient->taskList( array( 'sessionId' => $this->getPMSessionID()) );
 
          if (is_array(  $pmTaskList->tasks  )) {
              return  $pmTaskList->tasks;
@@ -371,9 +385,9 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    *      Normalizes output to an array, even when only one element is returned by PM
    * @return array of taskListStruct objects, or false when exception occured
    */
-   function taskCase( $caseId ) {
+   function taskCase($case_guid) {
       try {
-         $pmTaskCase = $this->pmSoapClient->taskCase( array( 'sessionId' => $_SESSION["pluginprocessmaker"]["session"]["id"], 'caseId' => $caseId ) );
+         $pmTaskCase = $this->pmSoapClient->taskCase( array( 'sessionId' => $this->getPMSessionID(), 'caseId' => $case_guid ) );
 
          if (is_array(  $pmTaskCase->taskCases  )) {
              return  $pmTaskCase->taskCases;
@@ -388,13 +402,13 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
    /**
    * Summary of claimCase
-   * @param mixed $caseId
+   * @param mixed $case_guid
    * @param mixed $delIndex
    * @return mixed
    */
-   function claimCase( $caseId, $delIndex) {
+   function claimCase($case_guid, $delIndex) {
       try {
-         $pmClaimCase = $this->pmSoapClient->claimCase( array( 'sessionId' => $_SESSION["pluginprocessmaker"]["session"]["id"], 'guid' => $caseId, 'delIndex' => $delIndex) );
+         $pmClaimCase = $this->pmSoapClient->claimCase( array( 'sessionId' => $this->getPMSessionID(), 'guid' => $case_guid, 'delIndex' => $delIndex) );
          return $pmClaimCase;
       } catch (Exception $e) {
          Toolbox::logDebug( $e );
@@ -408,14 +422,14 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    *      Embedded UnpauseCase() PM web service call (definition: http://wiki.processmaker.com/index.php/2.0/ProcessMaker_WSDL_Web_Services#UnpauseCase.28.29)
    *      A session must be open before with login()
    *      Normalizes output to an array, even when only one element is returned by PM
-   * @param $caseId The unique ID of the case.
+   * @param $caseGuid The unique ID of the case.
    * @param $delIndex The delegation index of the current task in the case.
-   * @param $userId The unique ID of the user who will unpause the case.
+   * @param $userGuid The unique ID of the user who will unpause the case.
    * @return an array of UnpauseCaseStruct, or false when exception occured
    */
-   function unpauseCase( $caseId, $delIndex, $userId ) {
+   function unpauseCase( $caseGuid, $delIndex, $userGuid ) {
       try {
-         $pmUnpauseCase = $this->pmSoapClient->unpauseCase( array( 'sessionId' => $_SESSION["pluginprocessmaker"]["session"]["id"], 'caseUid' => $caseId, 'delIndex' => $delIndex, 'userUid' => $userId) );
+         $pmUnpauseCase = $this->pmSoapClient->unpauseCase( array( 'sessionId' => $this->getPMSessionID(), 'caseUid' => $caseGuid, 'delIndex' => $delIndex, 'userUid' => $userGuid) );
 
          if (is_array( $pmUnpauseCase->processes )) {
              return  $pmUnpauseCase->processes;
@@ -438,7 +452,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    */
    function caseList( ) {
       try {
-         $pmCaseList = $this->pmSoapClient->caseList( array( 'sessionId' => $_SESSION["pluginprocessmaker"]["session"]["id"]) );
+         $pmCaseList = $this->pmSoapClient->caseList( array( 'sessionId' => $this->getPMSessionID()) );
 
          if (is_array(  $pmCaseList->cases  )) {
              return  $pmCaseList->cases;
@@ -460,7 +474,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
     */
    function systemInformation( ) {
       try {
-         $pmSystemInfo = $this->pmSoapClient->systemInformation( array( 'sessionId' => $_SESSION["pluginprocessmaker"]["session"]["id"]) );
+         $pmSystemInfo = $this->pmSoapClient->systemInformation( array( 'sessionId' => $this->getPMSessionID()) );
          return $pmSystemInfo;
       }
       catch (Exception $e) {
@@ -474,15 +488,19 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    *      reassigns a case to a different user. Note that the logged-in user needs to have the PM_REASSIGNCASE permission in his/her role in order to be able to reassign the case.
    *      Embedded caseList() PM web service call (definition: http://wiki.processmaker.com/index.php/2.0/ProcessMaker_WSDL_Web_Services#reassignCase.28.29)
    *      A session must be open before with login()
-   * @param $caseId The case ID, which can be obtained with the caseList() function.
+   * @param $caseGuid The case GUID, which can be obtained with the caseList() function.
    * @param $delIndex The current delegation index number of the case, which can be obtained with the caseList() function.
-   * @param $userIdSource The user who is currently assigned the case, which can be obtained with the caseList() function.
-   * @param $userIdTarget The target user who will be newly assigned to the case, which can be obtained with userList(). The case can only be reassigned to a user who is one of the assigned users or ad-hoc users to the current task in the case.
-   * @return A pmResponse object, or false when exception occured
+   * @param $userGuidSource The PM user GUID who is currently assigned the case, which can be obtained with the caseList() function.
+   * @param $userGuidTarget The PM target user GUID who will be newly assigned to the case, which can be obtained with userList(). The case can only be reassigned to a user who is one of the assigned users or ad-hoc users to the current task in the case.
+   * @return stdClass, a pmResponse object, or false when exception occured
    */
-   function reassignCase( $caseId, $delIndex, $userIdSource, $userIdTarget ) {
+   function reassignCase($caseGuid, $delIndex, $userGuidSource, $userGuidTarget) {
       try {
-         $pmResults = $this->pmSoapClient->reassignCase( array( 'sessionId' => $_SESSION["pluginprocessmaker"]["session"]["id"], 'caseId' => $caseId, 'delIndex' => $delIndex, 'userIdSource' => $userIdSource, 'userIdTarget'=> $userIdTarget) );
+         $pmResults = $this->pmSoapClient->reassignCase( ['sessionId' => $this->getPMSessionID(),
+                                                          'caseId' => $caseGuid,
+                                                          'delIndex' => $delIndex,
+                                                          'userIdSource' => $userGuidSource,
+                                                          'userIdTarget'=> $userGuidTarget] );
          return $pmResults;
       } catch (Exception $e) {
          Toolbox::logDebug( $e );
@@ -502,7 +520,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    */
    function deleteCase( $caseUid ) {
       try {
-         $deleteCaseResponse = $this->pmSoapClient->deleteCase( array( 'sessionId' => $_SESSION["pluginprocessmaker"]["session"]["id"], 'caseUid' => $caseUid) );
+         $deleteCaseResponse = $this->pmSoapClient->deleteCase( array( 'sessionId' => $this->getPMSessionID(), 'caseUid' => $caseUid) );
          return $deleteCaseResponse;
       } catch (Exception $e) {
          Toolbox::logDebug( $e );
@@ -526,7 +544,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    */
    function cancelTask( $caseUid, $delIndex, $userUid ) {
       try {
-         $cancelTaskResponse = $this->pmSoapClient->cancelCase( array( 'sessionId' => $_SESSION["pluginprocessmaker"]["session"]["id"], 'caseUid' => $caseUid, 'delIndex' => $delIndex, 'userUid' => $userUid) );
+         $cancelTaskResponse = $this->pmSoapClient->cancelCase( array( 'sessionId' => $this->getPMSessionID(), 'caseUid' => $caseUid, 'delIndex' => $delIndex, 'userUid' => $userUid) );
          return $cancelTaskResponse;
       } catch (Exception $e) {
          Toolbox::logDebug( $e );
@@ -575,14 +593,14 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    *      New case is started with DRAFT status.
    *      Embedded newCaseImpersonate() PM web service call (definition: http://wiki.processmaker.com/index.php/2.0/ProcessMaker_WSDL_Web_Services#newCaseImpersonate.28.29)
    *      A session must be open before with login(), in order to call this function.
-   * @param $processId The ID of the process where the case should start, which can be obtained with processList()
+   * @param $processes_id integer: The GLPI ID of the process that must be used to start a new case
    * @param $userId The ID of the user who initiates the case, which can be obtained with userList().
    * @param $vars an array of associative variables (name => value) that will be injected into the case as case variables
    * @return A newCaseResponse object, or false when exception occured
    */
-   function newCaseImpersonate( $processId, $userId, $vars = null ) {
+   function newCaseImpersonate($processes_id, $userId, $vars = null ) {
       try {
-         $this->getFromDB( $processId );
+         $this->getFromDB($processes_id);
 
          if ($vars !== null) {
             $aVars = array();
@@ -596,7 +614,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
             $aVars = '';
          }
 
-         $newCaseResponse = $this->pmSoapClient->newCaseImpersonate( array( 'sessionId' => $_SESSION["pluginprocessmaker"]["session"]["id"], 'processId'=> $this->fields['process_guid'], 'userId' => $userId, 'taskId'=>'', 'variables'=> $aVars) );
+         $newCaseResponse = $this->pmSoapClient->newCaseImpersonate( array( 'sessionId' => $this->getPMSessionID(), 'processId'=> $this->fields['process_guid'], 'userId' => $userId, 'taskId'=>'', 'variables'=> $aVars) );
          return $newCaseResponse;
       } catch (Exception $e) {
          Toolbox::logDebug( $e );
@@ -612,13 +630,13 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    *      New case is started with DRAFT status.
    *      Embedded newCase() PM web service call (definition: http://wiki.processmaker.com/index.php/2.0/ProcessMaker_WSDL_Web_Services#newCase.28.29)
    *      A session must be open before with login()
-   * @param string $processId The ID of the process which will be instantied into a case, which can be obtained with processList()
+   * @param $processes_id integer: the GLPI ID of the process which will be instantied into a case
    * @param array  $vars      an array of associative variables (name => value) that will be injected into the case as case variables
-   * @return A newCaseResponse object, or false when exception occured
+   * @return boolean|newCaseResponse: false when exception occured
    */
-   function newCase( $processId, $vars = array() ) {
+   function newCase($processes_id, $vars = array()) {
       try {
-         $this->getFromDB( $processId );
+         $this->getFromDB($processes_id);
 
          $aVars = array();
          foreach ($vars as $key => $val) {
@@ -628,7 +646,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
             $aVars[] = $obj;
          }
 
-         $newCaseResponse = $this->pmSoapClient->newCase( array( 'sessionId' => $_SESSION["pluginprocessmaker"]["session"]["id"], 'processId'=> $this->fields['process_guid'], 'taskId'=>'', 'variables'=> $aVars) );
+         $newCaseResponse = $this->pmSoapClient->newCase( array( 'sessionId' => $this->getPMSessionID(), 'processId'=> $this->fields['process_guid'], 'taskId'=>'', 'variables'=> $aVars) );
 
          return $newCaseResponse;
       } catch (Exception $e) {
@@ -642,11 +660,11 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    *      Sends variables to a case.
    *      Embedded sendVariables() PM web service call (definition: http://wiki.processmaker.com/index.php/2.0/ProcessMaker_WSDL_Web_Services#sendVariables.28.29)
    *      A session must be open before with login()
-   * @param string $caseId The uID of the case
+   * @param string $caseGuid The GUID of the case
    * @param array  $vars   an array of associative variables (name => value) that will be injected into the case as case variables
    * @return A pmResponse object, or false when exception occured
    */
-   function sendVariables( $caseId, $vars = array() ) {
+   function sendVariables($caseGuid, $vars = array()) {
       if (count( $vars ) == 0) { // nothing to send
           return true;
       }
@@ -663,7 +681,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
             $aVars[] = $obj;
          }
 
-         $pmResponse = $this->pmSoapClient->sendVariables( array( 'sessionId' => $_SESSION["pluginprocessmaker"]["session"]["id"], 'caseId' => $caseId, 'variables'=> $aVars) );
+         $pmResponse = $this->pmSoapClient->sendVariables( array( 'sessionId' => $this->getPMSessionID(), 'caseId' => $caseGuid, 'variables'=> $aVars) );
 
          return $pmResponse;
       } catch (Exception $e) {
@@ -679,12 +697,12 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    *      Gets variables from a case.
    *      Embedded getVariables() PM web service call (definition: http://wiki.processmaker.com/index.php/2.0/ProcessMaker_WSDL_Web_Services#getVariables.28.29)
    *      A session must be open before with login()
-   * @param string $caseId The uID of the case
+   * @param string $case_guid The uID of the case
    * @param array  $vars   an array of variable name that will be read from the case as case variables Normalizes output to an array, even when only one element is returned by PM Normalizes output to an array, even when only one element is returned by PM
    *      Normalizes output to an array, even when only one element is returned by PM
    * @return array: an associative array (variable_name => value), or false when exception occured. The return array can be empty if requested variables are not found.
    */
-   function getVariables( $caseId, $vars = array() ) {
+   function getVariables( $case_guid, $vars = array() ) {
       try {
          $aVars = array();
          foreach ($vars as $key => $name) {
@@ -693,7 +711,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
             $aVars[] = $obj;
          }
 
-         $pmvariableListResponse = $this->pmSoapClient->getVariables( array( 'sessionId' => $_SESSION["pluginprocessmaker"]["session"]["id"], 'caseId' => $caseId, 'variables'=> $aVars) );
+         $pmvariableListResponse = $this->pmSoapClient->getVariables( array( 'sessionId' => $this->getPMSessionID(), 'caseId' => $case_guid, 'variables'=> $aVars) );
 
          $variablesArray = array();
 
@@ -723,7 +741,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    */
    function groupList( ) {
       try {
-         $pmGroupList = $this->pmSoapClient->groupList( array( 'sessionId' => $_SESSION["pluginprocessmaker"]["session"]["id"]) );
+         $pmGroupList = $this->pmSoapClient->groupList( array( 'sessionId' => $this->getPMSessionID()) );
 
          if (is_array(  $pmGroupList->groups  )) {
              return  $pmGroupList->groups;
@@ -747,7 +765,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    */
    function assignUserToGroup( $userId, $groupId) {
       try {
-         $pmResults = $this->pmSoapClient->assignUserToGroup(array( 'sessionId' => $_SESSION["pluginprocessmaker"]["session"]["id"],
+         $pmResults = $this->pmSoapClient->assignUserToGroup(array( 'sessionId' => $this->getPMSessionID(),
                                                              'userId' => $userId,
                                                              'groupId' => $groupId
                                                              ) );
@@ -769,7 +787,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    */
    function createGroup( $name ) {
       try {
-         $pmResults = $this->pmSoapClient->createGroup(array( 'sessionId' => $_SESSION["pluginprocessmaker"]["session"]["id"],
+         $pmResults = $this->pmSoapClient->createGroup(array( 'sessionId' => $this->getPMSessionID(),
                                                              'name' => $name ) );
          return $pmResults;
       } catch (Exception $e) {
@@ -806,7 +824,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    */
    function userList( ) {
       try {
-         $pmUserList = $this->pmSoapClient->userList( array( 'sessionId' => $_SESSION["pluginprocessmaker"]["session"]["id"]) );
+         $pmUserList = $this->pmSoapClient->userList( array( 'sessionId' => $this->getPMSessionID()) );
 
          if (is_array(  $pmUserList->users  )) {
              return  $pmUserList->users;
@@ -845,7 +863,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
             $email = $userId."@DoNotReply.com";
          }
 
-         $pmResults = $this->pmSoapClient->createUser(array( 'sessionId' => $_SESSION["pluginprocessmaker"]["session"]["id"],
+         $pmResults = $this->pmSoapClient->createUser(array( 'sessionId' => $this->getPMSessionID(),
                                                              'userId' => $userId,
                                                              'firstname'=> $firstname,
                                                              'lastname' => $lastname,
@@ -882,7 +900,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
             $lastName = $userName;
          }
 
-         $pmResults = $this->pmSoapClient->updateUser(array( 'sessionId' => $_SESSION["pluginprocessmaker"]["session"]["id"],
+         $pmResults = $this->pmSoapClient->updateUser(array( 'sessionId' => $this->getPMSessionID(),
                                                              'userUid' => $userUid,
                                                              'userName' => $userName,
                                                              'firstName'=> $firstName,
@@ -909,7 +927,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    */
    function executeTrigger( $caseId, $triggerIndex, $delIndex ) {
       try {
-         $pmResults = $this->pmSoapClient->executeTrigger(array( 'sessionId' => $_SESSION["pluginprocessmaker"]["session"]["id"], 'caseId' => $caseId, 'triggerIndex'=> $triggerIndex, 'delIndex' => $delIndex ) );
+         $pmResults = $this->pmSoapClient->executeTrigger(array( 'sessionId' => $this->getPMSessionID(), 'caseId' => $caseId, 'triggerIndex'=> $triggerIndex, 'delIndex' => $delIndex ) );
          return $pmResults;
       } catch (Exception $e) {
          Toolbox::logDebug( $e );
@@ -949,103 +967,104 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    *     0 : nothing to do
    */
    static function cronPMTaskActions($task) {
-      global $DB, $PM_DB;
+      global $DB, $PM_DB, $PM_SOAP;
 
-      $usr = false; // by default
-      if (!isset($PM_DB)) {
-         $PM_DB = new PluginProcessmakerDB;
+      //plugin_processmaker_post_init();
 
-         // also create a GLPI session with the processmaker task writer
-         $usr = new User;
-         $config = PluginProcessmakerConfig::getInstance();
-         $usr->getFromDB($config->fields['users_id']);
-         $save_session = $_SESSION;
-         $usr->loadMinimalSession(0, true);
-         $_SESSION['glpiparententities'] = [];
-      }
+      // also create a GLPI session with the processmaker task writer
+      $usr = new User;
+      $config = PluginProcessmakerConfig::getInstance();
+      $usr->getFromDB($config->fields['users_id']);
+      $save_session = $_SESSION;
+      $usr->loadMinimalSession(0, true);
+      $_SESSION['glpiparententities'] = [];
 
       $actionCode = 0; // by default
       $error = false;
       $task->setVolume(0); // start with zero
 
-      $pm = new self;
+      //$pm = new self;
       $existingpmsession = isset($_SESSION["pluginprocessmaker"]["session"]);
       $formerusers_id = 0;
       // get the list of taskactions to be done
+      $locCase = new PluginProcessmakerCase;
       foreach ($DB->request( getTableForItemType('PluginProcessmakerCrontaskaction'), ' `state` = '.PluginProcessmakerCrontaskaction::DATA_READY ) as $taskaction) {
+         if ($locCase->getFromDB($taskaction['plugin_processmaker_cases_id'])) {
+            // there is an existing case for this crontaskaction.
+            try {
 
-         try {
+               if ($formerusers_id != $taskaction['users_id']) {
+                  unset($_SESSION["pluginprocessmaker"]["session"]); // to reset previous user login if any
+               }
 
-            if ($formerusers_id != $taskaction['users_id']) {
-               unset($_SESSION["pluginprocessmaker"]["session"]); // to reset previous user login if any
-            }
+               $PM_SOAP->login($taskaction['users_id']);
 
-            $pm->login($taskaction['users_id']);
+               $postdata = json_decode($taskaction['postdata'], true);
 
-            $postdata = json_decode($taskaction['postdata'], true);
-
-            // must filter arrays as arrays are grids and index must start at 1 instead of 0 like in json
-            foreach($postdata['form'] as &$field) {
-               if (is_array($field)) {
-                  if (count($field) > 0){
-                     // then must reindex the array starting to 1 instead of 0
-                     array_unshift($field, '');
-                     unset($field[0]);
-                  } else {
-                     $field[] = "";
+               // must filter arrays as arrays are grids and index must start at 1 instead of 0 like in json
+               // TODO: to check if it would be possible to do this in a more generic way
+               foreach($postdata['form'] as &$field) {
+                  if (is_array($field)) {
+                     if (count($field) > 0){
+                        // then must reindex the array starting to 1 instead of 0
+                        array_unshift($field, '');
+                        unset($field[0]);
+                     } else {
+                        $field[] = "";
+                     }
                   }
                }
-            }
 
-            if ($taskaction['is_targettoclaim']) {
-               // must do a claim before solving task
-               if (!$pm->claimCase( $postdata['APP_UID'], $postdata['DEL_INDEX'] )) {
-                  throw new Exception("Can't claim case");
+               if ($taskaction['is_targettoclaim']) {
+                  // must do a claim before solving task
+                  if (!$PM_SOAP->claimCase( $postdata['APP_UID'], $postdata['DEL_INDEX'] )) {
+                     throw new Exception("Can't claim case");
+                  }
+
+                  // do not send notifications
+                  $donotif = self::saveNotification(false);
+
+                  // now manage tasks associated with item
+                  $PM_SOAP->claimTask( $postdata['APP_UID'], $postdata['DEL_INDEX'], $taskaction['users_id'] );
+
+                  self::restoreNotification($donotif);
+
                }
+               //$myCase = new PluginProcessmakerCase;
+               //if ($myCase->getFromGUID( $postdata['APP_UID'] )) {
 
-               // do not send notifications
-               $donotif = self::saveNotification(false);
+                  //$cookies = json_decode($taskaction['cookies'], true) ;
+                  //$pm->derivateCase( $myCase, $postdata, $taskaction['users_id'] );
+               $PM_SOAP->derivateCase($locCase, $postdata, $taskaction['users_id'] );
+               //}
 
-               // now manage tasks associated with item
-               $pm->claimTask( $postdata['APP_UID'], $postdata['DEL_INDEX'], $taskaction['users_id'] );
+               $tkaction = new PluginProcessmakerCrontaskaction;
+               $tkaction->update( array( 'id' => $taskaction['id'], 'state' => PluginProcessmakerCrontaskaction::DONE ) );
 
-               self::restoreNotification($donotif);
+               $task->addVolume(1);
+               $task->log( "Applied task action id: '".$taskaction['id']."'" );
 
             }
-            $myCase = new PluginProcessmakerCase;
-            if ($myCase->getFromDB( $postdata['APP_UID'] )) {
-
-               //$cookies = json_decode($taskaction['cookies'], true) ;
-               $pm->derivateCase( $myCase, $postdata, $taskaction['users_id'] );
+            catch (Exception $e) {
+               $task->log( "Can't apply task action id: '".$taskaction['id']."'" );
+               $error = true;
             }
 
-            $tkaction = new PluginProcessmakerCrontaskaction;
-            $tkaction->update( array( 'id' => $taskaction['id'], 'state' => PluginProcessmakerCrontaskaction::DONE ) );
-
-            $task->addVolume(1);
-            $task->log( "Applied task action id: '".$taskaction['id']."'" );
-
-         } catch (Exception $e) {
-            $task->log( "Can't apply task action id: '".$taskaction['id']."'" );
-            $error = true;
+            $formerusers_id = $taskaction['users_id'];
          }
-
-         $formerusers_id = $taskaction['users_id'];
       }
 
       if ($existingpmsession) {
          unset($_SESSION["pluginprocessmaker"]["session"]); // reset the one created during the foreach
          if (!Session::isCron()) {
-            $pm->login(); // re-log default user
+            $PM_SOAP->login(); // re-log default user
          }
       }
 
-      if ($usr) {
-         // restore previous session
-         Session::destroy();
-         Session::start();
-         $_SESSION = $save_session;
-      }
+      // restore previous session
+      Session::destroy();
+      Session::start();
+      $_SESSION = $save_session;
 
       if ($error) {
          return -1;
@@ -1054,6 +1073,8 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       }
 
    }
+
+
    /**
    * summary of cronPMOrphanCases
    *       Execute 1 task managed by the plugin
@@ -1064,13 +1085,11 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    *     0 : nothing to do
    */
    static function cronPMOrphanCases($task) {
-      global $PM_DB, $DB;
+      global $PM_DB, $DB, $PM_SOAP;
 
-      if (!isset($PM_DB)) {
-         $PM_DB = new PluginProcessmakerDB;
-      }
+      //plugin_processmaker_post_init();
 
-      // get list of case assigned to GLPi items
+      // get list of case assigned to GLPI items
       $draftCases = array(0);
       $query = "SELECT case_num FROM glpi_plugin_processmaker_cases WHERE case_status = 'DRAFT';";
       foreach ($DB->request( $query ) as $row) {
@@ -1082,8 +1101,8 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       $task->setVolume(0); // start with zero
 
       if (count($draftCases) > 0) {
-         $pm = new self;
-         $pm->login(true);
+         //$PM_SOAP = new self;
+         $PM_SOAP->login(true);
          $query = "SELECT * FROM APPLICATION
                   WHERE APP_DATA LIKE '%s:24:\"GLPI_SELFSERVICE_CREATED\";s:1:\"1\"%'
                      AND APP_STATUS = 'DRAFT'
@@ -1091,7 +1110,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                      AND APP_NUMBER NOT IN (".implode(',', $draftCases).");
                 ";
          foreach ($PM_DB->request( $query ) as $row) {
-            $ret = $pm->deleteCase( $row['APP_UID'] );
+            $ret = $PM_SOAP->deleteCase( $row['APP_UID'] );
             $task->addVolume(1);
             if ($ret !== false) {
                $task->log( "Deleted case num: '".$row['APP_NUMBER']."'" );
@@ -1121,32 +1140,30 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    *     0 : nothing to do
    */
    static function cronPMUsers($task) {
-      global $DB, $PM_DB;
+      global $DB, $PM_DB, $PM_SOAP;
 
-      if (!isset($PM_DB)) {
-         $PM_DB = new PluginProcessmakerDB;
-      }
+      //plugin_processmaker_post_init();
 
       $actionCode = 0; // by default
       $error = false;
       $task->setVolume(0); // start with zero
 
       // start a processmaker session
-      $myProcessMaker = new PluginProcessmakerProcessmaker();
-      if (!$myProcessMaker->login( true )) {
-         $task->log( "Error PM: '".print_r($myProcessMaker->lasterror, true)."'" );
+      //$PM_SOAP = new PluginProcessmakerProcessmaker();
+      if (!$PM_SOAP->login( true )) {
+         $task->log( "Error PM: '".print_r($PM_SOAP->lasterror, true)."'" );
          return -1;
       }
 
-      $pmGroupList = $myProcessMaker->groupList( );
+      $pmGroupList = $PM_SOAP->groupList( );
       foreach ($pmGroupList as $pmGroup) {
-         if ($pmGroup->guid == $myProcessMaker->pm_group_guid) {
+         if ($pmGroup->guid == $PM_SOAP->pm_group_guid) {
             break; // to get the name :)
          }
       }
 
       $pmUserList = array();
-      foreach ($myProcessMaker->userList() as $pmuser) {
+      foreach ($PM_SOAP->userList() as $pmuser) {
          $pmUserList[ strtolower($pmuser->name)] = array( 'name' => $pmuser->name, 'guid' => $pmuser->guid,  'status' => $pmuser->status );
       }
 
@@ -1166,12 +1183,12 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
             $status = "ACTIVE";
             $task->addVolume(1);
             $pass = substr( Toolbox::encrypt($user['id'].$user['name'].time(), GLPIKEY), 0, 20);
-            $pmResult = $myProcessMaker->createUser( $user['name'], $user['firstname'], $user['realname'], "", "PROCESSMAKER_OPERATOR", $pass, $status);
+            $pmResult = $PM_SOAP->createUser( $user['name'], $user['firstname'], $user['realname'], "", "PROCESSMAKER_OPERATOR", $pass, $status);
             if ($pmResult->status_code == 0) {
                $task->log( "Added user: '".$user['name']."'" );
 
                // then assign user to group
-               $pmResult2 = $myProcessMaker->assignUserToGroup( $pmResult->userUID, $pmGroup->guid );
+               $pmResult2 = $PM_SOAP->assignUserToGroup( $pmResult->userUID, $pmGroup->guid );
                if ($pmResult2->status_code == 0) {
                    $task->log( "Added user: '".$user['name']."' to '".$pmGroup->name."' group" );
                } else {
@@ -1226,7 +1243,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
             }
             if ($status != $pmUserList[strtolower($user['name'])]['status']) {
                $task->addVolume(1);
-               $pmResult = $myProcessMaker->updateUser( $pmUserList[strtolower($user['name'])]['guid'], $user['name'], $user['firstname'], $user['realname'], $status );
+               $pmResult = $PM_SOAP->updateUser( $pmUserList[strtolower($user['name'])]['guid'], $user['name'], $user['firstname'], $user['realname'], $status );
                if ($pmResult->status_code == 0) {
                   $task->log( "Updated user: '".$user['name']."', status: '".$pmUserList[strtolower($user['name'])]['status']."' -> '".$status."'" );
                   $actionCode = 1;
@@ -1277,7 +1294,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       foreach ($arrayDiff as $group) {
          // it is not existing in PM
          // then create
-         $pmResult = $myProcessMaker->createGroup( $group['name'] );
+         $pmResult = $PM_SOAP->createGroup( $group['name'] );
          if ($pmResult->status_code == 0) {
             $task->addVolume(1);
             $task->log( "Added group: '".$group['name']."'" );
@@ -1323,15 +1340,15 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    public static function plugin_pre_item_add_processmaker($parm) {
       global $PM_DB;
 
-      if (isset($parm->input['processmaker_caseid'])) {
+      if (isset($parm->input['processmaker_caseguid'])) {
          // a case is already started for this ticket, then change ticket title and ticket type and ITILCategory
 
          $myProcessMaker = new PluginProcessmakerProcessmaker( );
          $myProcessMaker->login( );
-         $caseInfo = $myProcessMaker->getCaseInfo( $parm->input['processmaker_caseid'], $parm->input['processmaker_delindex']);
+         $caseInfo = $myProcessMaker->getCaseInfo( $parm->input['processmaker_caseguid'], $parm->input['processmaker_delindex']);
          $parm->input['name'] = $PM_DB->escape($caseInfo->caseName );
 
-         $caseInitialDueDate = $myProcessMaker->getVariables(  $parm->input['processmaker_caseid'], array( 'GLPI_ITEM_TITLE', 'GLPI_ITEM_INITIAL_DUE_DATE' ));
+         $caseInitialDueDate = $myProcessMaker->getVariables(  $parm->input['processmaker_caseguid'], array( 'GLPI_ITEM_TITLE', 'GLPI_ITEM_INITIAL_DUE_DATE' ));
          if (array_key_exists( 'GLPI_ITEM_INITIAL_DUE_DATE', $caseInitialDueDate )) {
             $parm->input['due_date'] = $caseInitialDueDate[ 'GLPI_ITEM_INITIAL_DUE_DATE' ]." 23:59:59";
          }
@@ -1339,12 +1356,12 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
          if (array_key_exists( 'GLPI_ITEM_TITLE', $caseInitialDueDate )) {
             $txtItemTitle = $caseInitialDueDate[ 'GLPI_ITEM_TITLE' ];
             // reset those variables
-            $resultSave = $myProcessMaker->sendVariables( $parm->input['processmaker_caseid'], array( "GLPI_ITEM_TITLE" => '') );
+            $resultSave = $myProcessMaker->sendVariables( $parm->input['processmaker_caseguid'], array( "GLPI_ITEM_TITLE" => '') );
          }
          $parm->input['name'] = $PM_DB->escape($txtItemTitle );
 
          $procDef = new PluginProcessmakerProcess;
-         $procDef->getFromDBbyExternalID( $caseInfo->processId );
+         $procDef->getFromGUID( $caseInfo->processId );
          if (isset($parm->input['type'])) {
             $parm->input['type'] = $procDef->fields['type'];
          }
@@ -1357,51 +1374,49 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    }
 
    public static function plugin_item_add_processmaker($parm) {
-      global $DB, $GLOBALS;
+      global $DB, $GLOBALS, $PM_SOAP;
 
-      if (isset($parm->input['processmaker_caseid'])) {
+      if (isset($parm->input['processmaker_caseguid'])) {
          // a case is already started for this ticket, then bind them together
-         $itemType = $parm->getType();
-         $itemId = $parm->fields['id'];
-         $caseId = $parm->input['processmaker_caseid'];
+         $itemtype = $parm->getType();
+         $items_id = $parm->fields['id'];
+         $case_guid = $parm->input['processmaker_caseguid'];
+
+         $caseInfo = $PM_SOAP->getCaseInfo($case_guid);//$parm->input['processmaker_delindex']);
 
          $myCase = new PluginProcessmakerCase;
-
-         //can't use std add due to forced case id
-         $process = new PluginProcessmakerProcess;
-         $process->getFromDBbyExternalID( $parm->input['processId'] );
-         $query = "INSERT INTO glpi_plugin_processmaker_cases (items_id, itemtype, id, case_num, processes_id) VALUES ($itemId, '$itemType', '$caseId', ".$parm->input['processmaker_casenum'].", '".$process->getID()."');";
-         $res = $DB->query($query);
-
-         $myCase->getFromDB( $caseId ); // reloads case from DB
-
-         $myProcessMaker = new PluginProcessmakerProcessmaker( );
-         $myProcessMaker->login( );
-
-         $caseInfo = $myProcessMaker->getCaseInfo(  $myCase->getID(), $parm->input['processmaker_delindex']);
+         $myCase->add(['id' => $parm->input['processmaker_casenum'],
+                       'itemtype' => $itemtype,
+                       'items_id' => $items_id,
+                       'entities_id' => $parm->fields['entities_id'],
+                       'name' => $caseInfo->caseName,
+                       'case_guid' => $case_guid,
+                       'case_status' => $caseInfo->caseStatus,
+                       'plugin_processmaker_processes_id' => $parm->input['processmaker_processes_id']
+                       ]);
 
          // here we create a fake task that will be used to store the creator of the case
          // this is due for traceability only
-         $myProcessMaker->add1stTask( $myCase->fields['itemtype'], $myCase->fields['items_id'], $caseInfo, array( 'notif' => false) ); // no notif
+         $PM_SOAP->add1stTask($myCase->getID(), $myCase->fields['itemtype'], $myCase->fields['items_id'], $caseInfo, array( 'notif' => false) ); // no notif
 
          // before routing, send items_id and itemtype
          // as this information was not available at case creation
-         $resultSave = $myProcessMaker->sendVariables( $myCase->getID(), array( "GLPI_TICKET_ID" => $itemId ) );
+         $myCase->sendVariables( array( "GLPI_TICKET_ID" => $items_id ) );
 
          // route case
-         $pmRouteCaseResponse = $myProcessMaker->routeCase( $myCase->getID(), $parm->input['processmaker_delindex'] );
+         $pmRouteCaseResponse = $PM_SOAP->routeCase($case_guid, $parm->input['processmaker_delindex'] );
 
          // gets new case status
-         $caseInfo = $myProcessMaker->getCaseInfo(  $myCase->getID(), $parm->input['processmaker_delindex']);
+         $caseInfo = $myCase->getCaseInfo();//$parm->input['processmaker_delindex']);
          // now manage tasks associated with item
          // create new tasks
          if (property_exists( $pmRouteCaseResponse, 'routing' )) {
             // now tries to get some variables to setup content for new task and to append text to solved task
-            $txtForTasks = $myProcessMaker->getVariables( $myCase->getID(), array( "GLPI_ITEM_APPEND_TO_TASK",
-                                                                                  "GLPI_ITEM_SET_STATUS",
-                                                                                  "GLPI_TICKET_FOLLOWUP_CONTENT",
-                                                                                  "GLPI_TICKET_FOLLOWUP_IS_PRIVATE",
-                                                                                  "GLPI_TICKET_FOLLOWUP_REQUESTTYPES_ID" ) );
+            $txtForTasks = $myCase->getVariables( array( "GLPI_ITEM_APPEND_TO_TASK",
+                                                         "GLPI_ITEM_SET_STATUS",
+                                                         "GLPI_TICKET_FOLLOWUP_CONTENT",
+                                                         "GLPI_TICKET_FOLLOWUP_IS_PRIVATE",
+                                                         "GLPI_TICKET_FOLLOWUP_REQUESTTYPES_ID" ) );
             $itemSetStatus = '';
             if (array_key_exists( 'GLPI_ITEM_SET_STATUS', $txtForTasks )) {
                $itemSetStatus = $txtForTasks[ 'GLPI_ITEM_SET_STATUS' ];
@@ -1417,55 +1432,61 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
             }
 
             // reset those variables
-            $resultSave = $myProcessMaker->sendVariables( $myCase->getID(), array( "GLPI_ITEM_APPEND_TO_TASK" => '',
-                                                                                   "GLPI_ITEM_SET_STATUS" => '',
-                                                                                   "GLPI_TICKET_FOLLOWUP_CONTENT" => '',
-                                                                                   "GLPI_TICKET_FOLLOWUP_IS_PRIVATE" => '',
-                                                                                   "GLPI_TICKET_FOLLOWUP_REQUESTTYPES_ID" => '' ) );
+            $resultSave = $myCase->sendVariables( array( "GLPI_ITEM_APPEND_TO_TASK" => '',
+                                                         "GLPI_ITEM_SET_STATUS" => '',
+                                                         "GLPI_TICKET_FOLLOWUP_CONTENT" => '',
+                                                         "GLPI_TICKET_FOLLOWUP_IS_PRIVATE" => '',
+                                                         "GLPI_TICKET_FOLLOWUP_REQUESTTYPES_ID" => '' ) );
 
             // routing has been done, then solve 1st task
-            $myProcessMaker->solveTask(  $myCase->getID(), $parm->input['processmaker_delindex'], array( 'txtToAppend' => $txtToAppendToTask, 'notif' => false) );
+            $PM_SOAP->solveTask($myCase->getID(), $parm->input['processmaker_delindex'], array( 'txtToAppend' => $txtToAppendToTask, 'notif' => false) );
 
             // create a followup if requested
-            if ($createFollowup && $itemType == 'Ticket') {
-               $myProcessMaker->addTicketFollowup( $itemId, $txtForTasks );
+            if ($createFollowup && $itemtype == 'Ticket') {
+               $PM_SOAP->addTicketFollowup( $items_id, $txtForTasks );
             }
 
             // and create GLPI tasks for the newly created PM tasks.
             foreach ($pmRouteCaseResponse->routing as $route) {
-               $myProcessMaker->addTask( $myCase->fields['itemtype'],
-                                      $myCase->fields['items_id'],
-                                      $caseInfo, $route->delIndex,
-                                      PluginProcessmakerUser::getGLPIUserId( $route->userId ),
-                                      0,
-                                      $route->taskId );
+               $PM_SOAP->addTask( $myCase->getID(),
+                                  $myCase->fields['itemtype'],
+                                  $myCase->fields['items_id'],
+                                  $caseInfo,
+                                  $route->delIndex,
+                                  PluginProcessmakerUser::getGLPIUserId( $route->userId ),
+                                  0,
+                                  $route->taskId,
+                                  $route->delThread );
             }
 
             if ($itemSetStatus != '') {
-               $myProcessMaker->setItemStatus($myCase->fields['itemtype'], $myCase->fields['items_id'], $itemSetStatus );
+               $PM_SOAP->setItemStatus($myCase->fields['itemtype'], $myCase->fields['items_id'], $itemSetStatus );
             }
          }
 
          // evolution of case status: DRAFT, TO_DO, COMPLETED, CANCELLED
-         $myCase->update( array( 'id' => $myCase->getID(), 'case_status' => $caseInfo->caseStatus ) );
-      } else {//if( array_key_exists('_head', $parm->input) ) {
-              // this ticket have been created via email receiver.
+         $myCase->update( ['id'          => $myCase->getID(),
+                           'case_status' => $caseInfo->caseStatus,
+                           'name'        => $caseInfo->caseName
+                          ]);
+
+      } else {//if( array_key_exists('_head', $parm->input) ) { // this ticket have been created via email receiver.
          $ptnProcessToStart = "/##TicketProcess:\s*#([0-9a-f]{32})\s*##/i";
          $str = $parm->input['content'];
          if (preg_match($ptnProcessToStart, $str, $matches) > 0) {
             // and it is requested to start a case of process
-            $processId = $matches[1];
+            $processGuid = $matches[1];
             $hasCase = self::getCaseIdFromItem( 'Ticket', $parm->fields['id'] );
-            if ($hasCase === false && $processId > 0) {
+            if ($hasCase === false) {
                // check writer
                $writer = new User;
                $writer->getFromDB( $parm->fields['users_id_recipient'] );
-               $myProcessMaker = new PluginProcessmakerProcessmaker();
-               $myProcessMaker->login( $writer->fields['name'] );
+               //$PM_SOAP = new PluginProcessmakerProcessmaker();
+               $PM_SOAP->login( $writer->fields['name'] );
                $locProcess = new PluginProcessmakerProcess;
-               if ($locProcess->getFromDBbyExternalID( $processId )) {
+               if ($locProcess->getFromGUID( $processGuid )) {
                   $found = false;
-                  // check rights of writer to start this $processId on the Ticket entity
+                  // check rights of writer to start this $processGuid on the Ticket entity
                   foreach (Profile_User::getUserProfiles( $writer->getID() ) as $profID) {
                      if (in_array( $parm->fields['entities_id'], PluginProcessmakerProcess::getEntitiesForProfileByProcess( $locProcess->getID(), $profID, true) )) {
                         $found=true;
@@ -1473,7 +1494,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                      }
                   }
                   if ($found) {
-                     $resultCase = $myProcessMaker->startNewCase( $locProcess->getID(), 'Ticket', $parm->fields['id'], $writer->getID()  );
+                     $PM_SOAP->startNewCase( $locProcess->getID(), 'Ticket', $parm->fields['id'], $writer->getID()  );
                   }
                }
             }
@@ -1523,17 +1544,17 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    }
 
 
-
    /**
    * Summary of addTask
    *      adds a GLPI task to given item
+   * @param $cases_id integer the GLPI id of the case
    * @param $itemType string item type to which a task will be added
-   * @param $itemId integer item id to which a task will be added
+   * @param $items_id integer item id to which a task will be added
    * @param $caseInfo mixed getCaseInfoResponse object (see: getCaseInfo() function)
    * @param $delIndex integer index of the delegation
    * @param $techId integer GLPI user id to which a task must be assigned, if == 0 will use $groupId and/or $pmTaskId
-   * @param groupId string PM group guid to assign to task, used when                      $techId  == 0
-   * @param pmTaskId string PM task guid, used when                                        $groupId == 0 AND $techID == 0
+   * @param $groupId string PM group guid to assign to task, used when                      $techId  == 0
+   * @param $pmTaskId string PM task guid, used when                                        $groupId == 0 AND $techID == 0
    * @param $options array of options, default values are
    *            'txtTaskContent' => '',
    *            'start_date'     => '',
@@ -1541,7 +1562,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    *            'notif'          => true
    * @return
    */
-   public function addTask( $itemType, $itemId,  $caseInfo, $delIndex, $techId, $groupId, $pmTaskId, $options=array() ) {
+   public function addTask($cases_id, $itemType, $items_id,  $caseInfo, $delIndex, $techId, $groupId, $pmTaskId, $delThread, $options=array() ) {
       global $DB, $PM_DB, $LANG, $_SESSION;
 
       $default_options = array(
@@ -1561,15 +1582,15 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
       $input = array(); // will contain all data for the Task
 
-      $input[getForeignKeyFieldForItemType($itemType)] = $itemId;
+      $input[getForeignKeyFieldForItemType($itemType)] = $items_id;
       // search for task category
       //
       $pmtaskcat = new PluginProcessmakerTaskCategory;
-      $pmtaskcat->getFromDBbyExternalID( $pmTaskId );
+      $pmtaskcat->getFromGUID( $pmTaskId );
       $input['taskcategories_id'] = $pmtaskcat->fields['taskcategories_id'];
       // load process information
       $pmProcess = new PluginProcessmakerProcess;
-      $pmProcess->getFromDB( $pmtaskcat->fields['processes_id'] );
+      $pmProcess->getFromDB( $pmtaskcat->fields['plugin_processmaker_processes_id'] );
 
       if ($options['start_date'] == '') {
          $options['start_date'] = new DateTime( $_SESSION["glpi_currenttime"] );
@@ -1624,7 +1645,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
       } else {
          // adds the user tech to ticket watcher if neccessary
-         self::addWatcher( $itemType, $itemId, $techId );
+         self::addWatcher( $itemType, $items_id, $techId );
       }
 
       // manage task description
@@ -1658,7 +1679,14 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
       if ($glpi_task->getId() > 0) {
          // stores link to task in DB
-         $query = "INSERT INTO glpi_plugin_processmaker_tasks (items_id, itemtype, case_id, del_index) VALUES (".$glpi_task->getId().", '".$glpi_task->getType()."', '".$caseInfo->caseId."', ".$delIndex.");";
+         //$tmp = new PluginProcessmakerTask($glpi_task->getType());
+         //$tmp->add([ 'itemtype' => $glpi_task->getType(),
+         //            'items_id' => $glpi_task->getId(),
+         //            'plugin_processmaker_cases_id' => $cases_id,
+         //            'del_index' => $delIndex
+         //            ], [], false);
+         $query = "INSERT INTO glpi_plugin_processmaker_tasks (items_id, itemtype, plugin_processmaker_cases_id, plugin_processmaker_taskcategories_id, del_index, del_thread)
+                     VALUES ({$glpi_task->getId()}, '{$glpi_task->getType()}', $cases_id, {$pmtaskcat->fields['id']}, $delIndex, $delThread);";
          $DB->query( $query );
       }
    }
@@ -1684,7 +1712,8 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    /**
    * Summary of add1stTask
    *      adds a GLPI task to ticket
-   * @param $intemType string itemtype of object (Ticket, Problem, ....)
+   * @param $cases_id integer the GLPI id of the case
+   * @param $itemType string itemtype of object (Ticket, Problem, ....)
    * @param $itemId integer item id to which a task will be added
    * @param $caseInfo mixed getCaseInfoResponse object (see: getCaseInfo() function)
    * @param $options array of options, defaults are:
@@ -1693,7 +1722,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    *           'notif'          => true, if true notifications will be sent
    * @return
    */
-   public function add1stTask ( $itemType, $itemId, $caseInfo, $options=array() ) {
+   public function add1stTask ($cases_id, $itemType, $itemId, $caseInfo, $options=array() ) {
 
       $default_options = array(
         'txtTaskContent' => '',
@@ -1711,13 +1740,15 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       $userId = $options['userId'] ? $options['userId'] : Session::getLoginUserID();
       unset($options['userId']); // unset it as it's not in the options of addTask
 
-      $this->addTask( $itemType,
+      $this->addTask( $cases_id,
+                      $itemType,
                       $itemId,
                       $caseInfo,
                       $caseInfo->currentUsers[0]->delIndex,
                       $userId,
                       0,
                       $caseInfo->currentUsers[0]->taskId,
+                      $caseInfo->currentUsers[0]->delThread,
                       $options
                    );
       $_SESSION["glpi_currenttime"] = $official_date_time;
@@ -1748,16 +1779,16 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    public function setItemTitle( $itemtype, $itemId, $newtitle ) {
       $item = getItemForItemtype( $itemtype );
       if ($item->getFromDB( $itemId )) {
-         $item->update( ['id' => $itemId, 'name' => $txtItemTitle] );
+         $item->update( ['id' => $itemId, 'name' => $newtitle] );
       }
    }
 
 
    /**
     * Summary of setItemSolution
-    * @param mixed $itemType 
-    * @param mixed $itemId 
-    * @param mixed $casevariablevalues 
+    * @param mixed $itemType
+    * @param mixed $itemId
+    * @param mixed $casevariablevalues
     */
    public function setItemSolution($itemType, $itemId, $casevariablevalues) {
       $item = getItemForItemtype( $itemType );
@@ -1766,6 +1797,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
          $solutiontemplates_id = 0;
          $solutiontypes_id = 0;
          $solution = '';
+         $to_update = false;
 
          // check solution template
          if (array_key_exists( 'GLPI_ITEM_SET_SOLUTION_TEMPLATE_ID', $casevariablevalues )
@@ -1780,6 +1812,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                $solutiontemplates_id = $template->getID();
                $solutiontypes_id = $template->fields['solutiontypes_id'];
                $solution = $template->fields['content'];
+               $to_update = true;
             }
          }
 
@@ -1794,6 +1827,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
             // and check entities
             if (in_array($item->getEntityID(), $entities)) {
                $solutiontypes_id = $type->getID();
+               $to_update = true;
             }
          }
 
@@ -1804,9 +1838,12 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                $solution .= "\n";
             }
             $solution .= $casevariablevalues[ 'GLPI_ITEM_APPEND_TO_SOLUTION_DESCRIPTION' ] ;
+            $to_update = true;
          }
 
-         $item->update( ['id' => $itemId, 'solutiontemplates_id' => $solutiontemplates_id, 'solutiontypes_id' => $solutiontypes_id, 'solution' => $solution] );
+         if ($to_update) {
+            $item->update( ['id' => $itemId, 'solutiontemplates_id' => $solutiontemplates_id, 'solutiontypes_id' => $solutiontypes_id, 'solution' => $solution] );
+         }
       }
    }
 
@@ -1834,54 +1871,18 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       return 0;
    }
 
-   /**
-    * Summary of reassignTask
-    * @param mixed $caseId
-    * @param mixed $delIndex
-    * @param mixed $newDelIndex
-    * @param mixed $newTech
-   */
-   public function reassignTask ( $caseId, $delIndex, $newDelIndex, $newTech) {
-      global $DB;
 
-      $query = "SELECT * FROM glpi_plugin_processmaker_tasks WHERE case_id='$caseId' and del_index=$delIndex; ";
-      $res = $DB->query($query);
-      if ($DB->numrows($res) > 0) {
-         $row = $DB->fetch_array( $res );
-         $glpi_task = new $row['itemtype'];
-         $glpi_task->getFromDB( $row['items_id'] );
-
-         $itemType = str_replace( 'Task', '', $row['itemtype'] );
-         $foreignkey = getForeignKeyFieldForItemType( $itemType );
-
-         self::addWatcher( $itemType, $glpi_task->fields[ $foreignkey ], $newTech );
-
-         $glpi_task->update( array( 'id' => $row['items_id'], $foreignkey => $glpi_task->fields[ $foreignkey ],  'users_id_tech' => $newTech ));
-
-         // this is now done into GLPI core
-         //if( !$user_can_view ) {
-         //    // to cheat the entity rigths, passes default user_entity to raiseEvent(), to be sure that task_tech will receive a notification.
-         //    // drawback: notifications that are entity based could be missing.
-         //    // tip: $user_entities[0] is the user's default entity
-         //    NotificationEvent::raiseEvent('update_task', $glpi_item, array( 'entities_id' => $user_entities[0], 'task_id' => $glpi_task->getId(), 'is_private' => 0 ) ) ;
-         //}
-
-         // then update the delIndex
-         $query = "UPDATE glpi_plugin_processmaker_tasks SET del_index = $newDelIndex WHERE case_id='$caseId' and del_index=$delIndex; ";
-         $res = $DB->query($query);
-      }
-   }
 
    /**
     * Summary of solveTask
-    * @param string $caseId
+    * @param string $cases_id GLPI case id
     * @param int    $delIndex
     * @param array  $options
     *                'txtToAppend' => ''   : text to append to solved task
     *                'notif'       => true : if true will send notifications
     *                'users_id_tech'   => is the users_id of the tech that solved the task
    */
-   public function solveTask( $caseId, $delIndex, $options=array() ) {
+   public function solveTask($cases_id, $delIndex, $options=array()) {
       global $DB;
 
       // change current glpi_currenttime to be sure that date_mode for solved task will not be identical than date_mode of the newly started task
@@ -1900,7 +1901,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
          }
       }
 
-      $query = "SELECT * FROM glpi_plugin_processmaker_tasks WHERE case_id='$caseId' and del_index=$delIndex; ";
+      $query = "SELECT * FROM glpi_plugin_processmaker_tasks WHERE plugin_processmaker_cases_id=$cases_id and del_index=$delIndex; ";
       $res = $DB->query($query);
       if ($DB->numrows($res) > 0) {
          $row = $DB->fetch_array( $res );
@@ -1926,6 +1927,9 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
          $donotif = self::saveNotification($options['notif']);
          $glpi_task->update( $params );
          self::restoreNotification($donotif);
+
+         // Close the task
+         $DB->query("UPDATE glpi_plugin_processmaker_tasks SET del_thread_status = 'CLOSED' WHERE id = {$row['id']}");
       }
 
       // restore current glpi time
@@ -1936,15 +1940,15 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    /**
     * Summary of claimTask
     * will unassign group, and assign tech
-    * @param mixed $caseId
+    * @param mixed $cases_id GLPI case id
     * @param mixed $delIndex
     * @param mixed $users_id_tech optional is the id of the tech
     *                  who's claimed the task, default current logged-in user
    */
-   public function claimTask( $caseId, $delIndex, $users_id_tech=null ) {
+   public function claimTask($cases_id, $delIndex, $users_id_tech=null) {
       global $DB;
 
-      $query = "SELECT * FROM glpi_plugin_processmaker_tasks WHERE case_id='$caseId' and del_index=$delIndex; ";
+      $query = "SELECT * FROM glpi_plugin_processmaker_tasks WHERE plugin_processmaker_cases_id='$cases_id' and del_index=$delIndex; ";
       $res = $DB->query($query);
       if ($DB->numrows($res) > 0) {
          $row = $DB->fetch_array( $res );
@@ -1976,11 +1980,34 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       $query = "SELECT * FROM glpi_plugin_processmaker_cases WHERE `itemtype` = '$item_type' AND `items_id` = $item_id ;";
         $res = $DB->query($query);
       if ($DB->numrows($res) > 0) {
-         // case is existing for this ticket
+         // case is existing for this item
          // then get info from db
          $row = $DB->fetch_array($res);
 
          return $row['id'];
+      }
+
+      return false;
+   }
+
+   /**
+    * Summary of getCaseGuidFromItem
+    *      get case id for an id item_id of type item_type (if a case if attached to it)
+    * @param string  $item_type, the type for the item ("Ticket", "Problem", ...)
+    * @param integer $item_id,   the id for the item
+    * @return string the case guid, false if no case is attached to item, or if an error occurred
+    */
+   public static function getCaseGuidFromItem ($item_type, $item_id ) {
+      global $DB;
+
+      $query = "SELECT * FROM glpi_plugin_processmaker_cases WHERE `itemtype` = '$item_type' AND `items_id` = $item_id ;";
+      $res = $DB->query($query);
+      if ($DB->numrows($res) > 0) {
+         // case is existing for this item
+         // then get info from db
+         $row = $DB->fetch_array($res);
+
+         return $row['case_guid'];
       }
 
       return false;
@@ -1996,7 +2023,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    public function getCaseFromItem( $item_type, $item_id ) {
       global $DB;
 
-      $caseId = self::getCaseIdFromItem( $item_type, $item_id );
+      $caseId = self::getCaseGuidFromItem( $item_type, $item_id );
       if ($caseId !== false) {
          $caseInfo = $this->getCaseInfo( $caseId );
          if ($caseInfo !== false && $caseInfo->status_code == 0) {
@@ -2023,15 +2050,15 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    }
 
    /**
-   * Summary of pre_show_item_processmakerticket
+   * Summary of pre_show_item_processmaker
    * @param $params
    */
-   public static function pre_show_item_processmakerticket($params) {
+   public static function pre_show_item_processmaker($params) {
 
       if (!is_array($params['item']) && is_subclass_of( $params['item'], 'CommonITILTask')) {
          // must check if Task is bound to a PM task
          $pmTask = new PluginProcessmakerTask($params['item']->getType());
-         if ($pmTask->getFromDBByQuery("WHERE itemtype='".$params['item']->getType()."' and items_id=".$params['item']->getId())) {
+         if ($pmTask->getFromDB($params['item']->getId())) {//$pmTask->getFromDBByQuery("WHERE itemtype='".$params['item']->getType()."' and items_id=".$params['item']->getId())) {
             $params['item']->fields['can_edit'] = false; // to prevent task edition
 
             // replace ##ticket.url##_PluginProcessmakerCase$processmakercases by a setActiveTab to the Case panel
@@ -2052,19 +2079,25 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                $params['item']->fields['content'] = str_ireplace('<hr>', '<hr><p>', $params['item']->fields['content']).'</p>';
             }
 
+            $tmpCase = new PluginProcessmakerCase;
+            $tmpCase->getFromDB($pmTask->fields['plugin_processmaker_cases_id']);
+            $urlLink = $tmpCase->getLinkURL().'&forcetab=PluginProcessmakerTask$'.$pmTask->fields['items_id'];
+
             echo Html::scriptBlock( "
                   $('#$taskJSId').find('.item_content').children().not('.read_more').on('click', function ( ) {
                      //debugger;
-                     var tabindex = $('#tabspanel').next('div').find('a[href*=\"_glpi_tab=PluginProcessmaker\"]').parent().index();
-                     $('#tabspanel').next('div').tabs( 'option', 'active', tabindex );
+                     document.location='$urlLink'
                   } ).css('cursor', 'pointer') ;
                  ");
 
             $params['item']->fields['content'] = str_replace( "\n##ticket.url##_PluginProcessmakerCase\$processmakercases", "", $params['item']->fields['content'] );
 
-            if (isset( $params['item']->fields['tr_id'] )) {
-               $trID = $params['item']->fields['tr_id'];
-            }
+            // in order to set NavigationList
+            Session::initNavigateListItems('PluginProcessmakerCase',
+                        //TRANS : %1$s is the itemtype name,
+                        //        %2$s is the name of the item (used for headings of a list)
+                                  sprintf(__('%1$s = %2$s'),
+                                          $params['options']['parent']->getTypeName(1), $params['options']['parent']->fields["name"]));
          }
       }
    }
@@ -2195,99 +2228,6 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    }
 
 
-    ///**
-    // * Summary of post_show_item_processmakerticket
-    // * @param $parm
-    // */
-    //public static function post_show_item_processmakerticket($parm) {
-    //    global $LANG, $pmHideSolution;
-    //    if( ($plug = new Plugin)  && !$plug->isActivated('arbehaviours') ) {
-    //        if ($parm->getID() && in_array($parm->getType(), array('Ticket'))) {
-    //            // then we are in a ticket
-    //            if (isset($_REQUEST['glpi_tab']) && $_SESSION['glpiactiveprofile']['interface'] != "helpdesk" ) {
-    //                $data     = explode('$', $_REQUEST['glpi_tab']);
-    //                $itemtype = $data[0];
-    //                // Default set
-    //                $tabnum   = 1;
-    //                if (isset($data[1])) {
-    //                    $tabnum = $data[1];
-    //                }
-    //                elseif ($itemtype == -1 )
-    //                    $tabnum = -1 ;
-
-    //                if( $tabnum == 2 || $tabnum == -1 ) {
-    //                    // then we are showing the Solution tab
-    //                    // if a case is running
-    //                    // then we must prevent solution to be input
-    //                    if( $pmHideSolution ) { //isset($pmVar['GLPI_ITEM_CAN_BE_SOLVED']) && $pmVar['GLPI_ITEM_CAN_BE_SOLVED'] != 1 ) { //if( $pmInfo !== null && ( $pmInfo->caseStatus != 'COMPLETED' && $pmInfo->caseStatus != 'CANCELLED' )) {
-
-    //                        echo "</div>";
-    //                        if( $tabnum == -1 )
-    //                            echo "</div>";
-    //                        echo "<div style='margin-bottom: 20px;' class='box'>
-    //                                <div class='box-tleft'>
-    //                                    <div class='box-tright'>
-    //                                        <div class='box-tcenter'>
-    //                                        </div>
-    //                                    </div>
-    //                                </div>
-    //                                <div class='box-mleft'>
-    //                                    <div class='box-mright'>
-    //                                        <div class='box-mcenter'>
-    //                                            <h3>
-    //                                                <span class='red'>".$LANG['processmaker']['item']['preventsolution'][1]."
-    //                                                    <br>
-    //                                                </span>
-    //                                            </h3>
-    //                                            <h3>
-    //                                            <span >".$LANG['processmaker']['item']['preventsolution'][2]."
-    //                                                </span>
-    //                                            </h3>
-    //                                        </div>
-    //                                     </div>
-    //                                 </div>
-    //                                 <div class='box-bleft'>
-    //                                    <div class='box-bright'>
-    //                                        <div class='box-bcenter'>
-    //                                        </div>
-    //                                    </div>
-    //                                 </div>
-    //                              </div>  ";
-    //                    }
-    //                }
-    //            }
-    //        }
-    //    }
-    //}
-
-    ///**
-    // * Summary of canedit_item_processmakertickettask
-    // * @param $parm
-    // */
-    //public static function canedit_item_processmakertickettask($parm) {
-    //    global $DB, $LANG, $_SESSION ;
-    //    // must check if Task is bound to a PM task
-    //    $query = "SELECT * FROM glpi_plugin_processmaker_tasks WHERE itemtype='".$parm->getType()."' and items_id=".$parm->getId().";" ;
-    //    $res = $DB->query($query) ;
-    //    if( $DB->numrows($res) > 0) {
-    //        $parm->fields['plugin_canedit'] = false ; // to prevent task edition
-    //        // replace ##ticket.url##_PluginProcessmakerCase$processmakercases by a setActiveTab to the Case panel
-    //        $taskCat = new TaskCategory ;
-    //        $taskCat->getFromDB( $parm->fields['taskcategories_id'] ) ;
-    //        $taskComment = (isset($taskCat->fields['comment'])?$taskCat->fields['comment']:'') ;
-    //        if( Session::haveTranslations('TaskCategory', 'comment') ) {
-    //           $parm->fields['content'] = str_replace( '##processmaker.taskcomment##', DropdownTranslation::getTranslatedValue( $taskCat->getID(), 'TaskCategory', 'comment', $_SESSION['glpilanguage'], $taskComment ), $parm->fields['content'] ) ;
-    //        } else {
-    //           $parm->fields['content'] = str_replace( '##processmaker.taskcomment##', $taskComment, $parm->fields['content'] ) ;
-    //        }
-    //        $parm->fields['content'] = str_replace( '##ticket.url##_PluginProcessmakerCase$processmakercases', "<a href=\"javascript:tabpanel.setActiveTab('PluginProcessmakerCase\$processmakercases');\">".$LANG['processmaker']['item']['task']['manage_text']."</a>", $parm->fields['content'] ) ;
-    //        if( isset( $parm->fields['tr_id'] ) ) {
-    //            $trID = $parm->fields['tr_id'] ;
-    //            $parm->fields['content'] .= "<script>var loc$trID = document.getElementById('$trID'); loc$trID.style.cursor = 'pointer'; if (loc$trID.addEventListener) { loc$trID.addEventListener('click', function(){tabpanel.setActiveTab('PluginProcessmakerCase\$processmakercases');}, false);} else {loc$trID.attachEvent('onclick', function(){tabpanel.setActiveTab('PluginProcessmakerCase\$processmakercases');});  } </script>";
-    //        }
-    //    }
-    //}
-
     /**
      * Summary of getItemUsers
      * returns an array of glpi ids and pm ids for each user type assigned to given ticket
@@ -2358,9 +2298,9 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
       curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 
-      curl_setopt($ch, CURLOPT_URL, $this->serverURL."/cases/cases_Open?sid=".$_SESSION["pluginprocessmaker"]["session"]["id"]."&APP_UID=".$request['APP_UID']."&DEL_INDEX=".$request['DEL_INDEX']."&action=TO_DO" );
+      curl_setopt($ch, CURLOPT_URL, $this->serverURL."/cases/cases_Open?sid=".$this->getPMSessionID()."&APP_UID=".$request['APP_UID']."&DEL_INDEX=".$request['DEL_INDEX']."&action=TO_DO" );
       $response = curl_exec ($ch);
-        //Toolbox::logInFile( "pmtrace", "URL:\n".$this->serverURL."/cases/cases_Open?sid=".$_SESSION["pluginprocessmaker"]["session"]["id"]."\nResponse:\n".$response."\n\n\n" ) ;
+        //Toolbox::logInFile( "pmtrace", "URL:\n".$this->serverURL."/cases/cases_Open?sid=".$this->getPMSession()."\nResponse:\n".$response."\n\n\n" ) ;
 
       curl_setopt($ch, CURLOPT_POST, 1);
       curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
@@ -2445,7 +2385,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       }
 
       $query ="SELECT DISTINCT glpi_plugin_processmaker_processes.id, glpi_plugin_processmaker_processes.name FROM glpi_plugin_processmaker_processes
-            INNER JOIN glpi_plugin_processmaker_processes_profiles ON glpi_plugin_processmaker_processes_profiles.processes_id=glpi_plugin_processmaker_processes.id
+            INNER JOIN glpi_plugin_processmaker_processes_profiles ON glpi_plugin_processmaker_processes_profiles.plugin_processmaker_processes_id=glpi_plugin_processmaker_processes.id
             WHERE is_active = 1 AND itilcategories_id = $category AND `type` = $type AND profiles_id = $profile  AND (entities_id = $entity $entityAncestors)";
 
       foreach ($DB->request( $query ) as $row) {
@@ -2456,39 +2396,47 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
    }
 
-   public function startNewCase( $processId, $itemType, $itemId, $userId=null ) {
+   /**
+    * Summary of startNewCase
+    * @param mixed $processes_id integer: GLPI process id
+    * @param mixed $itemType string: item type 'Ticket', 'Change' or 'Problem'
+    * @param mixed $items_id integer: id to thte item
+    * @param mixed $users_id integer: GLPI user id
+    * @return mixed
+    */
+   public function startNewCase( $processes_id, $itemType, $items_id, $users_id=null ) {
       global $DB, $CFG_GLPI;
 
-      $requesters = PluginProcessmakerProcessmaker::getItemUsers( $itemType, $itemId, CommonITILActor::REQUESTER); // 1 for requesters
+      $requesters = PluginProcessmakerProcessmaker::getItemUsers( $itemType, $items_id, CommonITILActor::REQUESTER); // 1 for requesters
       if (!key_exists( 0, $requesters )) {
          $requesters[0]['glpi_id'] = 0;
          $requesters[0]['pm_id'] = 0;
       }
 
-      $impersonateCase = false;
-      if (!$userId) {
-         // then we are going to take the item creator to set it as case creator and
-         $impersonateCase = true;
+      //$impersonateCase = false;
+      //if (!$users_id) {
+      //   // then we are going to take the item creator to set it as case creator and
+      //   $impersonateCase = true;
 
-      }
+      //}
 
       // get item info to retreive title, description and duedate
       $locItem = new $itemType; // $_POST['itemtype'] ; //Ticket();
-      $locItem->getFromDB( $itemId ); // $_POST['id'] ) ;
+      $locItem->getFromDB( $items_id ); // $_POST['id'] ) ;
 
       if ($locItem->countUsers(CommonITILActor::ASSIGN) == 0
-         || !$locItem->isUser(CommonITILActor::ASSIGN, $userId) ) {
-         $locItem->update( array( 'id' => $itemId, '_itil_assign' => array( '_type' => 'user', 'users_id' => $userId )  ) );
+         || !$locItem->isUser(CommonITILActor::ASSIGN, $users_id) ) {
+         $locItem->update( array( 'id' => $items_id, '_itil_assign' => array( '_type' => 'user', 'users_id' => $users_id )  ) );
       }
 
       if (!isset($locItem->fields['due_date']) || $locItem->fields['due_date'] == null) {
          $locItem->fields['due_date'] = "";
       }
 
-      $resultCase = $this->newCase( $processId,
+      $resultCase = $this->newCase( $processes_id,
                                      array('GLPI_ITEM_CAN_BE_SOLVED'        => 0,
-                                           'GLPI_TICKET_ID'                 => $itemId,
-                                           'GLPI_ITEM_ID'                   => $itemId,
+                                           'GLPI_TICKET_ID'                 => $items_id,
+                                           'GLPI_ITEM_ID'                   => $items_id,
                                            'GLPI_ITEM_TYPE'                 => $itemType,
                                            'GLPI_TICKET_REQUESTER_GLPI_ID'  => $requesters[0]['glpi_id'],
                                            'GLPI_ITEM_REQUESTER_GLPI_ID'    => $requesters[0]['glpi_id'],
@@ -2506,31 +2454,31 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                                            'GLPI_ITEM_IMPACT'               => $locItem->fields['impact'],
                                            'GLPI_ITEM_PRIORITY'             => $locItem->fields['priority'],
                                            'GLPI_TICKET_GLOBAL_VALIDATION'  => $locItem->fields['global_validation'] ,
-                                           'GLPI_TICKET_TECHNICIAN_GLPI_ID' => $userId,
-                                           'GLPI_ITEM_TECHNICIAN_GLPI_ID'   => $userId,
-                                           'GLPI_TICKET_TECHNICIAN_PM_ID'   => PluginProcessmakerUser::getPMUserId( $userId ),
-                                           'GLPI_ITEM_TECHNICIAN_PM_ID'     => PluginProcessmakerUser::getPMUserId( $userId ),
-                                           'GLPI_URL'                       => $CFG_GLPI['url_base'].$CFG_GLPI['root_doc']
+                                           'GLPI_TICKET_TECHNICIAN_GLPI_ID' => $users_id,
+                                           'GLPI_ITEM_TECHNICIAN_GLPI_ID'   => $users_id,
+                                           'GLPI_TICKET_TECHNICIAN_PM_ID'   => PluginProcessmakerUser::getPMUserId( $users_id ),
+                                           'GLPI_ITEM_TECHNICIAN_PM_ID'     => PluginProcessmakerUser::getPMUserId( $users_id ),
+                                           'GLPI_URL'                       => $CFG_GLPI['url_base']
                                            ) );
 
       if ($resultCase->status_code === 0) {
-          $caseInfo = $this->getCaseInfo( $resultCase->caseId );
+         $caseInfo = $this->getCaseInfo( $resultCase->caseId );
 
-          //$query = "UPDATE APPLICATION SET APP_STATUS='TO_DO' WHERE APP_UID='".$resultCase->caseId."' AND APP_STATUS='DRAFT'" ;
-          //$res = $DB->query($query) ;
-          // save info to DB
-          $locCase = new PluginProcessmakerCase;
-          $locCase->add( array( 'id' => $resultCase->caseId,
-                                'items_id' => $itemId,
-                                'itemtype' => $itemType,
-                                'case_num' => $resultCase->caseNumber,
-                                'case_status' => $caseInfo->caseStatus,
-                                'processes_id' => $processId //$caseInfo->processId
-                        ), true );
-          //$query = "INSERT INTO glpi_plugin_processmaker_cases (items_id, itemtype, id, case_num, case_status, processes_id) VALUES ($itemId, '$itemType', '".$resultCase->caseId."', ".$resultCase->caseNumber.", '".$caseInfo->caseStatus."', '".$caseInfo->processId."');" ;
-          //$res = $DB->query($query) ;
+         // save info to DB
+         $locCase = new PluginProcessmakerCase;
+         $locCase->add( ['id' => $resultCase->caseNumber,
+                         'itemtype' => $itemType,
+                         'items_id' => $items_id,
+                         'case_guid' => $resultCase->caseId,
+                         'case_status' => $caseInfo->caseStatus,
+                         'name' => $caseInfo->caseName,
+                         'entities_id' => $locItem->fields['entities_id'],
+                         'plugin_processmaker_processes_id' => $processes_id,
+                         'plugin_processmaker_cases_id' => 0
+                        ]
+                     , [], true );
 
-         $this->add1stTask($itemType, $itemId, $caseInfo, array( 'userId' => $userId ) );
+         $this->add1stTask($locCase->getID(), $itemType, $items_id, $caseInfo, ['userId' => $users_id] );
       }
 
       return $resultCase;
@@ -2550,11 +2498,69 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       //$cookies,
       global $PM_DB;
 
-      // save the case variables
+      $itemtype = $myCase->getField('itemtype');
+      $items_id = $myCase->getField('items_id');
+      $item = new $itemtype;
+      $item->getFromDB($items_id);
+
+      // save the dynaform variables into the current case
       $resultSave = $this->saveForm( $request );
 
       // now derivate the case !!!
-      $pmRouteCaseResponse = $this->routeCase( $myCase->getID(), $request['DEL_INDEX']);
+      $pmRouteCaseResponse = $this->routeCase($myCase->fields['case_guid'], $request['DEL_INDEX']);
+
+      //if (property_exists($pmRouteCaseResponse, 'routing')) {
+      //   // must check if case has started a sub-process
+      //   // we may have several new cases for this case
+      //   // must check if all child cases are existing in GLPI
+      //   $locTaskCat = new PluginProcessmakerTaskCategory;
+      //   foreach($pmRouteCaseResponse->routing as $route) {
+      //      if ($locTaskCat->getFromGUID($route->taskId) && $locTaskCat->fields['is_subprocess']) {
+      //         // look for APP_UID
+      //         foreach($PM_DB->request("SELECT APP_UID FROM SUB_APPLICATION WHERE APP_PARENT='{$myCase->fields['case_guid']}' AND DEL_INDEX_PARENT={$route->delIndex} AND DEL_THREAD_PARENT={$route->delThread} AND SA_STATUS='ACTIVE'") as $subCase) {
+      //            // normally only one case for this delIndex and delThread
+      //            // now need to get the PRO_UID
+      //            $sub_caseInfo = self::getCaseInfo($subCase['APP_UID']);
+
+      //            $locProc = new PluginProcessmakerProcess;
+      //            $locProc->getFromGUID($sub_caseInfo->processId);
+      //            $locCase = new PluginProcessmakerCase;
+      //            $locCase->add(['id'       => $sub_caseInfo->caseNumber,
+      //                           'case_guid'=> $sub_caseInfo->caseId,
+      //                           'itemtype' => $itemtype,
+      //                           'items_id' => $items_id,
+      //                           'name' => $sub_caseInfo->caseName,
+      //                           'entities_id' => $item->fields['entities_id'],
+      //                           'case_status' => $sub_caseInfo->caseStatus,
+      //                           'plugin_processmaker_processes_id' => $locProc->getID(),
+      //                           'plugin_processmaker_cases_id' => $myCase->getID()]);
+
+      //            // then create associated task
+      //            if (property_exists( $sub_caseInfo, 'currentUsers' )) {
+      //               foreach ($sub_caseInfo->currentUsers as $sub_route) {
+      //                  $this->addTask($locCase->getID(), $itemtype,
+      //                                            $items_id,
+      //                                            $sub_caseInfo,
+      //                                            $sub_route->delIndex,
+      //                                            PluginProcessmakerUser::getGLPIUserId($sub_route->userId),
+      //                                            0,
+      //                                            $sub_route->taskId,
+      //                                            $sub_route->delThread,
+      //                                            []
+      //                                            //array( 'txtTaskContent' => $txtTaskContent,
+      //                                            //       'start_date'     => $taskStartDate,
+      //                                            //       'end_date' => $taskEndDate)
+      //                                          );
+
+      //               }
+      //            }
+
+      //         }
+
+      //      }
+      //   }
+
+      //}
 
       $casevariables = ["GLPI_ITEM_TASK_CONTENT",
                         "GLPI_ITEM_APPEND_TO_TASK",
@@ -2572,7 +2578,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                        ];
 
       // now tries to get some variables to setup content for new task and to append text to solved task
-      $casevariablevalues = $this->getVariables($myCase->getID(), $casevariables);
+      $casevariablevalues = $myCase->getVariables($casevariables);
 
       $itemSetStatus = '';
       if (array_key_exists( 'GLPI_ITEM_SET_STATUS', $casevariablevalues )) {
@@ -2624,62 +2630,196 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       foreach($casevariables as $val) {
          $resetcasevariables[$val] = '';
       }
-      $resultSave = $this->sendVariables($myCase->getID(), $resetcasevariables);
+      $resultSave = $myCase->sendVariables($resetcasevariables);
 
       // print_r( $pmRouteCaseResponse ) ;
       // die() ;
 
       // now manage tasks associated with item
-      $itemType = $myCase->getField('itemtype');
-      $itemId = $myCase->getField('items_id');
-
       // switch own task to 'done' and create a new one
-      $this->solveTask( $myCase->getID(), $request['DEL_INDEX'], array( 'txtToAppend' => $txtToAppendToTask, 'users_id_tech' => $users_id ) );
+      $this->solveTask($myCase->getID(), $request['DEL_INDEX'], array( 'txtToAppend' => $txtToAppendToTask, 'users_id_tech' => $users_id ) );
 
       // create a followup if requested
-      if ($createFollowup && $itemType == 'Ticket') {
-         $this->addTicketFollowup( $itemId, $casevariablevalues );
-      }
-      $caseInfo = $this->getCaseInfo(  $myCase->getID(), $request['DEL_INDEX']);
-      if (property_exists( $pmRouteCaseResponse, 'routing' )) {
-         foreach ($pmRouteCaseResponse->routing as $route) {
-            $this->addTask( $itemType,
-                                      $itemId,
-                                      $caseInfo,
-                                      $route->delIndex,
-                                      PluginProcessmakerUser::getGLPIUserId( $route->userId ),
-                                      $groupId,
-                                      $route->taskId,
-                                      array( 'txtTaskContent' => $txtTaskContent,
-                                             'start_date'     => $taskStartDate,
-                                             'end_date' => $taskEndDate)
-                                    );
-
-            // if end date was specified, then must change due date of the PM task
-            if ($taskEndDate != '') {
-               $PM_DB->query( "UPDATE APP_DELEGATION SET DEL_TASK_DUE_DATE='$taskEndDate' WHERE APP_UID='".$caseInfo->caseId."' AND DEL_INDEX=".$route->delIndex);
-            }
-         }
+      if ($createFollowup && $itemtype == 'Ticket') {
+         $this->addTicketFollowup( $items_id, $casevariablevalues );
       }
 
       if ($txtItemTitle != '') {
          // we are going to change the title of current GLPI Item
-         $this->setItemTitle($itemType, $itemId, $txtItemTitle);
+         $this->setItemTitle($itemtype, $items_id, $txtItemTitle);
       }
 
       if ($itemSetStatus != '') {
-         $this->setItemStatus($itemType, $itemId, $itemSetStatus );
+         $this->setItemStatus($itemtype, $items_id, $itemSetStatus );
       }
 
       if (array_key_exists( 'GLPI_ITEM_SET_SOLUTION_TEMPLATE_ID', $casevariablevalues )
           || array_key_exists( 'GLPI_ITEM_SET_SOLUTION_TYPE_ID', $casevariablevalues )
           || array_key_exists( 'GLPI_ITEM_APPEND_TO_SOLUTION_DESCRIPTION', $casevariablevalues )) {
          // case requests to add a solution to ticket
-         $this->setItemSolution($itemType, $itemId, $casevariablevalues);
+         $this->setItemSolution($itemtype, $items_id, $casevariablevalues);
+      }
+
+      // get the new case info
+      $caseInfo = $myCase->getCaseInfo($request['DEL_INDEX']); // not sure that it should passed this
+
+      // now create the new tasks if any
+      if (property_exists( $pmRouteCaseResponse, 'routing' )) {
+
+         // we may have several task to create
+         foreach ($pmRouteCaseResponse->routing as $route) {
+
+            // must check if task has started a sub-process
+            $locTaskCat = new PluginProcessmakerTaskCategory;
+            if ($locTaskCat->getFromGUID($route->taskId) && $locTaskCat->fields['is_subprocess']) {
+               // look for APP_UID
+               $res = $PM_DB->query("SELECT APP_UID FROM SUB_APPLICATION WHERE APP_PARENT='{$myCase->fields['case_guid']}' AND DEL_INDEX_PARENT={$route->delIndex} AND SA_STATUS='ACTIVE'"); // AND DEL_THREAD_PARENT={$route->delThread} seems like it is not set to correct threadIndex
+               if ($res && $PM_DB->numrows($res) == 1) {
+                  // then new task is a sub-process,
+                  $row = $PM_DB->fetch_assoc($res);
+
+                  // now need to get the PRO_UID
+                  $sub_caseInfo = self::getCaseInfo($row['APP_UID']);
+
+                  $locProc = new PluginProcessmakerProcess;
+                  $locProc->getFromGUID($sub_caseInfo->processId);
+                  $subCase = new PluginProcessmakerCase;
+                  $subCase->add(['id'       => $sub_caseInfo->caseNumber,
+                                 'case_guid'=> $sub_caseInfo->caseId,
+                                 'itemtype' => $itemtype,
+                                 'items_id' => $items_id,
+                                 'name' => $sub_caseInfo->caseName,
+                                 'entities_id' => $item->fields['entities_id'],
+                                 'case_status' => $sub_caseInfo->caseStatus,
+                                 'plugin_processmaker_processes_id' => $locProc->getID(),
+                                 'plugin_processmaker_cases_id' => $myCase->getID()]);
+
+                  // then create associated task
+                  if (property_exists( $sub_caseInfo, 'currentUsers' )) {
+                     // there should be only one task
+                     $sub_route = $sub_caseInfo->currentUsers[0];
+                     $this->addTask($subCase->getID(), $itemtype,
+                                                $items_id,
+                                                $sub_caseInfo,
+                                                $sub_route->delIndex,
+                                                PluginProcessmakerUser::getGLPIUserId($sub_route->userId),
+                                                0,
+                                                $sub_route->taskId,
+                                                $sub_route->delThread,
+                                                array( 'txtTaskContent' => $txtTaskContent,
+                                                      'start_date'     => $taskStartDate,
+                                                      'end_date' => $taskEndDate)
+                                             );
+
+                     // if end date was specified, then must change due date of the PM task
+                     if ($taskEndDate != '') {
+                        $PM_DB->query( "UPDATE APP_DELEGATION SET DEL_TASK_DUE_DATE='$taskEndDate' WHERE APP_UID='".$sub_caseInfo->caseId."' AND DEL_INDEX=".$sub_route->delIndex);
+                     }
+
+                  }
+
+                  // must also send to new sub-process some GLPI variables
+                  // like any newly started cases
+                  // get the value of GLPI_ITEM_CAN_BE_SOLVED to transmit it to sub-case
+                  //$canBeSolved = $myCase->getVariables(['GLPI_ITEM_CAN_BE_SOLVED']);
+                  //$glpi_variables =  ['GLPI_ITEM_CAN_BE_SOLVED'        => isset($canBeSolved['GLPI_CAN_BE_SOLVED']) ? $canBeSolved['GLPI_CAN_BE_SOLVED'] : 0,
+                  //                    'GLPI_TICKET_ID'                 => $items_id,
+                  //                    'GLPI_ITEM_ID'                   => $items_id,
+                  //                    'GLPI_ITEM_TYPE'                 => $itemtype,
+                  //                    'GLPI_TICKET_REQUESTER_GLPI_ID'  => $requesters[0]['glpi_id'],
+                  //                    'GLPI_ITEM_REQUESTER_GLPI_ID'    => $requesters[0]['glpi_id'],
+                  //                    'GLPI_TICKET_REQUESTER_PM_ID'    => $requesters[0]['pm_id'],
+                  //                    'GLPI_ITEM_REQUESTER_PM_ID'      => $requesters[0]['pm_id'],
+                  //                    'GLPI_TICKET_TITLE'              => $locItem->fields['name'],
+                  //                    'GLPI_ITEM_TITLE'                => $locItem->fields['name'],
+                  //                    'GLPI_TICKET_DESCRIPTION'        => $locItem->fields['content'],
+                  //                    'GLPI_ITEM_DESCRIPTION'          => $locItem->fields['content'],
+                  //                    'GLPI_TICKET_DUE_DATE'           => $locItem->fields['due_date'],
+                  //                    'GLPI_ITEM_DUE_DATE'             => $locItem->fields['due_date'],
+                  //                    'GLPI_ITEM_ITIL_CATEGORY_ID'     => $locItem->fields['itilcategories_id'],
+                  //                    'GLPI_TICKET_URGENCY'            => $locItem->fields['urgency'],
+                  //                    'GLPI_ITEM_URGENCY'              => $locItem->fields['urgency'],
+                  //                    'GLPI_ITEM_IMPACT'               => $locItem->fields['impact'],
+                  //                    'GLPI_ITEM_PRIORITY'             => $locItem->fields['priority'],
+                  //                    'GLPI_TICKET_GLOBAL_VALIDATION'  => $locItem->fields['global_validation'] ,
+                  //                    'GLPI_TICKET_TECHNICIAN_GLPI_ID' => $users_id,
+                  //                    'GLPI_ITEM_TECHNICIAN_GLPI_ID'   => $users_id,
+                  //                    'GLPI_TICKET_TECHNICIAN_PM_ID'   => PluginProcessmakerUser::getPMUserId( $users_id ),
+                  //                    'GLPI_ITEM_TECHNICIAN_PM_ID'     => PluginProcessmakerUser::getPMUserId( $users_id ),
+                  //                    'GLPI_URL'                       => $CFG_GLPI['url_base']
+                  //                    ];
+                  //$subCase->sendVariables($glpi_variables);
+
+                  // evolution of case status: DRAFT, TO_DO, COMPLETED, CANCELLED
+                  $subCase->update( array( 'id' => $subCase->getID(), 'case_status' => $sub_caseInfo->caseStatus, 'name' => $sub_caseInfo->caseName ) );
+
+               }
+            } else {
+
+               $this->addTask( $myCase->getID(), $itemtype,
+                                          $items_id,
+                                          $caseInfo,
+                                          $route->delIndex,
+                                          PluginProcessmakerUser::getGLPIUserId( $route->userId ),
+                                          $groupId,
+                                          $route->taskId,
+                                          $route->delThread,
+                                          array( 'txtTaskContent' => $txtTaskContent,
+                                                'start_date'     => $taskStartDate,
+                                                'end_date' => $taskEndDate)
+                                       );
+               // if end date was specified, then must change due date of the PM task
+               if ($taskEndDate != '') {
+                  $PM_DB->query( "UPDATE APP_DELEGATION SET DEL_TASK_DUE_DATE='$taskEndDate' WHERE APP_UID='".$caseInfo->caseId."' AND DEL_INDEX=".$route->delIndex);
+               }
+            }
+
+         }
+
+      } else
+      // must check if current case is a sub-process, and if it has ended, then must reflect parent case into the current item.
+      if ($myCase->fields['plugin_processmaker_cases_id'] != 0) {
+         // current case is a sub-case of $myCase->fields['plugin_processmaker_cases_id']
+         $parentCase = new PluginProcessmakerCase;
+         $parentCase->getFromDB($myCase->fields['plugin_processmaker_cases_id']);
+         $parentCaseInfo = $parentCase->getCaseInfo();
+         // then create associated task
+         if (property_exists( $parentCaseInfo, 'currentUsers' )) {
+            // we may have several new task
+            foreach ($parentCaseInfo->currentUsers as $open_task) {
+               // must check if $open_task is not is_subprocess and is not already existing in the item
+               $locTaskCat = new PluginProcessmakerTaskCategory;
+               $locTask = new PluginProcessmakerTask();
+               if ($locTaskCat->getFromGUID($open_task->taskId)
+                  && !$locTaskCat->fields['is_subprocess']
+                  && !$locTask->getFromDBByQuery("WHERE `plugin_processmaker_cases_id`={$parentCase->getID()} AND `plugin_processmaker_taskcategories_id`={$locTaskCat->getID()} AND `del_index`={$open_task->delIndex}")) {
+                  $this->addTask($parentCase->getID(), $itemtype,
+                                            $items_id,
+                                            $parentCaseInfo,
+                                            $open_task->delIndex,
+                                            PluginProcessmakerUser::getGLPIUserId($open_task->userId),
+                                            0,
+                                            $open_task->taskId,
+                                            $open_task->delThread,
+                                            array( 'txtTaskContent' => $txtTaskContent,
+                                                   'start_date'     => $taskStartDate,
+                                                   'end_date' => $taskEndDate)
+                                          );
+
+                  // if end date was specified, then must change due date of the PM task
+                  if ($taskEndDate != '') {
+                     $PM_DB->query( "UPDATE APP_DELEGATION SET DEL_TASK_DUE_DATE='$taskEndDate' WHERE APP_UID='".$sub_caseInfo->caseId."' AND DEL_INDEX=".$open_task->delIndex);
+                  }
+               }
+            }
+         }
+         // evolution of case status: DRAFT, TO_DO, COMPLETED, CANCELLED
+         $parentCase->update( array( 'id' => $parentCase->getID(), 'case_status' => $parentCaseInfo->caseStatus, 'name' => $parentCaseInfo->caseName ) );
       }
 
       // evolution of case status: DRAFT, TO_DO, COMPLETED, CANCELLED
-      $myCase->update( array( 'id' => $myCase->getID(), 'case_status' => $caseInfo->caseStatus ) );
+      $myCase->update( array( 'id' => $myCase->getID(), 'case_status' => $caseInfo->caseStatus, 'name' => $caseInfo->caseName ) );
+
    }
 
 
@@ -2782,22 +2922,5 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
       echo Html::scriptBlock($scriptblock);
    }
-
-   //static protected $saved_ob_level;
-
-   //static function pre_item_form_processmakerticket($item) {
-   //   self::$saved_ob_level = ob_get_level();
-   //   ob_start();
-
-   //}
-
-   //static function post_item_form_processmakerticket($item) {
-   //   $buffer = ob_get_clean();
-   //   // 9.1 only: hack to fix an issue with the initEditorSystem which calls scriptStart without calling scriptEnd
-   //   if (ob_get_level() > self::$saved_ob_level) {
-   //      $buffer = ob_get_clean().$buffer;
-   //   }
-   //   echo $buffer;
-   //}
 
 }

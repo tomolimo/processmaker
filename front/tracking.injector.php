@@ -39,7 +39,7 @@ if( isset($_POST["_from_helpdesk"]) && $_POST["_from_helpdesk"] == 1
    $processQt = count( $processList ) ;
    if( $processQt == 1 ) {
       $_POST['action']='newcase';
-      $_POST['plugin_processmaker_process_id'] = $processList[0]['id'];
+      $_POST['plugin_processmaker_processes_id'] = $processList[0]['id'];
       include (GLPI_ROOT . "/plugins/processmaker/front/processmaker.form.php");
       die() ;
    } elseif( $processQt > 1 ) {

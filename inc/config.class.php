@@ -4,6 +4,8 @@
 
 class PluginProcessmakerConfig extends CommonDBTM {
 
+   static $rightname = '';
+
    static private $_instance = NULL;
 
    /**
@@ -141,7 +143,7 @@ class PluginProcessmakerConfig extends CommonDBTM {
     * @return boolean
     */
    static function showConfigForm($item) {
-      global $LANG, $PM_DB, $CFG_GLPI;
+      global $LANG, $PM_DB, $CFG_GLPI, $PM_SOAP;
 
       $setup_ok = false;
 
@@ -183,7 +185,7 @@ class PluginProcessmakerConfig extends CommonDBTM {
                      cglpi = glpi.pop() ;
                      cpm = pm.pop() ;
                   }
-                  if( domain != '' ) {
+                  if (domain != '' && domain.split('.').length > 1) { // common domain must be at least 'domain.com' and not 'com', otherwise some browser will not accept the CORS javascript
                      $('div[name=domain]').text(domain) ;
                      $('div[name=domain]').parent().attr('color', 'green');
                      return;
@@ -215,16 +217,18 @@ class PluginProcessmakerConfig extends CommonDBTM {
 
       echo "<tr class='tab_bg_1'>";
       echo "<td >".$LANG['processmaker']['config']['connectionstatus']."</td><td >";
-      $pm = new PluginProcessmakerProcessmaker;
+      //$pm = new PluginProcessmakerProcessmaker;
 
       if ($config->fields['pm_server_URL'] != ''
          && $config->fields['pm_workspace'] != ''
          && $config->fields["pm_admin_user"] != ''
-         && ($pm->login(true))) {
+//         && ($pm->login(true))) {
+         && ($PM_SOAP->login(true))) {
          echo "<font color='green'>".__('Test successful');
          $setup_ok = true;
       } else {
-         echo "<font color='red'>".__('Test failed')."<br>".print_r($pm->lasterror, true);
+//         echo "<font color='red'>".__('Test failed')."<br>".print_r($pm->lasterror, true);
+         echo "<font color='red'>".__('Test failed')."<br>".print_r($PM_SOAP->lasterror, true);
       }
       echo "</font></span></td></tr>\n";
 
@@ -237,7 +241,7 @@ class PluginProcessmakerConfig extends CommonDBTM {
 
       echo "<tr class='tab_bg_1'>";
       echo "<td >" . __('Database name') . "</td>";
-      echo "<td ><input type='text' size=50 name='pm_dbname' value='".$config->fields["pm_dbname"]."'>";
+      echo "<td ><input type='text' size=50 name='pm_dbname' value='".$config->fields['pm_dbname']."'>";
       echo "</td></tr>\n";
 
       echo "<tr class='tab_bg_1'>";
@@ -253,7 +257,7 @@ class PluginProcessmakerConfig extends CommonDBTM {
 
       echo "<tr class='tab_bg_1'>";
       echo "<td >".$LANG['processmaker']['config']['connectionstatus']."</td><td >";
-      if ($PM_DB->connected) {
+      if ($PM_DB->connected && isset($PM_DB->dbdefault) && $PM_DB->dbdefault != '') {
          echo "<font color='green'>".__('Test successful');
       } else {
          echo "<font color='red'>".__('Test failed');
@@ -322,7 +326,8 @@ class PluginProcessmakerConfig extends CommonDBTM {
 
        echo "<tr><th  colspan='4'>".__('Processmaker system information')."</th></tr>";
        if ($setup_ok) {
-          $info = $pm->systemInformation( );
+//          $info = $pm->systemInformation( );
+          $info = $PM_SOAP->systemInformation( );
           echo '<tr><td>'._('Version').'</td><td>'.$info->version.'</td></tr>';
           echo '<tr><td>'._('Web server').'</td><td>'.$info->webServer.'</td></tr>';
           echo '<tr><td>'._('Server name').'</td><td>'.$info->serverName.'</td></tr>';

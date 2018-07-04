@@ -14,6 +14,9 @@ if (!defined('GLPI_ROOT')) {
  */
 class PluginProcessmakerProcess extends CommonDBTM {
 
+   static $rightname                           = 'plugin_processmaker_config';
+
+
    static function canCreate() {
       return Session::haveRight('plugin_processmaker_config', UPDATE);
    }
@@ -62,18 +65,20 @@ class PluginProcessmakerProcess extends CommonDBTM {
             foreach ($CFG_GLPI['languages'] as $key => $valArray) {
                $lg = locale_get_primary_language( $key );
                $mapLangs[$lg][] = $key;
+               $mapLangs[$key][] = $key; // also add complete lang
             }
          //}
          $lang = locale_get_primary_language( $CFG_GLPI['language'] );
-         $query = "SELECT TASK.TAS_UID, TASK.TAS_START, CONTENT.CON_LANG, CONTENT.CON_CATEGORY, CONTENT.CON_VALUE FROM TASK
+         $query = "SELECT TASK.TAS_UID, TASK.TAS_START, TASK.TAS_TYPE, CONTENT.CON_LANG, CONTENT.CON_CATEGORY, CONTENT.CON_VALUE FROM TASK
                         INNER JOIN CONTENT ON CONTENT.CON_ID=TASK.TAS_UID
                         WHERE (TASK.TAS_TYPE = 'NORMAL' OR TASK.TAS_TYPE = 'SUBPROCESS') AND TASK.PRO_UID = '".$this->fields['process_guid']."' AND CONTENT.CON_CATEGORY IN ('TAS_TITLE', 'TAS_DESCRIPTION') ".($translates ? "" : " AND CONTENT.CON_LANG='$lang'")." ;";
          $taskArray = [];
          $defaultLangTaskArray = [];
          foreach ($PM_DB->request( $query ) as $task) {
             if ($task['CON_LANG'] == $lang) {
-               $defaultLangTaskArray[ $task['TAS_UID'] ][ $task['CON_CATEGORY'] ]  = $task['CON_VALUE'];
-               $defaultLangTaskArray[ $task['TAS_UID'] ]['start']=($task['TAS_START']=='TRUE'?true:false);
+               $defaultLangTaskArray[$task['TAS_UID']][$task['CON_CATEGORY']] = $task['CON_VALUE'];
+               $defaultLangTaskArray[$task['TAS_UID']]['is_start'] = ($task['TAS_START'] == 'TRUE' ? 1 : 0);
+               $defaultLangTaskArray[$task['TAS_UID']]['is_subprocess'] = ($task['TAS_TYPE'] == 'SUBPROCESS' ? 1 : 0);
             } else {
                foreach ($mapLangs[ $task['CON_LANG'] ] as $valL) {
                   $taskArray[ $task['TAS_UID'] ][ $valL ][ $task['CON_CATEGORY'] ]  = $task['CON_VALUE'];
@@ -82,7 +87,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
          }
 
          $pmtask = new PluginProcessmakerTaskCategory;
-         $currentasksinprocess = getAllDatasFromTable($pmtask->getTable(), 'is_active = 1 AND processes_id = '.$this->getID());
+         $currentasksinprocess = getAllDatasFromTable($pmtask->getTable(), '`is_active` = 1 AND `plugin_processmaker_processes_id` = '.$this->getID());
          $tasks=[];
          foreach($currentasksinprocess as $task){
             $tasks[$task['pm_task_guid']] = $task;
@@ -96,7 +101,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
                $countElt += countElementsInTable( getTableForItemType($obj), "taskcategories_id = ".$task['taskcategories_id'] );
                if ($countElt != 0) {
                   // just set 'is_active' to 0
-                  $pmtask->Update( array( 'id' => $task['id'], 'start' => 0, 'is_active' => 0 ) );
+                  $pmtask->Update( array( 'id' => $task['id'], 'is_start' => 0, 'is_active' => 0 ) );
                   break;
                }
             }
@@ -112,28 +117,34 @@ class PluginProcessmakerProcess extends CommonDBTM {
          foreach ($defaultLangTaskArray as $taskGUID => $task) {
             $pmTaskCat = new PluginProcessmakerTaskCategory;
             $taskCat = new TaskCategory;
-            if ($pmTaskCat->getFromDBbyExternalID( $taskGUID )) {
+            if ($pmTaskCat->getFromGUID( $taskGUID )) {
                // got it then check names, and if != update
                if ($taskCat->getFromDB( $pmTaskCat->fields['taskcategories_id'] )) {
                   // found it must test if should be updated
                   if ($taskCat->fields['name'] != $task['TAS_TITLE'] || $taskCat->fields['comment'] != $task['TAS_DESCRIPTION']) {
                      $taskCat->update( array( 'id' => $taskCat->getID(), 'name' => $PM_DB->escape($task['TAS_TITLE']), 'comment' => $PM_DB->escape($task['TAS_DESCRIPTION']), 'taskcategories_id' => $this->fields['taskcategories_id'] ) );
                   }
-                  if ($pmTaskCat->fields['start'] != $task['start']) {
-                         $pmTaskCat->update( array( 'id' =>  $pmTaskCat->getID(), 'start' => $task['start'] ) );
+                  if ($pmTaskCat->fields['is_start'] != $task['is_start']) {
+                         $pmTaskCat->update( array( 'id' =>  $pmTaskCat->getID(), 'is_start' => $task['is_start'] ) );
                   }
                } else {
                   // taskcat must be created
                   $taskCat->add( array( 'is_recursive' => true, 'name' => $PM_DB->escape($task['TAS_TITLE']), 'comment' => $PM_DB->escape($task['TAS_DESCRIPTION']), 'taskcategories_id' => $this->fields['taskcategories_id'] ) );
                   // update pmTaskCat
-                  $pmTaskCat->update( array( 'id' => $pmTaskCat->getID(), 'taskcategories_id' => $taskCat->getID(), 'start' => $task['start'] ) );
+                  $pmTaskCat->update( array( 'id' => $pmTaskCat->getID(), 'taskcategories_id' => $taskCat->getID(), 'is_start' => $task['is_start'] ) );
                }
             } else {
                // should create a new one
                // taskcat must be created
                $taskCat->add( array( 'is_recursive' => true, 'name' => $PM_DB->escape($task['TAS_TITLE']), 'comment' => $PM_DB->escape($task['TAS_DESCRIPTION']), 'taskcategories_id' => $this->fields['taskcategories_id'] ) );
                // pmTaskCat must be created too
-               $pmTaskCat->add( array( 'processes_id' => $this->getID(), 'pm_task_guid' => $taskGUID, 'taskcategories_id' => $taskCat->getID(), 'start' => $task['start'], 'is_active' => 1 ) );
+               $pmTaskCat->add( ['plugin_processmaker_processes_id' => $this->getID(),
+                                 'pm_task_guid' => $taskGUID,
+                                 'taskcategories_id' => $taskCat->getID(),
+                                 'is_start' => $task['is_start'],
+                                 'is_active' => 1,
+                                 'is_subprocess' => $task['is_subprocess']
+                                 ] );
             }
             // here we should take into account translations if any
             if ($translates && isset($taskArray[ $taskGUID ])) {
@@ -205,10 +216,13 @@ class PluginProcessmakerProcess extends CommonDBTM {
    * @return void
    */
    function refresh( ) {
+      global $DB, $PM_SOAP;
+
+      $pmCurrentProcesses = [];
+
       // then refresh list of available process from PM to inner table
-      $pm = new PluginProcessmakerProcessmaker;
-      $pm->login( true );
-      $pmProcessList = $pm->processList();
+      $PM_SOAP->login( true );
+      $pmProcessList = $PM_SOAP->processList();
 
       $config = PluginProcessmakerConfig::getInstance();
       $pmMainTaskCat = $config->fields['taskcategories_id'];
@@ -217,7 +231,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
       if ($pmProcessList) {
          foreach ($pmProcessList as $process) {
             $glpiprocess = new PluginProcessmakerProcess;
-            if ($glpiprocess->getFromDBbyExternalID($process->guid)) {
+            if ($glpiprocess->getFromGUID($process->guid)) {
                // then update it only if name has changed
                if ($glpiprocess->fields['name'] != $process->name) {
                   $glpiprocess->update( array( 'id' => $glpiprocess->getID(), 'name' => $process->name) );
@@ -242,10 +256,51 @@ class PluginProcessmakerProcess extends CommonDBTM {
                   $glpiprocess->addTaskCategory( $pmMainTaskCat );
                }
             }
+            $pmCurrentProcesses[$glpiprocess->getID()] = $glpiprocess->getID();
          }
       }
 
       // should de-activate other
+      $glpiCurrentProcesses = getAllDatasFromTable(self::getTable());
+      // get difference between PM and GLPI
+      foreach( array_diff_key($glpiCurrentProcesses, $pmCurrentProcesses) as $key => $process){
+         $proc = new PluginProcessmakerProcess;
+         $proc->getFromDB($key);
+
+         // check if at least one case is existing for this process
+         $query = "SELECT * FROM `".PluginProcessmakerCase::getTable()."` WHERE `plugin_processmaker_processes_id` = ".$key;
+         $res = $DB->query($query);
+         if ($DB->numrows($res) === 0) {
+            // and if no will delete the process
+            $proc->delete(['id' => $key]);
+            // delete main taskcat
+            $tmp = new TaskCategory;
+            $tmp->delete(['id' => $proc->fields['taskcategories_id']]);
+
+            // must delete processes_profiles if any
+            $tmp = new PluginProcessmakerProcess_Profile;
+            $tmp->deleteByCriteria(['plugin_processmaker_processes_id' => $key]);
+
+            // must delete any taskcategory and translations
+            $pmtaskcategories = getAllDatasFromTable( PluginProcessmakerTaskCategory::getTable(), "plugin_processmaker_processes_id = $key");
+            foreach($pmtaskcategories as $pmcat){
+               // delete taskcat
+               $tmp = new TaskCategory;
+               $tmp->delete(['id' => $pmcat['taskcategories_id']]);
+
+               // delete pmtaskcat
+               $tmp = new PluginProcessmakerTaskCategory;
+               $tmp->delete(['id' => $pmcat['id']]);
+
+               // delete any translations
+               $tmp = new DropdownTranslation;
+               $tmp->deleteByCriteria(['itemtype' => 'TaskCategory', 'items_id' => $pmcat['taskcategories_id']]);
+            }
+         } else {
+            // set it as inactive
+            $proc->update(['id' => $key, 'is_active' => 0]);
+         }
+      }
 
    }
 
@@ -302,15 +357,15 @@ class PluginProcessmakerProcess extends CommonDBTM {
 
    /**
    * Retrieve a Process from the database using its external id (unique index): process_guid
-   * @param string $extid guid of the process
+   * @param string $process_guid guid of the process
    * @return bool true if succeed else false
    **/
-   public function getFromDBbyExternalID($extid) {
+   public function getFromGUID($process_guid) {
       global $DB;
 
       $query = "SELECT *
                 FROM `".$this->getTable()."`
-                WHERE `process_guid` = '$extid'";
+                WHERE `process_guid` = '$process_guid'";
 
       if ($result = $DB->query($query)) {
          if ($DB->numrows($result) != 1) {
@@ -467,7 +522,6 @@ class PluginProcessmakerProcess extends CommonDBTM {
       //$options['canedit'] = $canedit ;
 
       $this->initForm($ID, $options);
-      //$this->showTabs($options);
       $this->showFormHeader($options);
 
       echo "<tr class='tab_bg_1'>";
@@ -489,11 +543,6 @@ class PluginProcessmakerProcess extends CommonDBTM {
       Dropdown::showYesNo("is_active", $this->fields["is_active"]);
       echo "</td></tr>";
 
-      //echo "<tr class='tab_bg_1'>";
-      //echo "<td >".$LANG['tracking'][39]."&nbsp;:</td><td>";
-      //Dropdown::showYesNo("is_helpdeskvisible",$this->fields["is_helpdeskvisible"]);
-      //echo "</td></tr>";
-
       echo "<tr class='tab_bg_1'>";
       echo "<td >".$LANG['processmaker']['process']['hide_case_num_title']."&nbsp;:</td><td>";
       Dropdown::showYesNo("hide_case_num_title", $this->fields["hide_case_num_title"]);
@@ -508,7 +557,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
       echo "<td >".$LANG['processmaker']['process']['type']."&nbsp;:</td><td>";
       if (true) { // $canupdate || !$ID
             $idticketcategorysearch = mt_rand(); $opt = array('value' => $this->fields["type"]);
-            $rand = $idtype = Ticket::dropdownType('type', $opt, array(), array('toupdate' => "search_".$idticketcategorysearch ));
+            $rand = Ticket::dropdownType('type', $opt, array(), array('toupdate' => "search_".$idticketcategorysearch ));
             $opt = array('value' => $this->fields["type"]);
             $params = array('type'            => '__VALUE__',
                             //'entity_restrict' => -1, //$this->fields['entities_id'],
@@ -561,9 +610,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
       echo Html::convDateTime($this->fields["date_mod"]);
       echo "</td></tr>";
 
-      $this->showFormButtons($options );
-      //$this->addDivForTabs();
-
+      $this->showFormButtons($options);
    }
 
 
@@ -649,7 +696,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
 
       $query = "SELECT `entities_id`, `is_recursive`
                 FROM `glpi_plugin_processmaker_processes_profiles`
-                WHERE `processes_id` = '$processes_id'
+                WHERE `plugin_processmaker_processes_id` = '$processes_id'
                       AND `profiles_id` = '$profiles_id'";
 
       $entities = array();

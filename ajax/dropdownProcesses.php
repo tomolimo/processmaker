@@ -13,7 +13,7 @@ if (strpos($_SERVER['PHP_SELF'], "dropdownProcesses.php")) {
 }
 
 if (!defined('GLPI_ROOT')) {
-   die("Can not acces directly to this file");
+   die("Can not access directly to this file");
 }
 
 
@@ -24,6 +24,7 @@ if (isset($_REQUEST["entity_restrict"])
     && (substr($_REQUEST["entity_restrict"], 0, 1) === '[')
     && (substr($_REQUEST["entity_restrict"], -1) === ']')) {
     $_REQUEST["entity_restrict"] = json_decode($_REQUEST["entity_restrict"]);
+    $_REQUEST["entity_restrict"] = $_REQUEST["entity_restrict"][0];
 }
 
 // Security
@@ -62,10 +63,11 @@ if (empty($_REQUEST['searchText'])) {
 $result = PluginProcessmakerProcess::getSqlSearchResult(false, $search);
 
 if ($DB->numrows($result)) {
-   while ($data=$DB->fetch_array($result)) {
-      if (in_array( $_REQUEST["entity_restrict"], PluginProcessmakerProcess::getEntitiesForProfileByProcess( $data["id"], $_SESSION['glpiactiveprofile']['id'], true) )) {
-         array_push( $processes, array( 'id' => $data["id"],
-                                         'text' => $data["name"] ));
+   while ($data = $DB->fetch_array($result)) {
+      $process_entities = PluginProcessmakerProcess::getEntitiesForProfileByProcess($data["id"], $_SESSION['glpiactiveprofile']['id'], true);
+      if (in_array( $_REQUEST["entity_restrict"],  $process_entities)) {
+         array_push( $processes, array( 'id'   => $data["id"],
+                                        'text' => $data["name"] ));
          $count++;
       }
    }

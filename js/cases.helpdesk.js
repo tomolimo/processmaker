@@ -72,7 +72,7 @@ function onLoadFrame( evt, caseId, delIndex, caseNumber, processName ) {
             
             submitButton = $("input[name='add'][type=submit]")[0];
             submitButton.insertAdjacentHTML('beforebegin', "<input type='hidden' name='processmaker_action' value='routecase'/>");
-            submitButton.insertAdjacentHTML('beforebegin', "<input type='hidden' name='processmaker_caseid' value='" + caseId + "'/>");
+            submitButton.insertAdjacentHTML('beforebegin', "<input type='hidden' name='processmaker_caseguid' value='" + caseId + "'/>");
             submitButton.insertAdjacentHTML('beforebegin', "<input type='hidden' name='processmaker_delindex' value='" + delIndex + "'/>");
             submitButton.insertAdjacentHTML('beforebegin', "<input type='hidden' name='processmaker_casenum' value='" + caseNumber + "'/>");
 

@@ -1,7 +1,6 @@
 ﻿//debugger;
 // To manage submits to case.front.php
-var loc_split = window.location.href.split('/');
-var GLPI_HTTP_CASE_FORM = window.location.href.split('/', loc_split.length-2 ).join('/') + '/plugins/processmaker/front/case.front.php'; // http://hostname/glpi/...
+var GLPI_HTTP_CASE_FORM = window.location.href.replace(window.location.search, ''); //window.location.href.split('/', loc_split.length - 2).join('/') + '/plugins/processmaker/front/case.front.php'; // http://hostname/glpi/...
 // to manage reloads
 var GLPI_RELOAD_PARENT = window; //.location;
 var GLPI_DURING_RELOAD = false;
@@ -85,7 +84,7 @@ function onTaskFrameLoad(event, delIndex, hideClaimButton, csrf) {
                   var node = formList[0]; // must have one element in list: in a dynaform there is one and only one HTML form
                   node.setAttribute('actionBackup', node.action);
                   var action = node.action.split('?');
-                  node.action = GLPI_HTTP_CASE_FORM + '?' + action[1] + '&DEL_INDEX=' + delIndex;
+                  node.action = GLPI_HTTP_CASE_FORM + '?' + action[1] + '&DEL_INDEX=' + delIndex + '&action=route';
 
                   // add an element that will be the csrf data code for the POST
                   //debugger;

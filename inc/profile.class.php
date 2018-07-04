@@ -21,9 +21,9 @@ class PluginProcessmakerProfile extends CommonDBTM {
                            'field'    => 'plugin_processmaker_config',
                    'rights' => array(READ    => __('Read'), UPDATE  => __('Update'))),
                    array('itemtype' => 'PluginProcessmakerConfig',
-                           'label'    =>  $LANG['processmaker']['profile']['case_delete'],
-                           'field'    => 'plugin_processmaker_deletecase',
-                   'rights' => array(DELETE  => __('Delete')))
+                           'label'    =>  $LANG['processmaker']['profile']['case'],
+                           'field'    => 'plugin_processmaker_case',
+                   'rights' => array(READ => __('Read'), DELETE  => __('Delete')))
                    );
 
       return $rights;

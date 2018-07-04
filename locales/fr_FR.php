@@ -26,9 +26,10 @@ $LANG['processmaker']['process']['type']="Type de ticket (self-service)";
 $LANG['processmaker']['process']['itilcategory']="Catégorie ITIL (self-service)";
 $LANG['processmaker']['process']['taskcategories']['name']="Nom de la Tâche";
 $LANG['processmaker']['process']['taskcategories']['completename']="Nom complet";
-$LANG['processmaker']['process']['taskcategories']['start']="Début";
+$LANG['processmaker']['process']['taskcategories']['is_start']="Début";
 $LANG['processmaker']['process']['taskcategories']['comment']="Commentaire";
 $LANG['processmaker']['process']['taskcategories']['is_active']="Active";
+$LANG['processmaker']['process']['taskcategories']['is_subprocess']="Sous-process";
 $LANG['processmaker']['process']['profile']="Effacer définitivement";
 
 $LANG['processmaker']['config']['name']="Nom";
@@ -44,7 +45,7 @@ $LANG['processmaker']['config']['refreshprocesslist']="Synchroniser la liste des
 $LANG['processmaker']['config']['refreshtasklist']="Synchroniser la liste des Tâches";
 $LANG['processmaker']['config']['main_task_category']="Categorie principale des tâches (editer pour changer le nom)";
 $LANG['processmaker']['config']['taskwriter']="Auteur des tâches (editer pour changer le nom)";
-$LANG['processmaker']['config']['pm_group_name']="Groupe dans ProcessMaker qui contiendra les utilisateurs de GLPi";
+$LANG['processmaker']['config']['pm_group_name']="Groupe dans ProcessMaker qui contiendra les utilisateurs de GLPI";
 $LANG['processmaker']['config']['maintenance']="Mode maintenance" ;
 $LANG['processmaker']['config']['undermaintenance']="En maintenance, veuillez réessayer plus tard." ;
 $LANG['processmaker']['config']['empty_pm_group_name']="Pour sélectionner un groupe, renseigner d'abord la config de ProcessMaker !";
@@ -103,9 +104,9 @@ $LANG['processmaker']['item']['task']['comment']="##processmaker.taskcomment##" 
 $LANG['processmaker']['item']['task']['manage']="##ticket.url##_PluginProcessmakerCase\$processmakercases" ;
 $LANG['processmaker']['item']['task']['manage_text']=""; //"l'onglet Processus - Cas";
 
-$LANG['processmaker']['case']['statuses']['TO_DO'] = "En cours";
+$LANG['processmaker']['case']['statuses']['TO_DO'] = "A faire";
 $LANG['processmaker']['case']['statuses']['CANCELLED'] = "Annulé";
-$LANG['processmaker']['case']['statuses']['DRAFT'] = "Nouveau";
+$LANG['processmaker']['case']['statuses']['DRAFT'] = "Brouillon";
 $LANG['processmaker']['case']['statuses']['COMPLETED'] = "Achevé";
 
 $LANG['processmaker']['search']['case']="Cas";

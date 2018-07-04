@@ -12,7 +12,7 @@ function plugin_init_processmaker() {
 
    Plugin::registerClass('PluginProcessmakerProcessmaker');
 
-   Plugin::registerClass('PluginProcessmakerCase', array('addtabon' => array('Ticket')));
+   Plugin::registerClass('PluginProcessmakerCase', array('addtabon' => $objects));
 
    Plugin::registerClass('PluginProcessmakerTaskCategory');
 
@@ -30,7 +30,7 @@ function plugin_init_processmaker() {
    $PLUGIN_HOOKS['csrf_compliant']['processmaker'] = true;
 
    $PLUGIN_HOOKS['pre_show_item']['processmaker']
-      = array('PluginProcessmakerProcessmaker', 'pre_show_item_processmakerticket');
+      = array('PluginProcessmakerProcessmaker', 'pre_show_item_processmaker');
 
    //$PLUGIN_HOOKS['pre_item_form']['processmaker']
    //   = array('PluginProcessmakerProcessmaker', 'pre_item_form_processmakerticket');
@@ -44,7 +44,8 @@ function plugin_init_processmaker() {
 
    // Display a menu entry ?
    if (Session::haveRightsOr('plugin_processmaker_config', [READ, UPDATE])) {
-      $PLUGIN_HOOKS['menu_toadd']['processmaker'] = ['tools' => 'PluginProcessmakerMenu'];
+      // tools and helpdesk
+      $PLUGIN_HOOKS['menu_toadd']['processmaker'] = ['tools' => 'PluginProcessmakerMenu', 'helpdesk' => 'PluginProcessmakerCase'];
    }
 
    Plugin::registerClass('PluginProcessmakerProcess', array( 'massiveaction_nodelete_types' => true) );
@@ -111,13 +112,18 @@ function plugin_init_processmaker() {
    $CFG_GLPI['planning_types'][] = 'PluginProcessmakerTask';
    $PLUGIN_HOOKS['post_init']['processmaker'] = 'plugin_processmaker_post_init';
 
+   // in order to set rights when in helpdesk interface
+   // otherwise post-only users can't see cases and then can't act on a case task.
+   $PLUGIN_HOOKS['change_profile']['processmaker'] = 'plugin_processmaker_change_profile';
+
+
 }
 
 // Get the name and the version of the plugin - Needed
 function plugin_version_processmaker() {
    global $LANG;
 
-   return array ('name'           => 'Process Maker',
+   return array ('name'          => 'Process Maker',
                 'version'        => '3.3.0',
                 'author'         => 'Olivier Moron',
                 'homepage'       => 'https://github.com/tomolimo/processmaker',

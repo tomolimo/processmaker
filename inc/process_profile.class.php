@@ -10,6 +10,9 @@
  */
 class PluginProcessmakerProcess_Profile extends CommonDBTM
 {
+
+   static $rightname = '';
+
    function can($ID, $right, array &$input = NULL) {
       switch ($right) {
          case DELETE :
@@ -43,7 +46,7 @@ class PluginProcessmakerProcess_Profile extends CommonDBTM
          echo "<tr class='tab_bg_1'><th colspan='6'>".$LANG['processmaker']['title'][4]."</tr>";
 
          echo "<tr class='tab_bg_2'><td class='center'>";
-         echo "<input type='hidden' name='processes_id' value='$ID'>";
+         echo "<input type='hidden' name='plugin_processmaker_processes_id' value='$ID'>";
          Entity::Dropdown( array('entity' => $_SESSION['glpiactiveentities']));
          echo "</td><td class='center'>".Profile::getTypeName(1)."</td><td>";
          Profile::dropdownUnder(array('value' => Profile::getDefault()));
@@ -58,18 +61,18 @@ class PluginProcessmakerProcess_Profile extends CommonDBTM
          echo "</div>";
       }
 
-      $query = "SELECT DISTINCT `glpi_plugin_processmaker_processes_profiles`.`id` AS linkID,
+      $query = "SELECT DISTINCT gpp.`id` AS linkID,
                        `glpi_profiles`.`id`,
                        `glpi_profiles`.`name`,
-                       `glpi_plugin_processmaker_processes_profiles`.`is_recursive`,
+                       `gpp`.`is_recursive`,
                        `glpi_entities`.`completename`,
-                       `glpi_plugin_processmaker_processes_profiles`.`entities_id`
-                FROM `glpi_plugin_processmaker_processes_profiles`
+                       `gpp`.`entities_id`
+                FROM `". self::getTable() ."` as gpp
                 LEFT JOIN `glpi_profiles`
-                     ON (`glpi_plugin_processmaker_processes_profiles`.`profiles_id` = `glpi_profiles`.`id`)
+                     ON (`gpp`.`profiles_id` = `glpi_profiles`.`id`)
                 LEFT JOIN `glpi_entities`
-                     ON (`glpi_plugin_processmaker_processes_profiles`.`entities_id` = `glpi_entities`.`id`)
-                WHERE `glpi_plugin_processmaker_processes_profiles`.`processes_id` = '$ID'
+                     ON (`gpp`.`entities_id` = `glpi_entities`.`id`)
+                WHERE `gpp`.`plugin_processmaker_processes_id` = '$ID'
                 ORDER BY `glpi_profiles`.`name`, `glpi_entities`.`completename`";
       $result = $DB->query($query);
       $num = $DB->numrows($result);
@@ -133,16 +136,8 @@ class PluginProcessmakerProcess_Profile extends CommonDBTM
                 $entname =  $data["name"];
             }
 
-            //                if ($data["is_dynamic"] || $data["is_recursive"]) {
             if ($data["is_recursive"]) {
                 $entname = sprintf(__('%1$s %2$s'), $entname, "<span class='b'>(");
-                //if ($data["is_dynamic"]) {
-                //    //TRANS: letter 'D' for Dynamic
-                //    $entname = sprintf(__('%1$s%2$s'), $entname, __('D'));
-                //}
-                //if ($data["is_dynamic"] && $data["is_recursive"]) {
-                //    $entname = sprintf(__('%1$s%2$s'), $entname, ", ");
-                //}
                if ($data["is_recursive"]) {
                   //TRANS: letter 'R' for Recursive
                   $entname = sprintf(__('%1$s%2$s'), $entname, __('R'));
@@ -168,28 +163,25 @@ class PluginProcessmakerProcess_Profile extends CommonDBTM
       echo "</div>";
    }
 
-    //static function processMassiveActionsForOneItemtype(MassiveAction $ma, CommonDBTM $item, array $ids) {
-    //    global $CFG_GLPI;
 
-    //    $action = $ma->getAction();
+   /**
+    * Summary of prepareInputForAdd
+    * @param mixed $input
+    * @return mixed
+    */
+   function prepareInputForAdd($input) {
+      $tmp = new self;
+      if ($tmp->getFromDBByQuery(" WHERE `plugin_processmaker_processes_id` = ".$input['plugin_processmaker_processes_id']."
+                                 AND `entities_id` = ".$input['entities_id']."
+                                 AND `profiles_id` = ".$input['profiles_id'])) {
+         //// then update existing
+         //$tmp->update(['id' => $tmp->getID(),
+         //              'is_recursive' => $input['is_recursive']]);
+         Session::addMessageAfterRedirect(__('Authorization not added: already existing!', 'processmaker'), true, WARNING);
 
-    //    switch ($action) {
-    //        case 'profile_delete' :
-    //            foreach ($ids as $id) {
-    //                if ($item->can($id, DELETE)) {
-    //                    if ($item->delete(array("id" => $id))) {
-    //                        $ma->itemDone($item->getType(), $id, MassiveAction::ACTION_OK);
-    //                    } else {
-    //                        $ma->itemDone($item->getType(), $id, MassiveAction::ACTION_KO);
-    //                        $ma->addMessage($item->getErrorMessage(ERROR_ON_ACTION));
-    //                    }
-    //                } else {
-    //                    $ma->itemDone($item->getType(), $id, MassiveAction::ACTION_NORIGHT);
-    //                    $ma->addMessage($item->getErrorMessage(ERROR_RIGHT));
-    //                }
-    //            }
-    //            break ;
-    //    }
-    //}
+         return []; // to cancel add
+      }
+      return $input;
+   }
 
 }

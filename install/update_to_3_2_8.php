@@ -38,6 +38,8 @@ function update_to_3_2_8(){
 	               ADD COLUMN `pm_dbname` VARCHAR(50) NULL DEFAULT 'wf_workflow' AFTER `pm_dbserver_name`;
                ;";
          $DB->query($query) or die("error adding field pm_dbname to glpi_plugin_processmaker_configs" . $DB->error());
+         
+         $DB->query("UPDATE glpi_plugin_processmaker_configs SET `pm_dbname` = CONCAT('wf_', `pm_workspace`) WHERE `id` = 1");
       }
 
       if (arTableExists("glpi_plugin_processmaker_profiles")) {
@@ -59,7 +61,7 @@ function update_to_3_2_8(){
             $proc = new PluginProcessmakerProcess;
             $case = new PluginProcessmakerCase;
             foreach ($DB->request("SELECT * FROM glpi_plugin_processmaker_cases WHERE LENGTH( processes_id ) = 32") as $row) {
-               $proc->getFromDBbyExternalID( $row['processes_id'] );
+               $proc->getFromGUID( $row['processes_id'] );
                $case->update(array( 'id' => $row['id'], 'processes_id' => $proc->getID() ) );
             }
             $query = "ALTER TABLE `glpi_plugin_processmaker_cases`

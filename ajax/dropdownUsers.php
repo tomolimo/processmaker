@@ -16,10 +16,8 @@ if (strpos($_SERVER['PHP_SELF'], "dropdownUsers.php")) {
 }
 
 if (!defined('GLPI_ROOT')) {
-    die("Can not acces directly to this file");
+    die("Can not access directly to this file");
 }
-
-//include_once dirname(__FILE__)."/../inc/users.class.php" ;
 
 
 Session::checkLoginUser();
@@ -58,7 +56,7 @@ if (!isset($_REQUEST['page'])) {
 if ($one_item < 0) {
    $start  = ($_REQUEST['page']-1)*$_REQUEST['page_limit'];
    $LIMIT = "LIMIT $start,".$_REQUEST['page_limit'];
-   $result = PluginProcessmakerUser::getSqlSearchResult( $_REQUEST['specific_tags']['pmTaskId'], false, $_REQUEST['right'], $_REQUEST["entity_restrict"],
+   $result = PluginProcessmakerUser::getSqlSearchResult( $_REQUEST['specific_tags']['taskGuid'], false, $_REQUEST['right'], $_REQUEST["entity_restrict"],
                                    $_REQUEST['value'], $used, $_REQUEST['searchText'], $LIMIT);
 } else {
    $query = "SELECT DISTINCT `glpi_users`.*
