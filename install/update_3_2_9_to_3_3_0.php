@@ -148,6 +148,11 @@ function update_3_2_9_to_3_3_0(){
                die("error updating plugin_processmaker_taskcategories_id in glpi_plugin_processmaker_tasks table" . $DB->error());
          }
       }
+
+      $query = "UPDATE `glpi_tickettasks` SET `glpi_tickettasks`.`content` = REPLACE(`glpi_tickettasks`.`content`, '##ticket.url##_PluginProcessmakerCase\$processmakercases', '##processmakercase.url##')
+               WHERE `glpi_tickettasks`.`content` LIKE '%##ticket.url##_PluginProcessmakerCase\$processmakercases%'";
+      $DB->query($query) or die("error updating content field in glpi_tickettasks" . $DB->error());
+
    }
 
    if (!arFieldExists("glpi_plugin_processmaker_taskcategories", "is_subprocess" )) {

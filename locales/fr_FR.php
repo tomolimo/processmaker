@@ -101,7 +101,7 @@ $LANG['processmaker']['item']['task']['process']="Lié au processus : ";
 $LANG['processmaker']['item']['task']['case']="Titre du cas : ";
 $LANG['processmaker']['item']['task']['task']="Tâche : ";
 $LANG['processmaker']['item']['task']['comment']="##processmaker.taskcomment##" ;
-$LANG['processmaker']['item']['task']['manage']="##ticket.url##_PluginProcessmakerCase\$processmakercases" ;
+$LANG['processmaker']['item']['task']['manage']="##processmakercase.url##" ;
 $LANG['processmaker']['item']['task']['manage_text']=""; //"l'onglet Processus - Cas";
 
 $LANG['processmaker']['case']['statuses']['TO_DO'] = "A faire";

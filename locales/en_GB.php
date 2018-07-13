@@ -101,7 +101,7 @@ $LANG['processmaker']['item']['task']['process']="Bound to process: ";
 $LANG['processmaker']['item']['task']['case']="Case title: ";
 $LANG['processmaker']['item']['task']['task']="Task: ";
 $LANG['processmaker']['item']['task']['comment']="##processmaker.taskcomment##" ;
-$LANG['processmaker']['item']['task']['manage']="##ticket.url##_PluginProcessmakerCase\$processmakercases" ;
+$LANG['processmaker']['item']['task']['manage']="##processmakercase.url##" ;
 $LANG['processmaker']['item']['task']['manage_text']= "" ; //"Process - Case tab";
 
 $LANG['processmaker']['case']['statuses']['TO_DO'] = "To do";

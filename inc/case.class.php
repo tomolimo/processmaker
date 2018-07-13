@@ -941,6 +941,7 @@ class PluginProcessmakerCase extends CommonDBTM {
       $myCase = new self;
       if ($myCase->getFromItem( $item['item']->getType(), $item['item']->getID() )) {
          $pmVar = $myCase->getVariables(['GLPI_ITEM_CAN_BE_SOLVED']);
+         // TODO also manage sub-cases
          if ($myCase->fields['case_status'] != 'COMPLETED' && $myCase->fields['case_status'] != 'CANCELLED' && (!isset($pmVar['GLPI_ITEM_CAN_BE_SOLVED']) || $pmVar['GLPI_ITEM_CAN_BE_SOLVED'] != 1)) {
             // then item can't be solved
             return false;
@@ -1278,9 +1279,10 @@ class PluginProcessmakerCase extends CommonDBTM {
       //        $ong = array('empty' => $this->getTypeName(1));
       $ong = array();
       //$this->addDefaultFormTab($ong);
-      $this->addStandardTab(__CLASS__, $ong, $options);
 
       $this->addStandardTab('PluginProcessmakerTask', $ong, $options);
+
+      $this->addStandardTab(__CLASS__, $ong, $options);
 
       $this->addStandardTab('PluginProcessmakerCasemap', $ong, $options);
 
@@ -1288,6 +1290,7 @@ class PluginProcessmakerCase extends CommonDBTM {
 
       $this->addStandardTab('PluginProcessmakerCasechangelog', $ong, $options);
 
+      $this->addStandardTab('PluginProcessmakerCasedynaform', $ong, $options);
 
       //$this->addStandardTab('Ticket', $ong, $options);
       //$this->addStandardTab('Log', $ong, $options);

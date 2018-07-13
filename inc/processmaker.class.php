@@ -1149,7 +1149,9 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       $task->setVolume(0); // start with zero
 
       // start a processmaker session
-      //$PM_SOAP = new PluginProcessmakerProcessmaker();
+      if (!isset($PM_SOAP)) {
+         $PM_SOAP = new PluginProcessmakerProcessmaker();
+      }
       if (!$PM_SOAP->login( true )) {
          $task->log( "Error PM: '".print_r($PM_SOAP->lasterror, true)."'" );
          return -1;
@@ -1548,7 +1550,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    * Summary of addTask
    *      adds a GLPI task to given item
    * @param $cases_id integer the GLPI id of the case
-   * @param $itemType string item type to which a task will be added
+   * @param $itemtype string item type to which a task will be added
    * @param $items_id integer item id to which a task will be added
    * @param $caseInfo mixed getCaseInfoResponse object (see: getCaseInfo() function)
    * @param $delIndex integer index of the delegation
@@ -1562,7 +1564,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    *            'notif'          => true
    * @return
    */
-   public function addTask($cases_id, $itemType, $items_id,  $caseInfo, $delIndex, $techId, $groupId, $pmTaskId, $delThread, $options=array() ) {
+   public function addTask($cases_id, $itemtype, $items_id,  $caseInfo, $delIndex, $techId, $groupId, $pmTaskId, $delThread, $options=array() ) {
       global $DB, $PM_DB, $LANG, $_SESSION;
 
       $default_options = array(
@@ -1577,12 +1579,12 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
          }
       }
 
-      $glpi_task = getItemForItemtype( "{$itemType}Task" );
+      $glpi_task = getItemForItemtype( "{$itemtype}Task" );
       $glpi_task->getEmpty();
 
       $input = array(); // will contain all data for the Task
 
-      $input[getForeignKeyFieldForItemType($itemType)] = $items_id;
+      $input[getForeignKeyFieldForItemType($itemtype)] = $items_id;
       // search for task category
       //
       $pmtaskcat = new PluginProcessmakerTaskCategory;
@@ -1645,7 +1647,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
       } else {
          // adds the user tech to ticket watcher if neccessary
-         self::addWatcher( $itemType, $items_id, $techId );
+         self::addWatcher( $itemtype, $items_id, $techId );
       }
 
       // manage task description
@@ -1673,9 +1675,14 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
          $input['groups_id_tech'] = $groups_id_tech;
       }
 
-      $donotif = self::saveNotification($options['notif']);
+      $donotif = self::saveNotification(false); // do not send notification yet as the PluginProcessmakerTask is not yet added to DB
       $glpi_task->add( Toolbox::addslashes_deep( $input ) );
       self::restoreNotification($donotif);
+
+      // to prevent error message for overlapping planning
+      if (isset($_SESSION["MESSAGE_AFTER_REDIRECT"][ERROR])) {
+         unset($_SESSION["MESSAGE_AFTER_REDIRECT"][ERROR]);
+      }
 
       if ($glpi_task->getId() > 0) {
          // stores link to task in DB
@@ -1689,6 +1696,14 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                      VALUES ({$glpi_task->getId()}, '{$glpi_task->getType()}', $cases_id, {$pmtaskcat->fields['id']}, $delIndex, $delThread);";
          $DB->query( $query );
       }
+
+      // send notification if needed for new task as now we have the PluginProcessmakerTask in the DB
+      $donotif = self::saveNotification($options['notif']);
+      $item = new $itemtype;
+      $item->getFromDB($items_id);
+      NotificationEvent::raiseEvent('add_task', $item, ['task_id' => $glpi_task->getID(), 'is_private' => $glpi_task->fields['is_private']]);
+      self::restoreNotification($donotif);
+
    }
 
 
@@ -2090,7 +2105,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                   } ).css('cursor', 'pointer') ;
                  ");
 
-            $params['item']->fields['content'] = str_replace( "\n##ticket.url##_PluginProcessmakerCase\$processmakercases", "", $params['item']->fields['content'] );
+            $params['item']->fields['content'] = str_replace( "\n##processmakercase.url##", "", $params['item']->fields['content'] );
 
             // in order to set NavigationList
             Session::initNavigateListItems('PluginProcessmakerCase',
@@ -2324,10 +2339,16 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
      * @param mixed $item
      */
    public static function plugin_item_get_datas_processmaker($item) {
-      global $_SESSION;
+      global $_SESSION, $CFG_GLPI;
       if (isset( $item->datas ) && isset( $item->datas['tasks'] )) {
          foreach ($item->datas['tasks'] as &$task) { // we must check if task category is PM task category or not, if yes then we add task category comment to datas
             $task['##task.description##'] = str_replace( '##processmaker.taskcomment##', $task['##task.categorycomment##'], $task['##task.description##'] );
+            $pmtask_itemtype = $item->obj->getType().'Task';
+            $pmtask_items_id = $task['##task.id##'];
+            $pmtask = new PluginProcessmakerTask($pmtask_itemtype);
+            $pmtask->getFromDBByQuery("WHERE itemtype = '$pmtask_itemtype' AND items_id = $pmtask_items_id");
+            $caseurl = urldecode($CFG_GLPI["url_base"]."/index.php?redirect=PluginProcessmakerCase_".$pmtask->fields['plugin_processmaker_cases_id']);
+            $task['##task.description##'] = str_replace('##processmakercase.url##', $caseurl, $task['##task.description##']);
          }
       }
 
@@ -2355,7 +2376,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
          if (in_array( $config->fields['taskcategories_id'], $ancestors)) {
             $loc_completename = DropdownTranslation::getTranslatedValue( $taskCat->getID(), 'TaskCategory', 'completename', $_SESSION['glpilanguage'], $taskCat->fields['completename'] );
             $loc_comment = DropdownTranslation::getTranslatedValue( $taskCat->getID(), 'TaskCategory', 'comment', $_SESSION['glpilanguage'], $taskCat->fields['comment'] );
-            $item->datas['content'] = $loc_completename."\n\n".str_replace( "##processmaker.taskcomment##\n##ticket.url##_PluginProcessmakerCase\$processmakercases", $loc_comment, $item->datas['content']);
+            $item->datas['content'] = $loc_completename."\n\n".str_replace( "##processmaker.taskcomment##\n##processmakercase.url##", $loc_comment, $item->datas['content']);
          }
          // restore default translations
          if (isset( $trans )) {
@@ -2496,7 +2517,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    */
    public function derivateCase( $myCase, $request, $users_id=null ) {
       //$cookies,
-      global $PM_DB;
+      global $PM_DB, $CFG_GLPI;
 
       $itemtype = $myCase->getField('itemtype');
       $items_id = $myCase->getField('items_id');
@@ -2721,34 +2742,39 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                   // must also send to new sub-process some GLPI variables
                   // like any newly started cases
                   // get the value of GLPI_ITEM_CAN_BE_SOLVED to transmit it to sub-case
-                  //$canBeSolved = $myCase->getVariables(['GLPI_ITEM_CAN_BE_SOLVED']);
-                  //$glpi_variables =  ['GLPI_ITEM_CAN_BE_SOLVED'        => isset($canBeSolved['GLPI_CAN_BE_SOLVED']) ? $canBeSolved['GLPI_CAN_BE_SOLVED'] : 0,
-                  //                    'GLPI_TICKET_ID'                 => $items_id,
-                  //                    'GLPI_ITEM_ID'                   => $items_id,
-                  //                    'GLPI_ITEM_TYPE'                 => $itemtype,
-                  //                    'GLPI_TICKET_REQUESTER_GLPI_ID'  => $requesters[0]['glpi_id'],
-                  //                    'GLPI_ITEM_REQUESTER_GLPI_ID'    => $requesters[0]['glpi_id'],
-                  //                    'GLPI_TICKET_REQUESTER_PM_ID'    => $requesters[0]['pm_id'],
-                  //                    'GLPI_ITEM_REQUESTER_PM_ID'      => $requesters[0]['pm_id'],
-                  //                    'GLPI_TICKET_TITLE'              => $locItem->fields['name'],
-                  //                    'GLPI_ITEM_TITLE'                => $locItem->fields['name'],
-                  //                    'GLPI_TICKET_DESCRIPTION'        => $locItem->fields['content'],
-                  //                    'GLPI_ITEM_DESCRIPTION'          => $locItem->fields['content'],
-                  //                    'GLPI_TICKET_DUE_DATE'           => $locItem->fields['due_date'],
-                  //                    'GLPI_ITEM_DUE_DATE'             => $locItem->fields['due_date'],
-                  //                    'GLPI_ITEM_ITIL_CATEGORY_ID'     => $locItem->fields['itilcategories_id'],
-                  //                    'GLPI_TICKET_URGENCY'            => $locItem->fields['urgency'],
-                  //                    'GLPI_ITEM_URGENCY'              => $locItem->fields['urgency'],
-                  //                    'GLPI_ITEM_IMPACT'               => $locItem->fields['impact'],
-                  //                    'GLPI_ITEM_PRIORITY'             => $locItem->fields['priority'],
-                  //                    'GLPI_TICKET_GLOBAL_VALIDATION'  => $locItem->fields['global_validation'] ,
-                  //                    'GLPI_TICKET_TECHNICIAN_GLPI_ID' => $users_id,
-                  //                    'GLPI_ITEM_TECHNICIAN_GLPI_ID'   => $users_id,
-                  //                    'GLPI_TICKET_TECHNICIAN_PM_ID'   => PluginProcessmakerUser::getPMUserId( $users_id ),
-                  //                    'GLPI_ITEM_TECHNICIAN_PM_ID'     => PluginProcessmakerUser::getPMUserId( $users_id ),
-                  //                    'GLPI_URL'                       => $CFG_GLPI['url_base']
-                  //                    ];
-                  //$subCase->sendVariables($glpi_variables);
+                  $requesters = PluginProcessmakerProcessmaker::getItemUsers( $itemtype, $items_id, CommonITILActor::REQUESTER); // 1 for requesters
+                  if (!key_exists( 0, $requesters )) {
+                     $requesters[0]['glpi_id'] = 0;
+                     $requesters[0]['pm_id'] = 0;
+                  }
+
+                  $glpi_variables =  ['GLPI_ITEM_CAN_BE_SOLVED'        => 0,
+                                      'GLPI_TICKET_ID'                 => $items_id,
+                                      'GLPI_ITEM_ID'                   => $items_id,
+                                      'GLPI_ITEM_TYPE'                 => $itemtype,
+                                      'GLPI_TICKET_REQUESTER_GLPI_ID'  => $requesters[0]['glpi_id'],
+                                      'GLPI_ITEM_REQUESTER_GLPI_ID'    => $requesters[0]['glpi_id'],
+                                      'GLPI_TICKET_REQUESTER_PM_ID'    => $requesters[0]['pm_id'],
+                                      'GLPI_ITEM_REQUESTER_PM_ID'      => $requesters[0]['pm_id'],
+                                      'GLPI_TICKET_TITLE'              => $item->fields['name'],
+                                      'GLPI_ITEM_TITLE'                => $item->fields['name'],
+                                      'GLPI_TICKET_DESCRIPTION'        => $item->fields['content'],
+                                      'GLPI_ITEM_DESCRIPTION'          => $item->fields['content'],
+                                      'GLPI_TICKET_DUE_DATE'           => $item->fields['due_date'],
+                                      'GLPI_ITEM_DUE_DATE'             => $item->fields['due_date'],
+                                      'GLPI_ITEM_ITIL_CATEGORY_ID'     => $item->fields['itilcategories_id'],
+                                      'GLPI_TICKET_URGENCY'            => $item->fields['urgency'],
+                                      'GLPI_ITEM_URGENCY'              => $item->fields['urgency'],
+                                      'GLPI_ITEM_IMPACT'               => $item->fields['impact'],
+                                      'GLPI_ITEM_PRIORITY'             => $item->fields['priority'],
+                                      'GLPI_TICKET_GLOBAL_VALIDATION'  => $item->fields['global_validation'] ,
+                                      'GLPI_TICKET_TECHNICIAN_GLPI_ID' => $users_id,
+                                      'GLPI_ITEM_TECHNICIAN_GLPI_ID'   => $users_id,
+                                      'GLPI_TICKET_TECHNICIAN_PM_ID'   => PluginProcessmakerUser::getPMUserId( $users_id ),
+                                      'GLPI_ITEM_TECHNICIAN_PM_ID'     => PluginProcessmakerUser::getPMUserId( $users_id ),
+                                      'GLPI_URL'                       => $CFG_GLPI['url_base']
+                                      ];
+                  $subCase->sendVariables($glpi_variables);
 
                   // evolution of case status: DRAFT, TO_DO, COMPLETED, CANCELLED
                   $subCase->update( array( 'id' => $subCase->getID(), 'case_status' => $sub_caseInfo->caseStatus, 'name' => $sub_caseInfo->caseName ) );
