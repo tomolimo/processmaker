@@ -2334,6 +2334,48 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       //return ($n < 1 ? false : true) ;
    }
 
+   /**
+    * Summary of initCaseAndShowTab
+    * Is used to workaround a SESSION issue in PM server
+    * PM server stores case context in SESSION variables,
+    * which leads to issues when viewing two different cases
+    * in two different tabs of the same browser.
+    * This workaround will artificially load cases_Open page to force
+    * initialization of those SESSION variables to prevent mix of values
+    * when viewing tabs like map, change log, history, and dynaforms
+    * 
+    * it will also manage the glpi_domain parameter
+    * 
+    * @param mixed $currentCase array that contains APP_UID, DEL_INDEX
+    * @param mixed $iFrameUrl string which is the url of the tab panel
+    * @param mixed $rand integer 
+    */
+   public function initCaseAndShowTab($currentCase, $iFrameUrl, $rand) {
+      $iFrameUrl = urlencode($iFrameUrl);
+
+      echo "<div id='openCase-$rand'></div>";
+
+      // will use ajax to be sure that cases_Open page is fully loaded before load of the $iFrameUrl
+      // this mechanism is mandatory to have correct management of cookies, as cookies transport the session id,
+      // and such the SESSION variables that contain the case context
+      echo "<script type='text/javascript'>
+               (function () {
+                  function urldecode(url) {
+                     return decodeURIComponent(url.replace(/\+/g, ' '));
+                  }
+                  $.ajax( { url: '".$this->serverURL."/cases/cases_Open?sid=".$this->getPMSessionID()."&APP_UID={$currentCase['APP_UID']}&DEL_INDEX={$currentCase['DEL_INDEX']}&action=TO_DO&glpi_init_case=1&glpi_domain={$this->config->fields['domain']}',
+                           complete: function () {
+                              //debugger;
+                              var str = urldecode('$iFrameUrl');
+                              $('#openCase-$rand').after(str);
+                           }
+                        }
+                        );
+               }) ();
+            </script>";
+
+   }
+
     /**
      * Summary of plugin_item_get_datas_processmaker
      * @param mixed $item

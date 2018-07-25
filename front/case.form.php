@@ -56,9 +56,14 @@ if (isset( $_REQUEST['form'] ) && isset( $_REQUEST['form']['BTN_CATCH'] ) && iss
 } else
 if (isset($_REQUEST['id']) && $_REQUEST['id'] > 0) {
 
-   Html::header(__('Process cases', 'processmaker'), $_SERVER['PHP_SELF'], "helpdesk", "PluginProcessmakerCase", "cases");
+   if ($_SESSION["glpiactiveprofile"]["interface"] == "helpdesk") {
+      Html::helpHeader(__('Process cases', 'processmaker'), '', $_SESSION["glpiname"]);
+   } else {
+      Html::header(__('Process cases', 'processmaker'), $_SERVER['PHP_SELF'], "helpdesk", "PluginProcessmakerCase", "cases");
+   }
+
    if ($locCase->getFromDB($_REQUEST['id'])) {
-      
+
       $locCase->display($_REQUEST);
 
       Html::footer();
