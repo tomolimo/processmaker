@@ -109,20 +109,21 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    * @param integer $users_id       optional, if null will uses logged-in user
    */
    public function addTicketFollowup( $itemId, $txtForFollowup, $users_id=null ) {
+      global $DB;
       $fu = new TicketFollowup();
       $fu->getEmpty(); // to get default values
       $input = $fu->fields;
       if (isset( $txtForFollowup['GLPI_TICKET_FOLLOWUP_CONTENT'] )) {
-         $input['content']=$txtForFollowup['GLPI_TICKET_FOLLOWUP_CONTENT'];
+         $input['content'] = $DB->escape($txtForFollowup['GLPI_TICKET_FOLLOWUP_CONTENT']);
       }
       if (isset( $txtForFollowup['GLPI_TICKET_FOLLOWUP_IS_PRIVATE'] )) {
-         $input['is_private']=$txtForFollowup['GLPI_TICKET_FOLLOWUP_IS_PRIVATE'];
+         $input['is_private'] = $txtForFollowup['GLPI_TICKET_FOLLOWUP_IS_PRIVATE'];
       }
       if (isset( $txtForFollowup['GLPI_TICKET_FOLLOWUP_REQUESTTYPES_ID'] )) {
-         $input['requesttypes_id']=$txtForFollowup['GLPI_TICKET_FOLLOWUP_REQUESTTYPES_ID'];
+         $input['requesttypes_id'] = $txtForFollowup['GLPI_TICKET_FOLLOWUP_REQUESTTYPES_ID'];
       }
-      $input['tickets_id']=$itemId;
-      $input['users_id']= (isset($users_id) ? $users_id : Session::getLoginUserID( true )); // $this->taskWriter;
+      $input['tickets_id'] = $itemId;
+      $input['users_id'] = (isset($users_id) ? $users_id : Session::getLoginUserID( true )); // $this->taskWriter;
 
       $fu->add( $input );
    }
