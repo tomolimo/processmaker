@@ -1,6 +1,5 @@
 <?php
 
-
 if (!defined('GLPI_ROOT')) {
     die("Sorry. You can't access directly to this file");
 }
@@ -17,13 +16,13 @@ class PluginProcessmakerProfile extends CommonDBTM {
 
       $rights = array(
                   array('itemtype' => 'PluginProcessmakerConfig',
-                           'label'    =>  $LANG['processmaker']['profile']['process_config'],
-                           'field'    => 'plugin_processmaker_config',
-                   'rights' => array(READ    => __('Read'), UPDATE  => __('Update'))),
+                        'label'    =>  $LANG['processmaker']['profile']['process_config'],
+                        'field'    => 'plugin_processmaker_config',
+                        'rights' => array(READ    => __('Read'), UPDATE  => __('Update'))),
                    array('itemtype' => 'PluginProcessmakerConfig',
-                           'label'    =>  $LANG['processmaker']['profile']['case'],
-                           'field'    => 'plugin_processmaker_case',
-                   'rights' => array(READ => __('Read'), DELETE  => __('Delete')))
+                        'label'    =>  $LANG['processmaker']['profile']['case'],
+                        'field'    => 'plugin_processmaker_case',
+                        'rights' => array(READ => __('Read'), CANCEL => __('Cancel', 'processmaker'), DELETE  => __('Delete')))
                    );
 
       return $rights;
@@ -72,9 +71,7 @@ class PluginProcessmakerProfile extends CommonDBTM {
      * @param mixed $ID
      */
    static function createAdminAccess($ID) {
-
-      self::addDefaultProfileInfos($ID, array('plugin_processmaker_config' => READ + UPDATE, 'plugin_processmaker_deletecase' => DELETE), true);
-
+      self::addDefaultProfileInfos($ID, array('plugin_processmaker_config' => READ + UPDATE, 'plugin_processmaker_case' => READ + DELETE + CANCEL), true);
    }
 
     /**
@@ -106,8 +103,8 @@ class PluginProcessmakerProfile extends CommonDBTM {
          $ID = $item->getID();
          $prof = new self();
          self::addDefaultProfileInfos($ID,
-                                 array('plugin_processmaker_config'       => 0,
-                                       'plugin_processmaker_deletecase'   => 0
+                                 array('plugin_processmaker_config' => 0,
+                                       'plugin_processmaker_case'   => 0
                                        ));
 
              $prof->showForm($ID);

@@ -1,5 +1,7 @@
 <?php
 
+// used for case cancellation
+define("CANCEL",     256);
 
 // Init the hooks of the plugins -Needed
 function plugin_init_processmaker() {
@@ -146,7 +148,7 @@ function plugin_processmaker_check_config($verbose = false) {
 }
 
 
-function plugin_processmaker_haveRight($module,$right) {
+function plugin_processmaker_haveRight($module, $right) {
 
    return Session::haveRight("plugin_processmaker_".$module, $right);
 }

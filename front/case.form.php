@@ -40,6 +40,22 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'delete') {
    $locCase->redirectToList();
 
 } else
+if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'cancel') {
+   // cancel case from PM
+   $locCase = new PluginProcessmakerCase;
+   $locCase->getFromDB($_POST['cases_id']);
+   $resultPM = $PM_SOAP->cancelCase($locCase->fields['case_guid']);
+   if ($resultPM->status_code === 0) {
+      if ($locCase->cancelCase()) {
+         Session::addMessageAfterRedirect($LANG['processmaker']['item']['case']['cancelled'], true, INFO);
+      } else {
+         Session::addMessageAfterRedirect($LANG['processmaker']['item']['case']['errorcancelled'], true, ERROR);
+      }
+   } else {
+      Session::addMessageAfterRedirect($LANG['processmaker']['item']['case']['errorcancelled'], true, ERROR);
+   }
+   Html::back();
+} else
 if (isset( $_REQUEST['form'] ) && isset( $_REQUEST['form']['BTN_CATCH'] ) && isset( $_REQUEST['form']['APP_UID'])) {
    // Claim task management
    // here we are in a Claim request

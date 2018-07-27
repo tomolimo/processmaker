@@ -61,6 +61,10 @@ class PluginProcessmakerCase extends CommonDBTM {
       return $this->canDeleteItem();
    }
 
+   static function canCancel() {
+      return plugin_processmaker_haveRight('case', CANCEL);
+   }
+
    /**
     * Summary of getTabNameForItem
     * @param CommonGLPI $item         is the item
@@ -259,33 +263,205 @@ class PluginProcessmakerCase extends CommonDBTM {
 
 
    /**
+    * Summary of showCaseProperties
+    */
+   function showCaseProperties() {
+      global $PM_DB;
+
+      $caseInfo = $this->getCaseInfo();
+      if (property_exists($caseInfo, 'currentUsers')) {
+         $caseInfo->currentUsers = $this->sortTasks($caseInfo->currentUsers, PluginProcessmakerUser::getPMUserId(Session::getLoginUserID()));
+      }
+      $query = "SELECT `DEL_INDEX`, `DEL_DELEGATE_DATE` FROM `APP_DELEGATION` WHERE `APP_UID`='{$caseInfo->caseId}'";
+      $tasks = [];
+      foreach($PM_DB->request($query) as $row){
+         $tasks[$row['DEL_INDEX']] = $row['DEL_DELEGATE_DATE'];
+      }
+
+      echo "<p></p>";
+
+      echo "<div class='center'>";
+      echo "<table style='margin-bottom: 0px' class='tab_cadre_fixe'>";
+
+      echo "<tr><th colspan=4>".__('Case properties', 'processmaker')."</th></tr>";
+
+      echo "<tr><td class='tab_bg_2' style='font-weight: bold;'>".__('Process', 'processmaker')."</td>";
+      echo "<td class='tab_bg_2' colspan=3>".$caseInfo->processName."</td></tr>";
+
+      echo "<tr><td class='tab_bg_2' style='font-weight: bold;'>".__('Case title', 'processmaker')."</td>";
+      echo "<td class='tab_bg_2' colspan=3>".$caseInfo->caseName."</td></tr>";
+
+      echo "<tr><td class='tab_bg_2' style='font-weight: bold;'>".__('Case number', 'processmaker')."</td>";
+      echo "<td class='tab_bg_2' colspan=3>".$caseInfo->caseNumber."</td></tr>";
+
+      echo "<tr><td class='tab_bg_2' style='font-weight: bold;'>".__('Case status', 'processmaker')."</td>";
+      echo "<td class='tab_bg_2' colspan=3>".self::getStatus($caseInfo->caseStatus)."</td></tr>";
+
+      echo "<tr><td class='tab_bg_2' style='font-weight: bold;'>".__('Case guid', 'processmaker')."</td>";
+      echo "<td class='tab_bg_2' colspan=3>".$caseInfo->caseId."</td></tr>";
+
+      echo "<tr><td class='tab_bg_2' style='font-weight: bold;'>".__('Creator', 'processmaker')."</td>";
+      echo "<td class='tab_bg_2' colspan=3>".$caseInfo->caseCreatorUserName."</td></tr>";
+
+      echo "<tr><td class='tab_bg_2' style='font-weight: bold;'>".__('Creation date', 'processmaker')."</td>";
+      echo "<td class='tab_bg_2' colspan=3>".$caseInfo->createDate."</td></tr>";
+
+      echo "<tr><td class='tab_bg_2' style='font-weight: bold;'>".__('Last update', 'processmaker')."</td>";
+      echo "<td class='tab_bg_2' colspan=3>".$caseInfo->updateDate."</td></tr>";
+
+      //echo "<tr><td class='tab_bg_2' style='font-weight: bold;'>".__('Case description', 'processmaker')."</td>";
+      //echo "<td class='tab_bg_2' colspan=3>".$caseInfo->????."</td></tr>";
+
+      echo "</table>";
+
+      echo "</div>";
+
+      echo "<p></p>";
+
+      echo "<div class='center'>";
+      echo "<table style='margin-bottom: 0px' class='tab_cadre_fixe'>";
+
+      echo "<tr><th colspan=4>".__('Current task(s) properties', 'processmaker')."</th></tr>";
+
+      if (count($caseInfo->currentUsers) > 0) {
+         echo "<tr style='font-weight: bold;'>
+               <td>".__('Task', 'processmaker')."</td>
+               <td>".__('Task guid', 'processmaker')."</td>
+               <td>".__('Current user', 'processmaker')."</td>
+               <td>".__('Task delegation date', 'processmaker')."</td>
+            </tr>";
+
+         foreach($caseInfo->currentUsers as $currentTask) {
+            echo "<tr>";
+            echo "<td class='tab_bg_2'>".$currentTask->taskName."</td>";
+            echo "<td class='tab_bg_2'>".$currentTask->taskId."</td>";
+            if ($currentTask->userName == '') {
+               echo "<td class='tab_bg_2'>".__('To be claimed', 'processmaker')."</td>";
+            } else {
+               echo "<td class='tab_bg_2'>".$currentTask->userName."</td>";
+            }
+            echo "<td class='tab_bg_2'>".$tasks[$currentTask->delIndex]."</td>";
+            echo "</tr>";
+         }
+      } else {
+         echo "<td colspan=4>".__('None')."</td>";
+      }
+
+      echo "</table>";
+
+      echo "</div>";
+
+   }
+
+
+   /**
+    * Summary of sortTasks
+    * @param mixed $tasks is the array of tasks from a getCaseInfo->currentUsers
+    * @param mixed $GLPICurrentPMUserId
+    * @return array sorted $tasks
+    */
+   public function sortTasks($tasks, $GLPICurrentPMUserId) {
+
+      function localSortTasks ($a, $b) {
+         return $a->delIndex - $b->delIndex;
+      };
+
+      $tbctasks = [];
+      $utasks = [];
+      $infotasks = [];
+
+      foreach ($tasks as $caseUser) {
+         if ($caseUser->userId == $GLPICurrentPMUserId) {
+            $utasks[] = $caseUser;
+         } else {
+            if ($caseUser->userId == '') { // task to be claimed
+               $tbctasks[] = $caseUser;
+            } else
+               $infotasks[] = $caseUser;
+         }
+      }
+
+      // order task by "current user", then by "to be claimed", and then push to end "tasks assigned to another user"
+      // then by delindex ASC in these three parts
+      usort($utasks, 'localSortTasks');
+      usort($tbctasks, 'localSortTasks');
+      usort($infotasks, 'localSortTasks');
+
+      return array_merge($utasks, $tbctasks, $infotasks);
+   }
+
+
+   /**
     * Summary of showCaseInfoTab
     * Will show information about the current case
-    * @param CommonGLPI $item is a PluginProcessmakerCase object
+    * @param CommonGLPI $case is a PluginProcessmakerCase object
     * @param mixed $tabnum
     * @param mixed $withtemplate
     */
-   static function showCaseInfoTab(CommonGLPI $item, $tabnum=1, $withtemplate=0) {
-      echo 'The idea is to show here the GLPI ITIL item to which it is linked, and to give a resume of the current case status, and to give possibility to delete or cancel the case.';
+   static function showCaseInfoTab(CommonGLPI $case, $tabnum=1, $withtemplate=0) {
+      // echo 'The idea is to show here the GLPI ITIL item to which it is linked, and to give a resume of the current case status, and to give possibility to delete or cancel the case.';
 
-      $rand = rand();
-      // will not show delete button if case is a sub-process
-      // will show it if it is also a draft or if current glpi user has the right to delete cases and session is central
-      if ($item->fields['plugin_processmaker_cases_id'] == 0
-         && ($item->fields['case_status'] == self::DRAFT
-            || (plugin_processmaker_haveRight("case", DELETE)
-               && $_SESSION['glpiactiveprofile']['interface'] == 'central'))) {
-         // then propose a button to delete case
-         echo "<form style='margin-bottom: 0px' name='processmaker_case_form$rand' id='processmaker_case_form$rand' method='post' action='".Toolbox::getItemTypeFormURL("PluginProcessmakerCase")."'>";
+      echo "<table style='margin-bottom: 0px' class='tab_cadre_fixe'>";
+
+      echo "<tr><th colspan=2>".__('Case item', 'processmaker')."</th></tr>";
+
+      $itemtype = $case->fields['itemtype'];
+      $item = new $itemtype;
+      $item->getFromDB($case->fields['items_id']);
+      echo "<tr><td class='tab_bg_2' style='font-weight: bold;'>".$itemtype::getTypeName(1)."</td>";
+//      echo "<td class='tab_bg_2' >".$item->getID()."</td>";
+      echo "<td class='tab_bg_2'>".$item->getLink(['forceid' => 1])."</td></tr>";
+
+      echo "</table>";
+
+      //echo "</div>";
+
+      // show case properties
+      $case->showCaseProperties();
+
+      if ($case->fields['plugin_processmaker_cases_id'] == 0 && self::canCancel() && $case->fields['case_status'] == self::TO_DO) {
+
+         // it's a main case, not a sub-case
+         // and we have the rightr to cancel cases
+         // show a form to be able to cancel the case
+         $rand = rand();
+
+         echo "<p></p>";
+         echo "<form style='margin-bottom: 0px' name='processmaker_case_cancelform$rand' id='processmaker_case_cancelform$rand' method='post' action='".Toolbox::getItemTypeFormURL("PluginProcessmakerCase")."'>";
          echo "<div class='center'>";
          echo "<table style='margin-bottom: 0px' class='tab_cadre_fixe'>";
+         echo "<tr><th colspan='2'>".__('Case cancellation', 'processmaker')."</th></tr>";
+         echo "<tr><td class='tab_bg_2' style='width: 10%'>".__('Cancel case', 'processmaker')."</td>";
+         echo "<td class='tab_bg_2' >";
+         echo "<input type='hidden' name='action' value='cancel'>";
+         echo "<input type='hidden' name='cases_id' value='".$case->getID()."'>";
+         echo "<input onclick='return confirm(\"".__('Confirm cancellation?')."\");'  type='submit' name='cancel' value='".__('Cancel')."' class='submit' >";
+         echo "</td></tr></table>";
 
-         echo "<tr><th colspan='4'>".__('Case Deletion', 'processmaker')."</th></tr>";
-         echo "<td class='tab_bg_2' colspan=3>&nbsp;</td>";
-         echo "<td class='tab_bg_2'>";
+         Html::closeForm();
+
+      }
+
+      // will not show delete button if case is a sub-process
+      // and will show it only if it is a draft or if current glpi user has the right to delete cases and session is central
+      if ($case->fields['plugin_processmaker_cases_id'] == 0
+         && ($case->fields['case_status'] == self::DRAFT
+            || (plugin_processmaker_haveRight("case", DELETE)
+               && $_SESSION['glpiactiveprofile']['interface'] == 'central'))) {
+
+         // then propose a button to delete case
+         $rand = rand();
+
+         echo "<p></p>";
+         echo "<form style='margin-bottom: 0px' name='processmaker_case_deleteform$rand' id='processmaker_case_deleteform$rand' method='post' action='".Toolbox::getItemTypeFormURL("PluginProcessmakerCase")."'>";
+         echo "<div class='center'>";
+         echo "<table style='margin-bottom: 0px' class='tab_cadre_fixe'>";
+         echo "<th colspan='2'>".__('Case deletion', 'processmaker')."</th>";
+         echo "<tr><td class='tab_bg_2' style='width: 10%'>".__('Delete case', 'processmaker')."</td>";
+         echo "<td class='tab_bg_2' >";
          echo "<input type='hidden' name='action' value='delete'>";
-         echo "<input type='hidden' name='cases_id' value='".$item->getID()."'>";
-         echo "<input onclick='ret = confirm(\"".__('Confirm expunge?')."\"); cancelMyMask = !ret ; return ret;'  type='submit' name='delete' value='".__('Delete permanently')."' class='submit' >";
+         echo "<input type='hidden' name='cases_id' value='".$case->getID()."'>";
+         echo "<input onclick='return confirm(\"".__('Confirm expunge?')."\");'  type='submit' name='delete' value='".__('Delete permanently')."' class='submit' >";
          echo "</td></tr></table>";
 
          Html::closeForm();
@@ -885,7 +1061,6 @@ class PluginProcessmakerCase extends CommonDBTM {
    function deleteCase( ) {
       return $this->delete(['id' => $this->getID()]);
    }
-
 
 
     /**

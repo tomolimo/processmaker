@@ -154,35 +154,9 @@ class PluginProcessmakerTask extends CommonITILTask
             $sub_tasks[$task['plugin_processmaker_cases_id']][$task['del_index']] = $task;
          }
 
+         $caseInfo->currentUsers = $case->sortTasks($caseInfo->currentUsers, $GLPICurrentPMUserId);
+
          $tab = [];
-         
-         function sortTasks ($a, $b) {
-            return $a->delIndex - $b->delIndex;
-         };
-
-         $tbctasks = [];
-         $utasks = [];
-         $infotasks = [];
-
-         foreach ($caseInfo->currentUsers as $caseUser) {
-            if ($caseUser->userId == $GLPICurrentPMUserId) {
-               $utasks[] = $caseUser;
-            } else {
-               if ($caseUser->userId == '') { // task to be claimed
-               $tbctasks[] = $caseUser;
-            } else
-               $infotasks[] = $caseUser;
-            }
-         }
-
-         // order task by "current user", then by "to be claimed", and then push to end "tasks assigned to another user"
-         // then by delindex ASC in these three parts
-         usort($utasks, 'sortTasks');
-         usort($tbctasks, 'sortTasks');
-         usort($infotasks, 'sortTasks');
-
-         $caseInfo->currentUsers = array_merge($utasks, $tbctasks, $infotasks);
-
          foreach ($caseInfo->currentUsers as $key => $caseUser) {
             $title = $caseUser->taskName;
             if (isset($tasks[$caseUser->delIndex])) {

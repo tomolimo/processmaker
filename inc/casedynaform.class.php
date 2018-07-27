@@ -43,7 +43,7 @@ class PluginProcessmakerCasedynaform extends CommonDBTM {
                                     var tabIndex = loctabs.find('a[href=\"#'+name+'\"]').parent().index();
                                     loctabs.tabs( 'option', 'active', tabIndex) ; // to activate it
                                  } });
-                  } else { // only acitvate it
+                  } else { // only activate it
                      var tabIndex = loctabs.find('a[href=\"#'+name+'\"]').parent().index();
                      loctabs.tabs( 'option', 'active', tabIndex) ; // to activate it
                   }
