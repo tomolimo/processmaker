@@ -15,7 +15,7 @@ class PluginProcessmakerCasehistory extends CommonDBTM {
       $rand = rand();
 
       $caseHistoryURL = $PM_SOAP->serverURL
-         ."/cases/ajaxListener?action=caseHistory&rand=$rand"; 
+         ."/cases/ajaxListener?action=caseHistory&rand=$rand";
 
       echo "<script type='text/javascript' src='".$CFG_GLPI["root_doc"]."/plugins/processmaker/js/cases.js'></script>";
 
@@ -32,7 +32,6 @@ class PluginProcessmakerCasehistory extends CommonDBTM {
    }
 
    function getTabNameForItem(CommonGLPI $case, $withtemplate = 0){
-      global $LANG;
-      return $LANG['processmaker']['item']['case']['viewcasehistory'];
+      return __('History', 'processmaker');
    }
 }

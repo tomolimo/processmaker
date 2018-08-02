@@ -123,8 +123,6 @@ function plugin_init_processmaker() {
 
 // Get the name and the version of the plugin - Needed
 function plugin_version_processmaker() {
-   global $LANG;
-
    return array ('name'          => 'Process Maker',
                 'version'        => '3.3.0',
                 'author'         => 'Olivier Moron',

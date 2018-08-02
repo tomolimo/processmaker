@@ -28,10 +28,10 @@ class PluginProcessmakerCasemap extends CommonDBTM {
 
       echo "<script type='text/javascript' src='".$CFG_GLPI["root_doc"]."/plugins/processmaker/js/cases.js'></script>"; //?rand=$rand'
 
-      $iframe = "<iframe 
-                  id='caseiframe-caseMap' 
-                  style='border: none;' width='100%' 
-                  src='$caseMapUrl' 
+      $iframe = "<iframe
+                  id='caseiframe-caseMap'
+                  style='border: none;' width='100%'
+                  src='$caseMapUrl'
                   onload=\"onOtherFrameLoad( 'caseMap', 'caseiframe-caseMap', 'body', ".($project_type=='bpmn' ? "true" : "false" )." );\">
                  </iframe>";
 
@@ -40,8 +40,7 @@ class PluginProcessmakerCasemap extends CommonDBTM {
    }
 
    function getTabNameForItem(CommonGLPI $case, $withtemplate = 0){
-      global $LANG;
-      return $LANG['processmaker']['item']['case']['viewcasemap'];
+      return __('Map', 'processmaker');
    }
 
 }

@@ -14,15 +14,15 @@ class PluginProcessmakerCasechangelog extends CommonDBTM {
       global $CFG_GLPI, $PM_SOAP;
 
       $rand = rand();
-            
-      $caseHistoryURL = $PM_SOAP->serverURL."/cases/ajaxListener?action=changeLogHistory&rand=$rand"; 
+
+      $caseHistoryURL = $PM_SOAP->serverURL."/cases/ajaxListener?action=changeLogHistory&rand=$rand";
 
       echo "<script type='text/javascript' src='".$CFG_GLPI["root_doc"]."/plugins/processmaker/js/cases.js'></script>"; //?rand=$rand'
 
-      $iframe = "<iframe 
-                  id='caseiframe-caseChangeLogHistory' 
-                  style='border: none;' 
-                  width='100%' 
+      $iframe = "<iframe
+                  id='caseiframe-caseChangeLogHistory'
+                  style='border: none;'
+                  width='100%'
                   src='$caseHistoryURL'
                   onload=\"onOtherFrameLoad( 'caseChangeLogHistory', 'caseiframe-caseChangeLogHistory', 'body', 0 );\">
                  </iframe>";
@@ -32,7 +32,6 @@ class PluginProcessmakerCasechangelog extends CommonDBTM {
    }
 
    function getTabNameForItem(CommonGLPI $case, $withtemplate = 0){
-      global $LANG;
-      return $LANG['processmaker']['item']['case']['changelog'];
+      return __('Change log', 'processmaker');
    }
 }

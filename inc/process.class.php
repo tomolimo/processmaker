@@ -14,6 +14,9 @@ if (!defined('GLPI_ROOT')) {
  */
 class PluginProcessmakerProcess extends CommonDBTM {
 
+   const CLASSIC = 'classic';
+   const BPMN    = 'bpmn';
+
    static $rightname                           = 'plugin_processmaker_config';
 
 
@@ -341,15 +344,15 @@ class PluginProcessmakerProcess extends CommonDBTM {
    * @return void (display)
    **/
    function title() {
-      global $LANG, $CFG_GLPI;
+      global $CFG_GLPI;
 
       $buttons = array();
-      $title = $LANG['processmaker']['config']['refreshprocesslist'];
+      $title = __('Synchronize Process List', 'processmaker');
 
       if ($this->canCreate()) {
-         $buttons["process.php?refresh=1"] = $LANG['processmaker']['config']['refreshprocesslist'];
+         $buttons["process.php?refresh=1"] = $title;
          $title = "";
-         Html::displayTitle($CFG_GLPI["root_doc"] . "/plugins/processmaker/pics/gears.png", $LANG['processmaker']['config']['refreshprocesslist'], $title,
+         Html::displayTitle($CFG_GLPI["root_doc"] . "/plugins/processmaker/pics/gears.png", $title, '',
                                     $buttons);
       }
 
@@ -385,11 +388,9 @@ class PluginProcessmakerProcess extends CommonDBTM {
    * @return mixed
    */
    function getSearchOptions() {
-      global $LANG;
-
       $tab = array();
 
-      $tab['common'] = $LANG['processmaker']['title'][1];
+      $tab['common'] = __('ProcessMaker', 'processmaker');
 
       $tab[1]['table']         = 'glpi_plugin_processmaker_processes';
       $tab[1]['field']         = 'name';
@@ -423,25 +424,25 @@ class PluginProcessmakerProcess extends CommonDBTM {
 
       $tab[10]['table']        = 'glpi_plugin_processmaker_processes';
       $tab[10]['field']        =  'process_guid';
-      $tab[10]['name']         =  $LANG['processmaker']['process']['process_guid'];
+      $tab[10]['name']         =  __('Process GUID', 'processmaker');
       $tab[10]['massiveaction'] = false;
       $tab[10]['datatype']     =  'text';
 
       $tab[11]['table']        = 'glpi_plugin_processmaker_processes';
       $tab[11]['field']        =  'project_type';
-      $tab[11]['name']         =  $LANG['processmaker']['process']['project_type_short'];
+      $tab[11]['name']         =  __('Project type', 'processmaker');
       $tab[11]['massiveaction'] = false;
       $tab[11]['datatype']     =  'specific';
 
       $tab[12]['table']         = 'glpi_plugin_processmaker_processes';
       $tab[12]['field']         = 'hide_case_num_title';
-      $tab[12]['name']          = $LANG['processmaker']['process']['hide_case_num_title_short'];
+      $tab[12]['name']          = __('Hide case number and title', 'processmaker');
       $tab[12]['massiveaction'] = true;
       $tab[12]['datatype']      = 'bool';
 
       $tab[13]['table']         = 'glpi_plugin_processmaker_processes';
       $tab[13]['field']         = 'insert_task_comment';
-      $tab[13]['name']          = $LANG['processmaker']['process']['insert_task_comment_short'];
+      $tab[13]['name']          = __('Insert Task Category', 'processmaker');
       $tab[13]['massiveaction'] = true;
       $tab[13]['datatype']      = 'bool';
 
@@ -453,7 +454,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
 
       $tab[15]['table']         = 'glpi_plugin_processmaker_processes';
       $tab[15]['field']         = 'type';
-      $tab[15]['name']          = $LANG['processmaker']['process']['type'];
+      $tab[15]['name']          = __('Ticket type (self-service)', 'processmaker');
       $tab[15]['searchtype']    = 'equals';
       $tab[15]['datatype']      = 'specific';
       $tab[15]['massiveaction'] = false;
@@ -470,15 +471,13 @@ class PluginProcessmakerProcess extends CommonDBTM {
    * @param $options   array
    **/
    static function getSpecificValueToDisplay($field, $values, array $options=array()) {
-      global $LANG;
-
       if (!is_array($values)) {
          $values = array($field => $values);
       }
       switch ($field) {
 
          case 'project_type':
-             return $LANG['processmaker']['process']['project_type_'.$values[$field]];
+             return self::getProcessTypeName($values[$field]);
 
          case 'type':
              return Ticket::getTicketTypeName($values[$field]);
@@ -487,13 +486,42 @@ class PluginProcessmakerProcess extends CommonDBTM {
    }
 
 
-   static function getTypeName($nb=0) {
-      global $LANG;
+   /**
+    * Summary of getAllTypeArray
+    * @return string[]
+    */
+   static function getAllTypeArray() {
 
+      $tab = array(self::CLASSIC => _x('process_type', 'Classic', 'processmaker'),
+                   self::BPMN    => _x('process_type', 'BPMN', 'processmaker'));
+
+      return $tab;
+   }
+
+
+   /**
+    * Summary of getProcessTypeName
+    * @param mixed $value 
+    * @return mixed
+    */
+   static function getProcessTypeName($value) {
+
+      $tab  = static::getAllTypeArray(true);
+      // Return $value if not defined
+      return (isset($tab[$value]) ? $tab[$value] : $value);
+   }
+
+
+   /**
+    * Summary of getTypeName
+    * @param mixed $nb
+    * @return mixed
+    */
+   static function getTypeName($nb=0) {
       if ($nb>1) {
-         return $LANG['processmaker']['title'][5];
+         return __('Processes', 'processmaker');
       }
-      return $LANG['processmaker']['title'][2];
+      return __('Process', 'processmaker');
    }
 
    function defineTabs($options=array()) {
@@ -512,7 +540,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
    }
 
    function showForm ($ID, $options=array('candel'=>false)) {
-      global $DB, $CFG_GLPI, $LANG;
+      global $DB, $CFG_GLPI;
 
       //if ($ID > 0) {
       //   $this->check($ID,READ);
@@ -525,36 +553,36 @@ class PluginProcessmakerProcess extends CommonDBTM {
       $this->showFormHeader($options);
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td>".__("Name")."&nbsp;:</td><td>";
+      echo "<td>".__("Name")."</td><td>";
       //Html::autocompletionTextField($this, "name");
       echo $this->fields["name"];
       echo "</td>";
-      echo "<td rowspan='5' class='middle right'>".__("Comments")."&nbsp;:</td>";
+      echo "<td rowspan='5' class='middle right'>".__("Comments")."</td>";
       echo "<td class='center middle' rowspan='5'><textarea cols='45' rows='6' name='comment' >".
            $this->fields["comment"]."</textarea></td></tr>";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td >".$LANG['processmaker']['process']['process_guid']."&nbsp;:</td><td>";
+      echo "<td >".__('Process GUID', 'processmaker')."</td><td>";
       echo $this->fields["process_guid"];
       echo "</td></tr>";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td >".__("Active")."&nbsp;:</td><td>";
+      echo "<td >".__("Active")."</td><td>";
       Dropdown::showYesNo("is_active", $this->fields["is_active"]);
       echo "</td></tr>";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td >".$LANG['processmaker']['process']['hide_case_num_title']."&nbsp;:</td><td>";
+      echo "<td >".__('Hide case number and title in task descriptions', 'processmaker')."</td><td>";
       Dropdown::showYesNo("hide_case_num_title", $this->fields["hide_case_num_title"]);
       echo "</td></tr>";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td >".$LANG['processmaker']['process']['insert_task_comment']."&nbsp;:</td><td>";
+      echo "<td >".__('Insert Task Category comments in Task Description', 'processmaker')."</td><td>";
       Dropdown::showYesNo("insert_task_comment", $this->fields["insert_task_comment"]);
       echo "</td></tr>";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td >".$LANG['processmaker']['process']['type']."&nbsp;:</td><td>";
+      echo "<td >".__('Ticket type (self-service)', 'processmaker')."</td><td>";
       if (true) { // $canupdate || !$ID
             $idticketcategorysearch = mt_rand(); $opt = array('value' => $this->fields["type"]);
             $rand = Ticket::dropdownType('type', $opt, array(), array('toupdate' => "search_".$idticketcategorysearch ));
@@ -572,7 +600,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
       }
       echo "</td>";
 
-      echo "<td >".$LANG['processmaker']['process']['itilcategory']."&nbsp;:</td><td>";
+      echo "<td >".__('ITIL Category (self-service)', 'processmaker')."</td><td>";
       if (true) { // $canupdate || !$ID || $canupdate_descr
           $opt = array('value'  => $this->fields["itilcategories_id"]);
 
@@ -601,12 +629,12 @@ class PluginProcessmakerProcess extends CommonDBTM {
       echo "</td></tr>";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td >".$LANG['processmaker']['process']['project_type']."&nbsp;:</td><td>";
-      Dropdown::showFromArray( 'project_type', array( 'classic' => $LANG['processmaker']['process']['project_type_classic'], 'bpmn' => $LANG['processmaker']['process']['project_type_bpmn'] ), array( 'value' => $this->fields["project_type"] ) );
+      echo "<td >".__('Project type (to be changed if not up-to-date)', 'processmaker')."</td><td>";
+      Dropdown::showFromArray( 'project_type', self::getAllTypeArray(), array( 'value' => $this->fields["project_type"] ) );
       echo "</td></tr>";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td >".__("Last update")."&nbsp;:</td><td>";
+      echo "<td >".__("Last update")."</td><td>";
       echo Html::convDateTime($this->fields["date_mod"]);
       echo "</td></tr>";
 

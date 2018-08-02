@@ -38,9 +38,7 @@ class PluginProcessmakerConfig extends CommonDBTM {
     * @return mixed
     */
    static function getTypeName($nb=0) {
-      global $LANG;
-
-      return $LANG['processmaker']['config']['setup'];
+      return __('ProcessMaker setup', 'processmaker');
    }
 
    /**
@@ -49,9 +47,7 @@ class PluginProcessmakerConfig extends CommonDBTM {
     * @return mixed
     */
    function getName($with_comment=0) {
-      global $LANG;
-
-      return $LANG['processmaker']['title'][1];
+      return __('ProcessMaker', 'processmaker');
    }
 
    /**
@@ -143,7 +139,7 @@ class PluginProcessmakerConfig extends CommonDBTM {
     * @return boolean
     */
    static function showConfigForm($item) {
-      global $LANG, $PM_DB, $CFG_GLPI, $PM_SOAP;
+      global $PM_DB, $CFG_GLPI, $PM_SOAP;
 
       $setup_ok = false;
 
@@ -157,12 +153,12 @@ class PluginProcessmakerConfig extends CommonDBTM {
       $config->showFormHeader(['colspan' => 4]);
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td >".$LANG['processmaker']['config']['URL']."</td><td >";
+      echo "<td >".__('Server URL (must be in same domain than GLPI)', 'processmaker')."</td><td >";
       echo "<input size='50' type='text' name='pm_server_URL' value='".$config->fields['pm_server_URL']."'>";
       echo "</td></tr>\n";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td>" . $LANG['processmaker']['config']['domain'] . "</td>";
+      echo "<td>".__('Common domain with GLPI', 'processmaker')."</td>";
       echo "<td><font color='red'><div name='domain'>".$config->fields['domain']."</div></font>";
 
       echo Html::scriptBlock("
@@ -191,7 +187,7 @@ class PluginProcessmakerConfig extends CommonDBTM {
                      return;
                   }
                } catch(ex) {}
-               $('div[name=domain]').text('".$LANG['processmaker']['config']['domain-error']."') ;
+               $('div[name=domain]').text('".__('None!', 'processmaker')."') ;
                $('div[name=domain]').parent().attr('color', 'red');
             };
             $('input[name=pm_server_URL]').on('keyup', setCommonDomain ) ;
@@ -200,23 +196,23 @@ class PluginProcessmakerConfig extends CommonDBTM {
       echo "</td></tr>\n";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td >".$LANG['processmaker']['config']['workspace']."</td><td >";
+      echo "<td >".__('Workspace Name', 'processmaker')."</td><td >";
       echo "<input type='text' name='pm_workspace' value='".$config->fields['pm_workspace']."'>";
       echo "</td></tr>\n";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td >" . $LANG['processmaker']['config']['admin']['user'] . "</td>";
+      echo "<td >".__('Server administrator name', 'processmaker')."</td>";
       echo "<td ><input type='text' name='pm_admin_user' value='".$config->fields["pm_admin_user"]."'>";
       echo "</td></tr>\n";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td >" . $LANG['processmaker']['config']['admin']['password'] . "</td>";
+      echo "<td >".__('Server administrator password', 'processmaker')."</td>";
       echo "<td ><input type='password' name='pm_admin_passwd' value='' autocomplete='off'>";
       echo "&nbsp;<input type='checkbox' name='_blank_pm_admin_passwd'>&nbsp;".__('Clear');
       echo "</td></tr>\n";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td >".$LANG['processmaker']['config']['connectionstatus']."</td><td >";
+      echo "<td >".__('Connection status', 'processmaker')."</td><td >";
       //$pm = new PluginProcessmakerProcessmaker;
 
       if ($config->fields['pm_server_URL'] != ''
@@ -232,31 +228,31 @@ class PluginProcessmakerConfig extends CommonDBTM {
       }
       echo "</font></span></td></tr>\n";
 
-      echo "<tr><td  colspan='4' class='center b'>".$LANG['processmaker']['config']['mysql']."</td></tr>";
+      echo "<tr><td  colspan='4' class='center b'>".__('SQL server setup', 'processmaker')."</td></tr>";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td >" . __('SQL server (MariaDB or MySQL)') . "</td>";
+      echo "<td >" . __('SQL server (MariaDB or MySQL)', 'processmaker') . "</td>";
       echo "<td ><input type='text' size=50 name='pm_dbserver_name' value='".$config->fields["pm_dbserver_name"]."'>";
       echo "</td></tr>\n";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td >" . __('Database name') . "</td>";
+      echo "<td >" . __('Database name', 'processmaker') . "</td>";
       echo "<td ><input type='text' size=50 name='pm_dbname' value='".$config->fields['pm_dbname']."'>";
       echo "</td></tr>\n";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td >" . __('SQL user') . "</td>";
+      echo "<td >" . __('SQL user', 'processmaker') . "</td>";
       echo "<td ><input type='text' name='pm_dbserver_user' value='".$config->fields["pm_dbserver_user"]."'>";
       echo "</td></tr>\n";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td >" . __('SQL password') . "</td>";
+      echo "<td >" . __('SQL password', 'processmaker') . "</td>";
       echo "<td ><input type='password' name='pm_dbserver_passwd' value='' autocomplete='off'>";
       echo "&nbsp;<input type='checkbox' name='_blank_pm_dbserver_passwd'>&nbsp;".__('Clear');
       echo "</td></tr>\n";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td >".$LANG['processmaker']['config']['connectionstatus']."</td><td >";
+      echo "<td >".__('Connection status', 'processmaker')."</td><td >";
       if ($PM_DB->connected && isset($PM_DB->dbdefault) && $PM_DB->dbdefault != '') {
          echo "<font color='green'>".__('Test successful');
       } else {
@@ -267,20 +263,20 @@ class PluginProcessmakerConfig extends CommonDBTM {
       echo "<tr><td  colspan='4' class='center b'>".__('Settings')."</td></tr>";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td >".$LANG['processmaker']['config']['theme']."</td><td >";
+      echo "<td >".__('Theme Name', 'processmaker')."</td><td >";
       Dropdown::showFromArray('pm_theme', $ui_theme,
                       array('value' => $config->fields['pm_theme']));
       echo "</td></tr>";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td >".$LANG['processmaker']['config']['main_task_category']."</td><td >";
+      echo "<td >".__('Main Task Category (edit to change name)', 'processmaker')."</td><td >";
       TaskCategory::dropdown(array('name'              => 'taskcategories_id',
                                'display_emptychoice'   => true,
                                'value'                 => $config->fields['taskcategories_id']));
       echo "</td></tr>\n";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td >".$LANG['processmaker']['config']['taskwriter']."</td><td >";
+      echo "<td >".__('Task Writer (edit to change name)', 'processmaker')."</td><td >";
       $rand = mt_rand();
       User::dropdown(array('name'             => 'users_id',
                        'display_emptychoice'  => true,
@@ -300,7 +296,7 @@ class PluginProcessmakerConfig extends CommonDBTM {
       echo "</td></tr>\n";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td >".$LANG['processmaker']['config']['pm_group_name']."</td><td >";
+      echo "<td >".__('Group in ProcessMaker which will contain all GLPI users', 'processmaker')."</td><td >";
 
       $pmGroups = array( 0 => Dropdown::EMPTY_VALUE );
       $query = "SELECT DISTINCT CON_ID, CON_VALUE FROM CONTENT WHERE CON_CATEGORY='GRP_TITLE' ORDER BY CON_VALUE;";
@@ -318,27 +314,27 @@ class PluginProcessmakerConfig extends CommonDBTM {
        echo "<tr><td  colspan='4' class='center b'>".__('Maintenance')."</td></tr>";
 
        echo "<tr class='tab_bg_1'>";
-       echo "<td >".$LANG['processmaker']['config']['maintenance']."</td><td >";
+       echo "<td >".__('Maintenance mode')."</td><td >";
        Dropdown::showYesNo("maintenance", $config->fields['maintenance']);
        echo "</td></tr>";
 
        echo "<tr><td colspan='4'></td></tr>";
 
-       echo "<tr><th  colspan='4'>".__('Processmaker system information')."</th></tr>";
+       echo "<tr><th  colspan='4'>".__('Processmaker system information', 'processmaker')."</th></tr>";
        if ($setup_ok) {
 //          $info = $pm->systemInformation( );
           $info = $PM_SOAP->systemInformation( );
-          echo '<tr><td>'._('Version').'</td><td>'.$info->version.'</td></tr>';
-          echo '<tr><td>'._('Web server').'</td><td>'.$info->webServer.'</td></tr>';
-          echo '<tr><td>'._('Server name').'</td><td>'.$info->serverName.'</td></tr>';
-          echo '<tr><td>'._('PHP version').'</td><td>'.$info->phpVersion.'</td></tr>';
-          echo '<tr><td>'._('DB version').'</td><td>'.$info->databaseVersion.'</td></tr>';
-          echo '<tr><td>'._('DB server IP').'</td><td>'.$info->databaseServerIp.'</td></tr>';
-          echo '<tr><td>'._('DB name').'</td><td>'.$info->databaseName.'</td></tr>';
-          echo '<tr><td>'._('User browser').'</td><td>'.$info->userBrowser.'</td></tr>';
-          echo '<tr><td>'._('User IP').'</td><td>'.$info->userIp.'</td></tr>';
+          echo '<tr><td>'.__('Version', 'processmaker').'</td><td>'.$info->version.'</td></tr>';
+          echo '<tr><td>'.__('Web server', 'processmaker').'</td><td>'.$info->webServer.'</td></tr>';
+          echo '<tr><td>'.__('Server name', 'processmaker').'</td><td>'.$info->serverName.'</td></tr>';
+          echo '<tr><td>'.__('PHP version', 'processmaker').'</td><td>'.$info->phpVersion.'</td></tr>';
+          echo '<tr><td>'.__('DB version', 'processmaker').'</td><td>'.$info->databaseVersion.'</td></tr>';
+          echo '<tr><td>'.__('DB server IP', 'processmaker').'</td><td>'.$info->databaseServerIp.'</td></tr>';
+          echo '<tr><td>'.__('DB name', 'processmaker').'</td><td>'.$info->databaseName.'</td></tr>';
+          echo '<tr><td>'.__('User browser', 'processmaker').'</td><td>'.$info->userBrowser.'</td></tr>';
+          echo '<tr><td>'.__('User IP', 'processmaker').'</td><td>'.$info->userIp.'</td></tr>';
        } else {
-          echo '<tr><td>'._('Version').'</td><td>'.__('Not yet!').'</td></tr>';
+          echo '<tr><td>'.__('Version', 'processmaker').'</td><td>'.__('Not yet!', 'processmaker').'</td></tr>';
        }
       $config->showFormButtons(array('candel'=>false));
 
@@ -347,10 +343,8 @@ class PluginProcessmakerConfig extends CommonDBTM {
 
 
    function getTabNameForItem(CommonGLPI $item, $withtemplate=0) {
-      global $LANG;
-
       if ($item->getType()=='Config') {
-         return $LANG['processmaker']['title'][1];
+         return __('ProcessMaker', 'processmaker');
       }
       return '';
    }

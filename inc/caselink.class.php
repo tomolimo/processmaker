@@ -47,16 +47,14 @@ class PluginProcessmakerCaselink extends CommonDBTM {
    }
 
    static function getTypeName($nb=0) {
-      global $LANG;
-
       if ($nb>1) {
-         return $LANG['processmaker']['title'][7];
+         return __('Case-links', 'processmaker');
       }
-      return $LANG['processmaker']['title'][6];
+      return __('Case-link', 'processmaker');
    }
 
    function showForm ($ID, $options=array('candel'=>false)) {
-      global $DB, $CFG_GLPI, $LANG;
+      global $DB, $CFG_GLPI;
 
       $options['candel'] = true;
 
@@ -64,27 +62,27 @@ class PluginProcessmakerCaselink extends CommonDBTM {
       $this->showFormHeader($options);
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td>".__("Name")."</td><td>";
+      echo "<td>".__('Name')."</td><td>";
       echo "<input size='100' type='text' name='name' value='".Html::cleanInputText($this->fields["name"])."'>";
       echo "</td></tr>";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td >".__("Active")."</td><td>";
+      echo "<td >".__('Active')."</td><td>";
       Dropdown::showYesNo("is_active", $this->fields["is_active"]);
       echo "</td></tr>";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td >".__("External data")."</td><td>";
+      echo "<td >".__('External data', 'processmaker')."</td><td>";
       Dropdown::showYesNo("is_externaldata", $this->fields["is_externaldata"]);
       echo "</td></tr>";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td >".__("Self")."</td><td>";
+      echo "<td >".__('Self', 'processmaker')."</td><td>";
       Dropdown::showYesNo("is_self", $this->fields["is_self"]);
       echo "</td></tr>";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td >".__("Source task GUID")."</td><td>";
+      echo "<td >".__('Source task GUID', 'processmaker')."</td><td>";
       //PluginProcessmakerTaskCategory::dropdown(array('name'                => 'plugin_processmaker_taskcategories_id_source',
       //                                               'display_emptychoice' => false,
       //                                               'value'               => $this->fields['plugin_processmaker_taskcategories_id_source']));
@@ -92,7 +90,7 @@ class PluginProcessmakerCaselink extends CommonDBTM {
       echo "</td></tr>";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td >".__("Target task GUID")."</td><td>";
+      echo "<td >".__('Target task GUID', 'processmaker')."</td><td>";
       //PluginProcessmakerTaskCategory::dropdown(array('name'                => 'plugin_processmaker_taskcategories_id_target',
       //                                               'display_emptychoice' => false,
       //                                               'value'               => $this->fields['plugin_processmaker_taskcategories_id_target']));
@@ -100,7 +98,7 @@ class PluginProcessmakerCaselink extends CommonDBTM {
       echo "</td></tr>";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td >".__("Target process GUID")."</td><td>";
+      echo "<td >".__('Target process GUID', 'processmaker')."</td><td>";
       //Dropdown::show( 'PluginProcessmakerProcess', array('name'                => 'plugin_processmaker_processes_id',
       //                                          'display_emptychoice' => true,
       //                                          'value'               => $this->fields['plugin_processmaker_processes_id'],
@@ -109,23 +107,23 @@ class PluginProcessmakerCaselink extends CommonDBTM {
       echo "</td></tr>";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td>".__("Target dynaform GUID")."</td><td>";
+      echo "<td>".__('Target dynaform GUID', 'processmaker')."</td><td>";
       echo "<input size='100' type='text' name='targetdynaform_guid' value='".$this->fields["targetdynaform_guid"]."'>";
       echo "</td></tr>";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td>".__("Source condition")."</td><td>";
+      echo "<td>".__('Source condition', 'processmaker')."</td><td>";
       //echo "<input size='100' type='text' name='sourcecondition' value='".$this->fields["sourcecondition"]."'>";
       echo "<textarea cols='100' rows='3' name='sourcecondition' >".$this->fields["sourcecondition"]."</textarea>";
       echo "</td></tr>";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td >".__("Claim target task")."</td><td>";
+      echo "<td >".__('Claim target task', 'processmaker')."</td><td>";
       Dropdown::showYesNo("is_targettoclaim", $this->fields["is_targettoclaim"]);
       echo "</td></tr>";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td>".__("External application JSON config")."</td><td>";
+      echo "<td>".__('External application JSON config', 'processmaker')."</td><td>";
       echo "<textarea cols='100' rows='6' name='externalapplication' >".$this->fields["externalapplication"]."</textarea>";
       echo "</td></tr>";
 
@@ -140,11 +138,9 @@ class PluginProcessmakerCaselink extends CommonDBTM {
     * @return mixed
     */
    function getSearchOptions() {
-      global $LANG;
-
       $tab = array();
 
-      $tab['common'] = $LANG['processmaker']['title'][1];
+      $tab['common'] = __('ProcessMaker', 'processmaker');
 
       $tab[1]['table']         = $this->getTable();
       $tab[1]['field']         = 'name';
@@ -166,55 +162,55 @@ class PluginProcessmakerCaselink extends CommonDBTM {
 
       $tab[10]['table']         = $this->getTable();
       $tab[10]['field']         = 'is_externaldata';
-      $tab[10]['name']          = __('External data');
+      $tab[10]['name']          = __('External data', 'processmaker');
       $tab[10]['massiveaction'] = false;
       $tab[10]['datatype']      = 'bool';
 
       $tab[11]['table']         = $this->getTable();
       $tab[11]['field']         = 'is_self';
-      $tab[11]['name']          = __('Self');
+      $tab[11]['name']          = __('Self', 'processmaker');
       $tab[11]['massiveaction'] = false;
       $tab[11]['datatype']      = 'bool';
 
       $tab[12]['table']         = $this->getTable();
       $tab[12]['field']         = 'is_targettoclaim';
-      $tab[12]['name']          = __('Claim target task');
+      $tab[12]['name']          = __('Claim target task', 'processmaker');
       $tab[12]['massiveaction'] = false;
       $tab[12]['datatype']      = 'bool';
 
       $tab[13]['table']         = $this->getTable();
       $tab[13]['field']         = 'externalapplication';
-      $tab[13]['name']          = __('External application JSON config');
+      $tab[13]['name']          = __('External application JSON config', 'processmaker');
       $tab[13]['massiveaction'] = false;
       $tab[13]['datatype']      = 'text';
 
       $tab[14]['table']         = $this->getTable();
       $tab[14]['field']         = 'sourcetask_guid';
-      $tab[14]['name']          = __('Source task GUID');
+      $tab[14]['name']          = __('Source task GUID', 'processmaker');
       $tab[14]['massiveaction'] = false;
       $tab[14]['datatype']      = 'text';
 
       $tab[15]['table']         = $this->getTable();
       $tab[15]['field']         = 'targettask_guid';
-      $tab[15]['name']          = __('Target task GUID');
+      $tab[15]['name']          = __('Target task GUID', 'processmaker');
       $tab[15]['massiveaction'] = false;
       $tab[15]['datatype']      = 'text';
 
       $tab[16]['table']         = $this->getTable();
       $tab[16]['field']         = 'targetdynaform_guid';
-      $tab[16]['name']          = __('Target dynaform GUID');
+      $tab[16]['name']          = __('Target dynaform GUID', 'processmaker');
       $tab[16]['massiveaction'] = false;
       $tab[16]['datatype']      = 'text';
 
       $tab[17]['table']         = $this->getTable();
       $tab[17]['field']         = 'targetprocess_guid';
-      $tab[17]['name']          = __('Target process GUID');
+      $tab[17]['name']          = __('Target process GUID', 'processmaker');
       $tab[17]['massiveaction'] = false;
       $tab[17]['datatype']      = 'text';
 
       $tab[18]['table']         = $this->getTable();
       $tab[18]['field']         = 'sourcecondition';
-      $tab[18]['name']          = __('Source condition');
+      $tab[18]['name']          = __('Source condition', 'processmaker');
       $tab[18]['massiveaction'] = false;
       $tab[18]['datatype']      = 'text';
 

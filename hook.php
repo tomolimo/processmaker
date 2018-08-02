@@ -25,17 +25,15 @@ if (!function_exists('arFieldExists')) {
 }
 
 function plugin_processmaker_MassiveActions($type) {
-   global $LANG;
-
    switch ($type) {
       case 'PluginProcessmakerProcess' :
          if (plugin_processmaker_haveRight('config', UPDATE)) {
-            return array('plugin_processmaker_taskrefresh' => $LANG['processmaker']['config']['refreshtasklist']);
+            return array('plugin_processmaker_taskrefresh' => __('Synchronize Task List', 'processmaker'));
          }
           break;
       case 'PluginProcessmakerProcess_Profile' :
          if (plugin_processmaker_haveRight('config', UPDATE)) {
-            return array('purge' => $LANG['processmaker']['process']['profile']);
+            return array('purge' => __('Delete permanently'));
          }
          break;
       //case 'PluginProcessmakerCase' :
@@ -48,66 +46,65 @@ function plugin_processmaker_MassiveActions($type) {
 }
 
 
-function plugin_processmaker_MassiveActionsDisplay($options) {
-   global $LANG;
+//function plugin_processmaker_MassiveActionsDisplay($options) {
 
-   switch ($options['itemtype']) {
-      case 'PluginProcessmakerProcess' :
-      //case 'PluginProcessmakerCase' :
-         switch ($options['action']) {
-            case "plugin_processmaker_taskrefresh" :
-            //case "plugin_processmaker_purgecase" :
-               echo "<input type='submit' name='massiveaction' class='submit' ".
-                     "value='".$LANG['buttons'][2]."'>";
-               break;
+//   switch ($options['itemtype']) {
+//      case 'PluginProcessmakerProcess' :
+//      //case 'PluginProcessmakerCase' :
+//         switch ($options['action']) {
+//            case "plugin_processmaker_taskrefresh" :
+//            //case "plugin_processmaker_purgecase" :
+//               echo "<input type='submit' name='massiveaction' class='submit' ".
+//                     "value='".__('Post')."'>";
+//               break;
 
-         }
-         break;
-   }
-   return "";
-}
+//         }
+//         break;
+//   }
+//   return "";
+//}
 
 
-function plugin_processmaker_MassiveActionsProcess($data) {
+//function plugin_processmaker_MassiveActionsProcess($data) {
 
-   switch ($data['action']) {
+//   switch ($data['action']) {
 
-      case "plugin_processmaker_taskrefresh" :
-         if ($data['itemtype'] == 'PluginProcessmakerProcess') {
-            foreach ($data["item"] as $key => $val) {
-               if ($val == 1) {
-                  $process = new PluginProcessmakerProcess;
-                  $process->refreshTasks( array( 'id' => $key ) );
+//      case "plugin_processmaker_taskrefresh" :
+//         if ($data['itemtype'] == 'PluginProcessmakerProcess') {
+//            foreach ($data["item"] as $key => $val) {
+//               if ($val == 1) {
+//                  $process = new PluginProcessmakerProcess;
+//                  $process->refreshTasks( array( 'id' => $key ) );
 
-               }
-            }
-         }
-         break;
-      //case "plugin_processmaker_purgecase":
-      //   if ($data['itemtype'] == 'PluginProcessmakerCase') {
-      //      foreach ($data["item"] as $key => $val) {
-      //         if ($val == 1) {
-      //            $locCase= new PluginProcessmakerCase;
-      //            //$locCase->( array( 'id' => $key ) );
+//               }
+//            }
+//         }
+//         break;
+//      //case "plugin_processmaker_purgecase":
+//      //   if ($data['itemtype'] == 'PluginProcessmakerCase') {
+//      //      foreach ($data["item"] as $key => $val) {
+//      //         if ($val == 1) {
+//      //            $locCase= new PluginProcessmakerCase;
+//      //            //$locCase->( array( 'id' => $key ) );
 
-      //         }
-      //      }
-      //   }
-      //   break;
-      //case 'plugin_processmaker_process_profile_delete' :
-      //   if ($data['itemtype'] == 'PluginProcessmakerProcess_Profile') {
-      //      foreach ($data["item"] as $key => $val) {
-      //         if ($val == 1) {
-      //            $process_profile = new PluginProcessmakerProcess_Profile;
-      //            $process_profile->delete( array( 'id' => $key ), true );
+//      //         }
+//      //      }
+//      //   }
+//      //   break;
+//      //case 'plugin_processmaker_process_profile_delete' :
+//      //   if ($data['itemtype'] == 'PluginProcessmakerProcess_Profile') {
+//      //      foreach ($data["item"] as $key => $val) {
+//      //         if ($val == 1) {
+//      //            $process_profile = new PluginProcessmakerProcess_Profile;
+//      //            $process_profile->delete( array( 'id' => $key ), true );
 
-      //         }
-      //      }
-      //   }
-      //    break;
+//      //         }
+//      //      }
+//      //   }
+//      //    break;
 
-   }
-}
+//   }
+//}
 
 /**
  * Summary of plugin_processmaker_install
@@ -116,7 +113,6 @@ function plugin_processmaker_MassiveActionsProcess($data) {
  * @return true or die!
  */
 function plugin_processmaker_install() {
-   global $DB;
 
    if (!arTableExists("glpi_plugin_processmaker_cases")) {
       // new installation
@@ -143,7 +139,6 @@ function plugin_processmaker_install() {
 }
 
 function plugin_processmaker_uninstall() {
-   //global $DB;
 
    CronTask::Unregister('PluginProcessmakerProcessmaker');
 
@@ -152,8 +147,7 @@ function plugin_processmaker_uninstall() {
 
 
 function plugin_processmaker_getAddSearchOptions($itemtype) {
-   global $LANG;
-
+   
    $sopt = array();
    // TODO add Change and Problem + other fields to the search
    if ($itemtype == 'Ticket') {
@@ -161,7 +155,7 @@ function plugin_processmaker_getAddSearchOptions($itemtype) {
       $sopt[10001]['field']     = 'case_status';
       //$sopt[1001]['linkfield'] = 'id';
       $sopt[10001]['massiveaction'] = false;
-      $sopt[10001]['name']      = $LANG['processmaker']['search']['case'].' - '.$LANG['processmaker']['search']['status'];
+      $sopt[10001]['name']      = __('Case', 'processmaker').' - '.__('Status', 'processmaker');
       $sopt[10001]['datatype']       = 'text';
       $sopt[10001]['forcegroupby'] = true;
       //$sopt[10001]['searchtype'] = 'equals';
@@ -265,18 +259,11 @@ function plugin_pre_item_update_processmaker(CommonITILObject $parm) {
  * @param mixed $parm is the object
  */
 function plugin_item_update_processmaker_satisfaction($parm) {
-   global $DB, $GLOBALS;
 
    $locCase = new PluginProcessmakerCase;
    if ($locCase->getFromItem( 'Ticket', $parm->fields['tickets_id'] )) {
       // case is existing for this item
-
-      $locPM = new PluginProcessmakerProcessmaker;
-      $locPM->login();
-
-      $pmResponse = $locPM->sendVariables( $locCase->getID(), array(
-                                                                     'GLPI_SATISFACTION_QUALITY' => $parm->fields['satisfaction']
-                                                                     ));
+      $locCase->sendVariables( ['GLPI_SATISFACTION_QUALITY' => $parm->fields['satisfaction']] );
    }
 }
 
@@ -330,14 +317,14 @@ function plugin_item_purge_processmaker($parm) {
 
          // and we must find all tasks assigned to this former user and re-assigned them to new user (if any :))!
          //$caseInfo = $locPM->getCaseInfo( $locCase->getID() );
-         $caseInfo = $locCase->getCaseInfo( $locCase->getID() );
+         $caseInfo = $locCase->getCaseInfo( );
          if ($caseInfo !== false) {
             //$locPM->sendVariables( $locCase->getID( ), $locVars );
-            $locCase->sendVariables( $locCase->getID( ), $locVars);
+            $locCase->sendVariables( $locVars);
             // need to get info on the thread of the GLPI current user
             // we must retreive currentGLPI user from this array
             $GLPICurrentPMUserId = PluginProcessmakerUser::getPMUserId( $parm->fields['users_id'] );
-            if (isset( $caseInfo->currentUsers ) && is_array( $caseInfo->currentUsers )) {
+            if (property_exists($caseInfo, 'currentUsers') && is_array( $caseInfo->currentUsers )) {
                foreach ($caseInfo->currentUsers as $caseUser) {
                   if ($caseUser->userId == $GLPICurrentPMUserId && in_array( $caseUser->delThreadStatus, array('DRAFT', 'OPEN', 'PAUSE' ) )) {
 

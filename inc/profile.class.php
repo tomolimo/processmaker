@@ -12,15 +12,13 @@ class PluginProcessmakerProfile extends CommonDBTM {
      * @return array[]
      */
    static function getAllRights() {
-      global $LANG;
-
       $rights = array(
                   array('itemtype' => 'PluginProcessmakerConfig',
-                        'label'    =>  $LANG['processmaker']['profile']['process_config'],
+                        'label'    =>  __('Process configuration', 'processmaker'),
                         'field'    => 'plugin_processmaker_config',
                         'rights' => array(READ    => __('Read'), UPDATE  => __('Update'))),
                    array('itemtype' => 'PluginProcessmakerConfig',
-                        'label'    =>  $LANG['processmaker']['profile']['case'],
+                        'label'    =>  __('Cases', 'processmaker'),
                         'field'    => 'plugin_processmaker_case',
                         'rights' => array(READ => __('Read'), CANCEL => __('Cancel', 'processmaker'), DELETE  => __('Delete')))
                    );
@@ -37,7 +35,6 @@ class PluginProcessmakerProfile extends CommonDBTM {
      * @return bool
      */
    function showForm($ID=0, $openform=TRUE, $closeform=TRUE) {
-      global $LANG;
 
       if (!Session::haveRight("profile", READ)) {
          return false;
@@ -52,7 +49,7 @@ class PluginProcessmakerProfile extends CommonDBTM {
       $rights = $this->getAllRights();
       $prof->displayRightsChoiceMatrix($rights, array('canedit'       => $canedit,
                                                  'default_class' => 'tab_bg_2',
-                                                 'title'         => $LANG['processmaker']['title'][1]));
+                                                 'title'         => __('ProcessMaker', 'processmaker')));
 
       if ($canedit && $closeform) {
          echo "<div class='center'>";
@@ -64,6 +61,7 @@ class PluginProcessmakerProfile extends CommonDBTM {
 
       Html::closeForm();
 
+      return true;
    }
 
     /**
@@ -81,10 +79,8 @@ class PluginProcessmakerProfile extends CommonDBTM {
      * @return string|string[]
      */
    function getTabNameForItem(CommonGLPI $item, $withtemplate=0) {
-      global $LANG;
-
       if ($item->getType()=='Profile') {
-         return $LANG['processmaker']['title'][1];
+         return __('ProcessMaker', 'processmaker');
       }
       return '';
    }

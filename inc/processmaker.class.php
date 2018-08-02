@@ -91,6 +91,10 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
    static $rightname = '';
 
+   const ERROR_CREATING_CASE  = 11;
+   const ERROR_NO_RIGHTS      = 14;
+   const ERROR_CREATING_CASE2 = 100;
+
 
    ///**
    //* Return the table used to store this object
@@ -101,6 +105,34 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
       return "glpi_plugin_processmaker_processes";
    }
+
+
+   /**
+    * Summary of getAllTypeArray
+    * @return string[]
+    */
+   static function getAllPMErrorArray() {
+
+      $tab = array(self::ERROR_CREATING_CASE  => _x('errors', 'Error creating case!', 'processmaker'),
+                   self::ERROR_NO_RIGHTS      => _x('errors', 'Can\'t create case: no rights for it!', 'processmaker'),
+                   self::ERROR_CREATING_CASE2 => _x('errors', 'Error creating case!', 'processmaker'));
+
+      return $tab;
+   }
+
+
+   /**
+    * Summary of getProcessTypeName
+    * @param mixed $value
+    * @return mixed
+    */
+   static function getPMErrorMessage($value) {
+
+      $tab  = static::getAllPMErrorArray();
+      // Return $value if not defined
+      return (isset($tab[$value]) ? $tab[$value] : $value);
+   }
+
 
    /**
    * Summary of addTicketFollowup
@@ -285,17 +317,19 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    function getCaseInfo($caseGuid, $delIndex='') {
       try {
          $pmCaseInfo = $this->pmSoapClient->getCaseInfo( array( 'sessionId' => $this->getPMSessionID(), 'caseId' => $caseGuid, 'delIndex' => $delIndex) );
-         switch ($pmCaseInfo->caseStatus) {
-            case 'DRAFT' :
-            case 'TO_DO':
-               //                case 'CANCELLED' :
-               if (is_object( $pmCaseInfo->currentUsers )) {
-                   $pmCaseInfo->currentUsers = array( 0 => $pmCaseInfo->currentUsers );
-               }
-               if ($pmCaseInfo->currentUsers[0]->delThreadStatus == 'PAUSE') {
-                   $pmCaseInfo->caseStatus = "PAUSED";
-               }
-                break;
+         if (property_exists($pmCaseInfo, 'currentUsers')) {
+            switch ($pmCaseInfo->caseStatus) {
+               case 'DRAFT' :
+               case 'TO_DO':
+                  //                case 'CANCELLED' :
+                  if (is_object( $pmCaseInfo->currentUsers )) {
+                     $pmCaseInfo->currentUsers = array( 0 => $pmCaseInfo->currentUsers );
+                  }
+                  if ($pmCaseInfo->currentUsers[0]->delThreadStatus == 'PAUSE') {
+                     $pmCaseInfo->caseStatus = "PAUSED";
+                  }
+                  break;
+            }
          }
          return $pmCaseInfo;
       } catch (Exception $e) {
@@ -945,15 +979,13 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    * @return array of strings
    */
    static function cronInfo($name) {
-      global $LANG;
-
       switch ($name) {
          case 'pmusers' :
-             return array('description' => $LANG['processmaker']['cron']['pmusers'] );
+             return array('description' => __('Syncs GLPI users and groups into ProcessMaker.', 'processmaker'));
          case 'pmorphancases' :
-            return array('description' => $LANG['processmaker']['cron']['pmorphancases']['description'], 'parameter' => $LANG['processmaker']['cron']['pmorphancases']['parameter']  );
+            return array('description' => __('Cleaning of orphan cases.', 'processmaker'), 'parameter' => __('Number of days to keep orphan cases', 'processmaker'));
          case 'pmtaskactions' :
-            return array('description' => $LANG['processmaker']['cron']['pmtaskactions'] );
+            return array('description' => __('To apply task actions between cases.', 'processmaker'));
       }
       return array();
    }
@@ -1566,7 +1598,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    * @return
    */
    public function addTask($cases_id, $itemtype, $items_id,  $caseInfo, $delIndex, $techId, $groupId, $pmTaskId, $delThread, $options=array() ) {
-      global $DB, $PM_DB, $LANG, $_SESSION;
+      global $DB, $PM_DB, $_SESSION;
 
       $default_options = array(
         'txtTaskContent' => '',
@@ -1655,16 +1687,16 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       $input['content'] = ""; // by default empty :)
 
       if ($pmProcess->fields["insert_task_comment"]) {
-         $input['content'] .= $LANG['processmaker']['item']['task']['comment']."\n";
+         $input['content'] .= "##processmaker.taskcomment##\n";
       }
 
       if ($options['txtTaskContent'] != '') {
          $input['content'] .= $options['txtTaskContent']."\n";
       } else if (!$pmProcess->fields["hide_case_num_title"]) {
-         $input['content'] .= $LANG['processmaker']['item']['task']['case'].$caseInfo->caseName."\n";
+         $input['content'] .= __('Case title: ', 'processmaker').$caseInfo->caseName."\n";
       }
 
-      $input['content'] .= $LANG['processmaker']['item']['task']['manage'];
+      $input['content'] .= "##processmakercase.url##";
 
       $input['is_private'] = 0;
       $input['actiontime'] = 0;
@@ -2112,7 +2144,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
             Session::initNavigateListItems('PluginProcessmakerCase',
                         //TRANS : %1$s is the itemtype name,
                         //        %2$s is the name of the item (used for headings of a list)
-                                  sprintf(__('%1$s = %2$s'),
+                                  sprintf('%1$s = %2$s',
                                           $params['options']['parent']->getTypeName(1), $params['options']['parent']->fields["name"]));
          }
       }
@@ -2124,7 +2156,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
      * @return void
      */
    static function pre_show_tab_processmaker($params) {
-      global $LANG, $pmHideSolution;
+      global $pmHideSolution;
       $plugin = new Plugin();
       $itemtype = $params['item']->getType();
       switch ($itemtype) {
@@ -2143,8 +2175,8 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                      if (!$pmCanSolve) {
                         // don't display message if arbehaviours is install
                         if (!($plugin->isInstalled('arbehaviours') && $plugin->isActivated('arbehaviours'))) {
-                           $messageOne = $LANG['processmaker']['item']['preventsolution'][1];
-                           $messageTwo = $LANG['processmaker']['item']['preventsolution'][2];
+                           $messageOne = __('A \'Case\' is running!', 'processmaker');
+                           $messageTwo = __('You must manage it first (see \'Process - Case\' tab)!', 'processmaker');
                            // output explicit message to explain why it's not possible to add solution
 
                            $message = "<div style='margin-bottom: 20px;' class='box'>
@@ -2344,12 +2376,12 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
     * This workaround will artificially load cases_Open page to force
     * initialization of those SESSION variables to prevent mix of values
     * when viewing tabs like map, change log, history, and dynaforms
-    * 
+    *
     * it will also manage the glpi_domain parameter
-    * 
+    *
     * @param mixed $currentCase array that contains APP_UID, DEL_INDEX
     * @param mixed $iFrameUrl string which is the url of the tab panel
-    * @param mixed $rand integer 
+    * @param mixed $rand integer
     */
    public function initCaseAndShowTab($currentCase, $iFrameUrl, $rand) {
       $iFrameUrl = urlencode($iFrameUrl);
@@ -2385,13 +2417,15 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       global $_SESSION, $CFG_GLPI;
       if (isset( $item->datas ) && isset( $item->datas['tasks'] )) {
          foreach ($item->datas['tasks'] as &$task) { // we must check if task category is PM task category or not, if yes then we add task category comment to datas
-            $task['##task.description##'] = str_replace( '##processmaker.taskcomment##', $task['##task.categorycomment##'], $task['##task.description##'] );
             $pmtask_itemtype = $item->obj->getType().'Task';
             $pmtask_items_id = $task['##task.id##'];
             $pmtask = new PluginProcessmakerTask($pmtask_itemtype);
-            $pmtask->getFromDBByQuery("WHERE itemtype = '$pmtask_itemtype' AND items_id = $pmtask_items_id");
-            $caseurl = urldecode($CFG_GLPI["url_base"]."/index.php?redirect=PluginProcessmakerCase_".$pmtask->fields['plugin_processmaker_cases_id']);
-            $task['##task.description##'] = str_replace('##processmakercase.url##', $caseurl, $task['##task.description##']);
+            if ($pmtask->getFromDBByQuery("WHERE itemtype = '$pmtask_itemtype' AND items_id = $pmtask_items_id")) {
+               $task['##task.description##'] = str_replace( '##processmaker.taskcomment##', $task['##task.categorycomment##'], $task['##task.description##'] );
+               $pmtask->getFromDBByQuery("WHERE itemtype = '$pmtask_itemtype' AND items_id = $pmtask_items_id");
+               $caseurl = urldecode($CFG_GLPI["url_base"]."/index.php?redirect=PluginProcessmakerCase_".$pmtask->fields['plugin_processmaker_cases_id']);
+               $task['##task.description##'] = str_replace('##processmakercase.url##', $caseurl, $task['##task.description##']);
+            }
          }
       }
 
@@ -2992,4 +3026,17 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       echo Html::scriptBlock($scriptblock);
    }
 
+   /**
+    * Summary of underMaintenance
+    * Shows a nice(?) under maintenance message
+    */
+   static function showUnderMaintenance() {
+      global $CFG_GLPI;
+      echo "<div class='center'>";
+      echo Html::image($CFG_GLPI['root_doc'].'/plugins/processmaker/pics/under_maintenance.png');
+      echo "<p style='font-weight: bold;'>";
+      _e('ProcessMaker plugin is under maintenance, please retry later, thank you.', 'processmaker');
+      echo "</p>";
+      echo "</div>";
+   }
 }

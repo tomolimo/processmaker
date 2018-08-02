@@ -11,7 +11,7 @@
 class PluginProcessmakerCasedynaform extends CommonDBTM {
 
    static function displayTabContentForItem(CommonGLPI $case, $tabnum=1, $withtemplate=0) {
-      global $CFG_GLPI, $PM_SOAP, $LANG;
+      global $CFG_GLPI, $PM_SOAP;
 
       $config = $PM_SOAP->config;
       $rand = rand();
@@ -77,8 +77,7 @@ class PluginProcessmakerCasedynaform extends CommonDBTM {
    }
 
    function getTabNameForItem(CommonGLPI $case, $withtemplate = 0){
-      global $LANG;
-      return $LANG['processmaker']['item']['case']['viewdynaforms'];
+      return __('Dynaforms', 'processmaker');
    }
 
 }

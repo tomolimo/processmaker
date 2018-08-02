@@ -20,7 +20,7 @@ class PluginProcessmakerCase extends CommonDBTM {
    const CANCELLED = 'CANCELLED';
 
    static function getTypeName($nb=0) {
-      return _n('Process case', 'Process cases', $nb);
+      return _n('Process case', 'Process cases', $nb, 'processmaker');
    }
 
    //static function canCreate() {
@@ -72,10 +72,9 @@ class PluginProcessmakerCase extends CommonDBTM {
     * @return array os strings
     */
    function getTabNameForItem(CommonGLPI $item, $withtemplate=0) {
-      global $LANG;
       if ($item->getType() == __CLASS__) {
          // get tab name for a case itself
-         return [ __CLASS__ => __('Case')."<sup class='tab_nb'> ".$LANG['processmaker']['case']['statuses'][$item->fields['case_status']]."</sup>"];
+         return [ __CLASS__ => __('Case', 'processmaker')."<sup class='tab_nb'> ".self::getStatus($item->fields['case_status'])."</sup>"];
       } else {
          $items_id = $item->getID();
          $itemtype = $item->getType();
@@ -323,12 +322,12 @@ class PluginProcessmakerCase extends CommonDBTM {
 
       echo "<tr><th colspan=4>".__('Current task(s) properties', 'processmaker')."</th></tr>";
 
-      if (count($caseInfo->currentUsers) > 0) {
+      if (property_exists($caseInfo, 'currentUsers') && count($caseInfo->currentUsers) > 0) {
          echo "<tr style='font-weight: bold;'>
-               <td>".__('Task', 'processmaker')."</td>
-               <td>".__('Task guid', 'processmaker')."</td>
-               <td>".__('Current user', 'processmaker')."</td>
-               <td>".__('Task delegation date', 'processmaker')."</td>
+               <th>".__('Task', 'processmaker')."</th>
+               <th>".__('Task guid', 'processmaker')."</th>
+               <th>".__('Current user', 'processmaker')."</th>
+               <th>".__('Task delegation date', 'processmaker')."</th>
             </tr>";
 
          foreach($caseInfo->currentUsers as $currentTask) {
@@ -354,6 +353,10 @@ class PluginProcessmakerCase extends CommonDBTM {
    }
 
 
+   static private function localSortTasks ($a, $b) {
+         return $a->delIndex - $b->delIndex;
+   }
+
    /**
     * Summary of sortTasks
     * @param mixed $tasks is the array of tasks from a getCaseInfo->currentUsers
@@ -361,10 +364,6 @@ class PluginProcessmakerCase extends CommonDBTM {
     * @return array sorted $tasks
     */
    public function sortTasks($tasks, $GLPICurrentPMUserId) {
-
-      function localSortTasks ($a, $b) {
-         return $a->delIndex - $b->delIndex;
-      };
 
       $tbctasks = [];
       $utasks = [];
@@ -383,9 +382,9 @@ class PluginProcessmakerCase extends CommonDBTM {
 
       // order task by "current user", then by "to be claimed", and then push to end "tasks assigned to another user"
       // then by delindex ASC in these three parts
-      usort($utasks, 'localSortTasks');
-      usort($tbctasks, 'localSortTasks');
-      usort($infotasks, 'localSortTasks');
+      usort($utasks, 'self::localSortTasks');
+      usort($tbctasks, 'self::localSortTasks');
+      usort($infotasks, 'self::localSortTasks');
 
       return array_merge($utasks, $tbctasks, $infotasks);
    }
@@ -403,18 +402,15 @@ class PluginProcessmakerCase extends CommonDBTM {
 
       echo "<table style='margin-bottom: 0px' class='tab_cadre_fixe'>";
 
-      echo "<tr><th colspan=2>".__('Case item', 'processmaker')."</th></tr>";
-
       $itemtype = $case->fields['itemtype'];
-      $item = new $itemtype;
-      $item->getFromDB($case->fields['items_id']);
-      echo "<tr><td class='tab_bg_2' style='font-weight: bold;'>".$itemtype::getTypeName(1)."</td>";
-//      echo "<td class='tab_bg_2' >".$item->getID()."</td>";
-      echo "<td class='tab_bg_2'>".$item->getLink(['forceid' => 1])."</td></tr>";
+
+      echo "<tr><th colspan=12>".__('Case item', 'processmaker')." > ".$itemtype::getTypeName(1)."</th></tr>";
+
+      Ticket::commonListHeader(Search::HTML_OUTPUT);
+
+      $itemtype::showShort($case->fields['items_id']);
 
       echo "</table>";
-
-      //echo "</div>";
 
       // show case properties
       $case->showCaseProperties();
@@ -435,7 +431,7 @@ class PluginProcessmakerCase extends CommonDBTM {
          echo "<td class='tab_bg_2' >";
          echo "<input type='hidden' name='action' value='cancel'>";
          echo "<input type='hidden' name='cases_id' value='".$case->getID()."'>";
-         echo "<input onclick='return confirm(\"".__('Confirm cancellation?')."\");'  type='submit' name='cancel' value='".__('Cancel')."' class='submit' >";
+         echo "<input onclick='return confirm(\"".__('Confirm cancellation?', 'processmaker')."\");'  type='submit' name='cancel' value='".__('Cancel', 'processmaker')."' class='submit' >";
          echo "</td></tr></table>";
 
          Html::closeForm();
@@ -477,7 +473,7 @@ class PluginProcessmakerCase extends CommonDBTM {
     * @param CommonITILObject $item
     */
    static function showForItem(CommonITILObject $item) {
-      global $DB, $CFG_GLPI, $LANG;
+      global $DB, $CFG_GLPI;
 
       $items_id = $item->getField('id');
       $itemtype = $item->getType();
@@ -508,10 +504,10 @@ class PluginProcessmakerCase extends CommonDBTM {
          }
       }
 
-      $columns = array('pname'  => 'Process',
-                       'name'   => 'Name',
-                       'status' => 'Status',
-                       'sub'    => 'Subcase of'
+      $columns = array('pname'  => __('Process', 'processmaker'),
+                       'name'   => __('Title', 'processmaker'),
+                       'status' => __('Status', 'processmaker'),
+                       'sub'    => __('Subcase of', 'processmaker')
            );
 
       // check if item is not solved nor closed
@@ -526,10 +522,10 @@ class PluginProcessmakerCase extends CommonDBTM {
          echo "<input type='hidden' name='itemtype' value='$itemtype'>";
 
          echo "<table class='tab_cadre_fixe'>";
-         echo "<tr class='tab_bg_2'><th colspan='3'>".__('Add a new case')."</th></tr>";
+         echo "<tr class='tab_bg_2'><th colspan='3'>".__('Add a new case', 'processmaker')."</th></tr>";
 
          echo "<tr class='tab_bg_2'><td class='tab_bg_2'>";
-         echo $LANG['processmaker']['item']['selectprocess']."&nbsp;";
+         _e('Select the process you want to add', 'processmaker');
          echo "</td><td class='tab_bg_2'>";
          PluginProcessmakerProcess::dropdown(array( 'value' => 0, 'entity' => $item->fields['entities_id'], 'name' => 'plugin_processmaker_processes_id', 'condition' => "is_active=1"));
          echo "</td><td class='tab_bg_2'>";
@@ -632,7 +628,7 @@ class PluginProcessmakerCase extends CommonDBTM {
     * @param mixed $withtemplate
     */
    static function displayTabContentForItem(CommonGLPI $item, $tabnum=1, $withtemplate=0) {
-      global $LANG, $DB, $CFG_GLPI, $PM_SOAP;
+      global $PM_SOAP;
 
       if ($item->getType() == __CLASS__) {
          // we are in a case viewing the main tab
@@ -641,397 +637,15 @@ class PluginProcessmakerCase extends CommonDBTM {
 
       } else {
 
-         // the idea is to show a list of cases attached to the $item ITIL object
-         // TODO give possibility to start a new case if needed
-         self::showForItem($item);
-      }
-   }
-
-    /**
-     * Summary of displayTabContentForItem
-     * @param CommonGLPI $item         is the item
-     * @param mixed      $tabnum       is the tab num
-     * @param mixed      $withtemplate has template
-     * @return mixed
-     */
-   static function displayTabContentForItem_old(CommonGLPI $item, $tabnum=1, $withtemplate=0) {
-      global $LANG, $DB, $CFG_GLPI, $PM_SOAP;
-
-      $config = $PM_SOAP->config; //PluginProcessmakerConfig::getInstance();
-
-      if ($config->fields['maintenance'] == 0) {
-
-         $items_id = $item->getID();
-         $itemtype = $item->getType();
-
-         $rand = rand();
-         echo "<form style='margin-bottom: 0px' name='processmaker_form$rand' id='processmaker_form$rand' method='post' action='".Toolbox::getItemTypeFormURL("PluginProcessmakerProcessmaker")."'>";
-         echo "<div class='center'> <table id='processmakercasemenu' style='margin-bottom: 0px' class='tab_cadre_fixe'>";
-         echo Html::scriptBlock("$('#processmakercasemenu').css('max-width', 'none');");
-         echo "<tr><th colspan='4'>".$LANG['processmaker']['item']['tab']."</th></tr>";
-
-         $pmCaseUser = false; // initial value: no user
-         // first search for the case
-         $locCase = new self;
-         if ($locCase->getFromItem($itemtype, $items_id)) {
-            $GLPICurrentPMUserId=0;
-            $paramsURL='';
-            $caseInfo = $locCase->getCaseInfo();
-            if ($caseInfo->caseStatus != 'CANCELLED' && $caseInfo->caseStatus != 'COMPLETED') {
-               // need to get info on the thread of the GLPI current user
-               // we must retreive currentGLPI user from this array
-               $GLPICurrentPMUserId = PluginProcessmakerUser::getPMUserId(Session::getLoginUserID());
-               $pmCaseUser = $caseInfo->currentUsers[0]; // by default currently manage only one task at a time, must define tab management for several tasks
-               foreach ($caseInfo->currentUsers as $caseUser) {
-                  if ($caseUser->userId == $GLPICurrentPMUserId) {
-                     $pmCaseUser = $caseUser;
-                     break;
-                  }
-               }
-            }
-            $locDelIndex = 1; // by default
-            switch ($caseInfo->caseStatus) {
-               case "CANCELLED"  :
-                  echo "<tr><th colspan='4'>".$LANG['processmaker']['item']['cancelledcase']."</th></tr>";
-                  $paramsURL = "DEL_INDEX=1";
-                  //                    echo "<tr class='tab_bg_1' ><td id='GLPI-PM-DEL_INDEX' ><script>var GLPI_DEL_INDEX = 1; </script></td></tr>" ;
-                  break;
-
-               case "DRAFT" :
-               case "TO_DO" :
-
-                  $paramsURL = "DEL_INDEX=".$pmCaseUser->delIndex."&action=".$caseInfo->caseStatus;
-                  $locDelIndex = $pmCaseUser->delIndex;
-                  if ($pmCaseUser->userId != '') {
-                     echo "<tr class='tab_bg_1'>";
-
-                     if ($GLPICurrentPMUserId == $pmCaseUser->userId) {
-                        // then propose a button to cancel case only when assigned user is == to glpi current user
-                        echo "<td class='tab_bg_2' >";
-                        echo $LANG['processmaker']['item']['cancelcase'];
-                        echo "</td><td class='tab_bg_2'>";
-                        echo "<input type='hidden' name='action' value='unpausecase_or_reassign_or_delete'>";
-                        echo "<input type='hidden' name='cases_id' value='".$locCase->getID()."'>";
-                        //echo "<input type='hidden' name='plugin_processmaker_cases_guid' value='".$caseInfo->caseId."'>";
-                        //echo "<input type='hidden' name='plugin_processmaker_del_index' value='".$pmCaseUser->delIndex."'>";
-                        //echo "<input type='hidden' name='plugin_processmaker_users_id' value='".$pmCaseUser->userId."'>";
-                        echo "<input onclick='ret = confirm(\"".$LANG['processmaker']['item']['buttoncancelcaseconfirmation']."\") ;  cancelMyMask = !ret ;  return ret;'   type='submit' name='cancel' value='".$LANG['processmaker']['item']['buttoncancelcase']."' class='submit'>";
-                        echo "</td>";
-                     }
-
-                     if ($caseInfo->caseStatus == "DRAFT" || (plugin_processmaker_haveRight("case", DELETE) && $_SESSION['glpiactiveprofile']['interface'] == 'central')) {
-                        // then propose a button to delete case
-                        echo "<td class='tab_bg_2'>";
-                        echo $LANG['processmaker']['item']['deletecase'];
-                        echo "</td><td class='tab_bg_2'>";
-                        echo "<input type='hidden' name='action' value='unpausecase_or_reassign_or_delete'>";
-                        //echo "<input type='hidden' name='plugin_processmaker_cases_guid' value='".$caseInfo->caseId."'>";
-                        echo "<input type='hidden' name='cases_id' value='".$locCase->getID()."'>";
-
-                        echo "<input onclick='ret = confirm(\"".$LANG['processmaker']['item']['buttondeletecaseconfirmation']."\"); cancelMyMask = !ret ; return ret;'  type='submit' name='delete' value='".$LANG['processmaker']['item']['buttondeletecase']."' class='submit' >";
-
-                        echo "</td>";
-
-                     }
-
-                     echo "</form>";
-
-                     echo "</td></tr>";
-                  }
-
-                  break;
-               case "COMPLETED" :
-                  echo "<tr><th colspan='4'>".$LANG['processmaker']['item']['completedcase']."</th></tr>";
-                  $paramsURL = "DEL_INDEX="; // DEL_INDEX is not set to tell PM to show the current task i.e.: the last one
-                  break;
-            }
-
-            $proj = new PluginProcessmakerProcess;
-            $proj->getFromGUID( $caseInfo->processId );
-            $project_type = $proj->fields['project_type'];
-
-            echo "</table>";
-            echo "<script type='text/javascript' src='".$CFG_GLPI["root_doc"]."/plugins/processmaker/js/cases.js'></script>"; //?rand=$rand'
-
-            // processmakertabpaneltable  is used to align the tabs
-            echo "<table id=processmakertabpaneltable style='margin-bottom: 0px; width:100%;' class='tab_cadre_fixe'>";
-            echo Html::scriptBlock("$('#processmakertabpaneltable').css('max-width', 'none');");
-            echo "<tr><td>";
-
-            //////////////////////////
-            // Processmaker tab panels
-            // need to have a global variable which contains tab id
-            // used only one time for activated panel
-            //////////////////////////
-            $arrayProcessmakerTabPanel = array();
-            echo "<div id=processmakertabpanel >";
-
-            //////////////
-            // Define tabs
-            //////////////
-            echo "    <ul>";
-            //echo "            <li><a href='#tabs-1'>Nunc tincidunt</a></li>";
-            //$arrayProcessmakerTabPanel[] = "tabs-1";
-            $arrayProcessmakerTabPanel = [];
-            if ($pmCaseUser) {
-               foreach ($caseInfo->currentUsers as $caseUser) {
-                  $title = $LANG['processmaker']['item']['task']['task'].$caseUser->taskName;
-                  echo "<li><a href='#task-".$caseUser->delIndex."' title='$title'>". ($caseUser->userId != $GLPICurrentPMUserId ? "<i><sub>$title</sub></i>" : $title) ."</a></li>";
-                  $arrayProcessmakerTabPanel[] = "task-".$caseUser->delIndex;
-               }
-            } else {
-               // no user means CANCELLED or COMPLETED
-               // then create artificial panel to host case infos
-               echo "<li><a href='#caseInfo' title='".$LANG['processmaker']['item']['case']['caseinfo']."'>".$LANG['processmaker']['item']['case']['caseinfo']."</a></li>";
-               $arrayProcessmakerTabPanel[] = "caseInfo";
-            }
-            // add default panels: map, history, log and dynaforms
-            $defaultTabs = ['caseMap' => 'viewcasemap', 'caseHistory' => 'viewcasehistory', 'caseChangeLogHistory' => 'viewcasechangeloghistory', 'historyDynaformPage' => 'viewdynaforms' ];
-            foreach ($defaultTabs as $tab => $tabText) {
-               echo "<li><a href='#$tab' onclick=\"javascript:Actions.tabFrame('$tab');return false;\" title='".$LANG['processmaker']['item']['case'][$tabText]."'>".$LANG['processmaker']['item']['case'][$tabText]."</a></li>";
-            }
-
-            echo "</ul>";
-
-            ////////////////
-            // Define panels
-            ////////////////
-            if ($pmCaseUser) {
-               $csrf = Session::getNewCSRFToken();
-               foreach ($caseInfo->currentUsers as $caseUser) {
-                  // for each task, if task is to be claimed, we need to verify that current user can claim it by checking if he/she is in the group assigned to the task
-                  $hide_claim_button=false; // by default
-                  if (!$caseUser->userId) {
-                     // current task is to claimed
-                     // get task user list
-                     $query = "SELECT items_id, itemtype FROM glpi_plugin_processmaker_tasks WHERE plugin_processmaker_cases_id = '".$locCase->getID()."' AND del_index =".$caseUser->delIndex;
-                     foreach ($DB->request($query) as $row) {
-                        // normally there is only one task
-                        $task = getItemForItemtype( $row['itemtype'] );
-                        $task->getFromDB( $row['items_id'] );
-                        // check if this group can be found in the current user's groups
-                        if (!isset($_SESSION['glpigroups']) || !in_array( $task->fields['groups_id_tech'], $_SESSION['glpigroups'] )) {
-                           $hide_claim_button=true;
-                        }
-                     }
-                  }
-                  echo "<div id='task-".$caseUser->delIndex."'>";
-                  // to load users for task re-assign only when task is not to be 'claimed'
-                  if ($caseUser->userId) {
-                     echo "<div class='tab_bg_2' id='divUsers-".$caseUser->delIndex."' >Loading...</div>";
-                     echo "<script>$('#divUsers-".$caseUser->delIndex."').load( '".$CFG_GLPI["root_doc"]."/plugins/processmaker/ajax/task_users.php?cases_id=".$locCase->getID()."&items_id=".$items_id."&itemtype=".$itemtype."&users_id=".PluginProcessmakerUser::getGLPIUserId($caseUser->userId)."&taskGuid=".$caseUser->taskId."&delIndex=".$caseUser->delIndex."&delThread=".$caseUser->delThread."&rand=$rand' ); </script>";
-                  }
-                  echo "<iframe id='caseiframe-task-".$caseUser->delIndex."' onload='onTaskFrameLoad( event, ".$caseUser->delIndex.", ".($hide_claim_button?"true":"false").", \"$csrf\" );' style='border:none;' class='tab_bg_2' width='100%' src='";
-                  echo $PM_SOAP->serverURL."/cases/cases_Open?sid=".$PM_SOAP->getPMSessionID()."&APP_UID=".$caseInfo->caseId."&DEL_INDEX=".$caseUser->delIndex."&action=TO_DO";
-                  echo "&rand=$rand&glpi_domain={$config->fields['domain']}'></iframe></div>";
-               }
-            } else {
-                // no user means CANCELLED or COMPLETED
-                // then create artificial panel to host case infos
-                echo "<div id='caseInfo'>";
-                $url = $PM_SOAP->serverURL."/cases/cases_Open?sid=".$PM_SOAP->getPMSessionID()."&APP_UID=".$caseInfo->caseId."&".$paramsURL."&action=TO_DO";
-                echo "<iframe id=\"caseiframe-caseInfo\" onload=\"onOtherFrameLoad( 'caseInfo', 'caseiframe-caseInfo', 'body' );\" style=\"border:none;\" class=\"tab_bg_2\" width=\"100%\" src=\"$url&rand=$rand&glpi_domain={$config->fields['domain']}\"></iframe></div>";
-            }
-            // default panels
-            // map, history, log and dynaforms
-            // will be added dynamically by the addTabPanel function
-
-
-            echo "</div>";
-            // end of tabs/panels
-
-            echo "</td></tr>";
-            echo "<tr class='tab_bg_1' ><td  colspan=4 >";
-            if ($pmCaseUser) {
-                $activePanel = 'task-'.$pmCaseUser->delIndex;
-            } else {
-                $activePanel = 'caseInfo';
-            }
-            $caseMapUrl = $PM_SOAP->serverURL.($project_type=='bpmn' ? "/designer?prj_uid=".$caseInfo->processId."&prj_readonly=true&app_uid=".$caseInfo->caseId : "/cases/ajaxListener?action=processMap&rand=$rand")."&glpi_domain={$config->fields['domain']}";
-            echo "<script>
-                function addTabPanel( name, title, html ){
-                    //debugger ;
-                    if( !$('#processmakertabpanel')[0].children[name] ) { // panel is not yet existing, create one
-                        //var num_tabs = $('#processmakertabpanel ul li').length ;
-                        if( $('#processmakertabpanel a[href=\"#'+name+'\"]').length == 0 ) {
-                           $('#processmakertabpanel ul').append( '<li><a href=\'#' + name + '\'>' + title + '</a></li>' );
-                        }
-                        //debugger ;
-                        $('#processmakertabpanel').append( '<div id=\'' + name + '\'>' + html + '</div>');
-                        $('#processmakertabpanel').tabs('refresh'); // to show the panel
-                    }
-                    var tabIndex = $('#processmakertabpanel a[href=\"#'+name+'\"]').parent().index();
-                    $('#processmakertabpanel').tabs( 'option', 'active', tabIndex) ; // to activate it
-                    //$('#processmakertabpanel').tabs( 'option', 'collapsible', true );
-                }
-                var historyGridListChangeLogGlobal = { viewIdHistory: '', viewIdDin: '', viewDynaformName: '', idHistory: '' } ;
-                var ActionTabFrameGlobal = { tabData: '', tabName: '', tabTitle: '' } ;
-
-                var Actions = { tabFrame: function( actionToDo ) {
-                                                       // debugger ;
-                            if( actionToDo == 'caseMap' ) {
-                                addTabPanel( actionToDo,
-                                        '".$LANG['processmaker']['item']['case']['casemap']."',
-                                        '<iframe id=\'caseiframe-' + actionToDo + '\' style=\'border: none;\' onload=\'onOtherFrameLoad( \"'+actionToDo+'\", \"caseiframe-' + actionToDo + '\", \"body\", ".($project_type=='bpmn' ? "true" : "false" )." );\' width=\'100%\' src=\'$caseMapUrl\' ></iframe>'
-                                        );
-                            } else
-                           if( actionToDo == 'caseHistory' ) {
-                                addTabPanel( actionToDo,
-                                        '".$LANG['processmaker']['item']['case']['casehistory']."',
-                                        '<iframe id=\'caseiframe-' + actionToDo + '\' style=\'border: none;\' onload=\'onOtherFrameLoad( \"'+actionToDo+'\", \"caseiframe-' + actionToDo + '\", \"body\", 0 );\' height=\'600px\' width=\'100%\' src=\'".$PM_SOAP->serverURL."/cases/ajaxListener?action=caseHistory&rand=$rand&glpi_domain={$config->fields['domain']}\' ></iframe>'
-                                        );
-                            } else
-                           if( actionToDo == 'caseChangeLogHistory' ) {
-                                addTabPanel( actionToDo,
-                                        '".$LANG['processmaker']['item']['case']['casechangeloghistory']."',
-                                        '<iframe id=\'caseiframe-' + actionToDo + '\' style=\'border: none;\' onload=\'onOtherFrameLoad( \"'+actionToDo+'\", \"caseiframe-' + actionToDo + '\", \"body\", 0 );\' height=\'600px\' width=\'100%\' src=\'".$PM_SOAP->serverURL."/cases/ajaxListener?action=changeLogHistory&rand=$rand&glpi_domain={$config->fields['domain']}\' ></iframe>'
-                                        );
-                            } else
-                           if( actionToDo == 'dynaformViewFromHistory' ) {
-                                actionToDo = 'dynaformChangeLogViewHistory_' + historyGridListChangeLogGlobal.viewIdDin + historyGridListChangeLogGlobal.dynDate.replace(/ /g, '_').replace(/:/g, '-') ;
-                                ajaxResponse = $.parseJSON(historyGridListChangeLogGlobal.viewDynaformName);
-                                addTabPanel( actionToDo,
-                                        ajaxResponse.dynTitle + ' <sup>(' + historyGridListChangeLogGlobal.dynDate + ')</sup>',
-                                        '<iframe id=\'caseiframe-' + actionToDo + '\' style=\'border: none;\' onload=\'onOtherFrameLoad( \"'+actionToDo+'\", \"caseiframe-' + actionToDo + '\", \"body\", 0 );\' width=\'100%\' src=\'".$PM_SOAP->serverURL."/cases/ajaxListener?action=dynaformViewFromHistory&DYN_UID=' + historyGridListChangeLogGlobal.viewIdDin + \"&HISTORY_ID=\" + historyGridListChangeLogGlobal.viewIdHistory + '&rand=$rand&glpi_domain={$config->fields['domain']}\' ></iframe>'
-                                        );
-                            } else
-                           if( actionToDo == 'historyDynaformPage' ) {
-                                addTabPanel( actionToDo,
-                                        '".$LANG['processmaker']['item']['case']['dynaforms']."',
-                                        '<iframe id=\'caseiframe-' + actionToDo + '\' style=\'border: none;\' onload=\'onOtherFrameLoad( \"'+actionToDo+'\", \"caseiframe-' + actionToDo + '\", \"body\", 0 );\' width=\'100%\' src=\'".$PM_SOAP->serverURL."/cases/casesHistoryDynaformPage_Ajax?actionAjax=historyDynaformPage&rand=$rand&glpi_domain={$config->fields['domain']}\' ></iframe>'
-                                        );
-                            } else
-                            if( actionToDo.search( '^changeLog' ) == 0 ) {
-                                actionToDo = 'changeLog' ;
-                                addTabPanel( actionToDo,
-                                        '".$LANG['processmaker']['item']['case']['changelog']."',
-                                        '<iframe id=\'caseiframe-' + actionToDo + '\' style=\'border: none;\' onload=\'onOtherFrameLoad( \"'+actionToDo+'\", \"caseiframe-' + actionToDo + '\", \"body\", 0 );\' height=\'600px\' width=\'100%\' src=\'".$PM_SOAP->serverURL."/cases/ajaxListener?action=changeLogTab&idHistory=' + historyGridListChangeLogGlobal.idHistory + '&rand=$rand&glpi_domain={$config->fields['domain']}\' ></iframe>'
-                                        );
-                            } else
-                            if( actionToDo.search( '^historyDynaformGridPreview' ) == 0 ) {
-                                actionToDo = actionToDo.replace('_', '$') ;
-                                    var act = actionToDo.replace( '$', '&DYN_UID=') ;
-                                addTabPanel( actionToDo,
-                                        ActionTabFrameGlobal.tabTitle,
-                                        '<iframe id=\'caseiframe-' + actionToDo + '\' style=\'border: none;\' onload=\'onOtherFrameLoad( \"'+actionToDo+'\", \"caseiframe-' + actionToDo + '\", \"form\", 0 );\' width=\'100%\' src=\'".$PM_SOAP->serverURL."/cases/casesHistoryDynaformPage_Ajax?actionAjax=' + act + '&rand=$rand&glpi_domain={$config->fields['domain']}\' ></iframe>'
-                                        );
-                            } else
-                            if( actionToDo.search( '^historyDynaformGridHistory' ) == 0) {
-                                var ajaxResponse = $.parseJSON(ActionTabFrameGlobal.tabData);
-                                    var act = 'showDynaformListHistory&PRO_UID=' + ajaxResponse.PRO_UID + '&APP_UID=' + ajaxResponse.APP_UID + '&TAS_UID=-1&DYN_UID=' + ajaxResponse.DYN_UID;
-                                addTabPanel( actionToDo,
-                                        ActionTabFrameGlobal.tabTitle,
-                                        '<iframe id=\'caseiframe-' + actionToDo + '\' style=\'border: none;\' onload=\'onOtherFrameLoad( \"'+actionToDo+'\", \"caseiframe-' + actionToDo + '\", \"body\", 0 );\' height=\'600px\' width=\'100%\' src=\'".$PM_SOAP->serverURL."/cases/casesHistoryDynaformPage_Ajax?actionAjax=' + act + '&rand=$rand&glpi_domain={$config->fields['domain']}\' ></iframe>'
-                                        );
-                            } else
-                            if( actionToDo.search( '^dynaformChangeLogViewHistory' ) == 0) {
-                                var ajaxResponse = $.parseJSON(ActionTabFrameGlobal.tabData);
-                                actionToDo='dynaformChangeLogViewHistory' + ajaxResponse.dynUID + ajaxResponse.dynDate ;
-                                //actionToDo = actionToDo.replace(' ', '_').replace(':', '-');
-                                    var act = 'dynaformChangeLogViewHistory&DYN_UID=' + ajaxResponse.dynUID + '&HISTORY_ID=' + ajaxResponse.tablename;
-                                addTabPanel( actionToDo,
-                                        ActionTabFrameGlobal.tabTitle,
-                                        '<iframe id=\'caseiframe-' + actionToDo + '\' style=\'border: none;\' onload=\'onOtherFrameLoad( \"'+actionToDo+'\", \"caseiframe-' + actionToDo + '\", \"form\", 0 );\' width=\'100%\' src=\'".$PM_SOAP->serverURL."/cases/casesHistoryDynaformPage_Ajax?actionAjax=' + act + '&rand=$rand&glpi_domain={$config->fields['domain']}\' ></iframe>'
-                                        );
-                           }
-                        }
-                    } ;
-
-                $(function() {
-//debugger;
-                    $('#processmakertabpanel').tabs( {active: ".array_search( $activePanel, $arrayProcessmakerTabPanel )."});
-                    //$('#processmakertabpanel').scrollabletabs();
-                    //$('#processmakertabpanel').position({
-                    //  my: 'left top',
-                    //  at: 'left top',
-                    //  of: '#processmakertabpaneltable'
-                    //});
-                    $('#processmakertabpanel').removeClass( 'ui-tabs' ) ;
-                    //debugger ;
-                    $('#processmakertabpanel').tabs({activate: function (event, ui) {
-                                                            try {
-                                                                //debugger;
-                                                                if( typeof onOtherFrameLoad == 'function' )
-                                            var newPanel = ui.newPanel.selector.replace('#', '') ;
-                                            var panelType = newPanel.split( '-' )[ 0 ].split( '$' )[ 0 ].split( '_' ) ;
-                                            var searchTag = '' ;
-                                            switch( panelType[0] ) {
-                                                case 'task' :
-                                                    searchTag = 'table' ;
-                                                    break ;
-
-                                                case 'historyDynaformGridPreview' :
-                                                case 'dynaformChangeLogViewHistory' :
-                                                    searchTag = 'form' ;
-                                                    break ;
-
-                                                case 'caseInfo' :
-                                                case 'caseMap' :
-                                                case 'caseHistory' :
-                                                case 'changeLog' :
-                                                case 'historyDynaformPage' :
-                                                case 'dynaformChangeLogViewHistory' :
-                                                case 'historyDynaformGridHistory' :
-                                                default :
-                                                    searchTag = 'body' ;
-                                                    break ;
-                                                                }
-                                            onOtherFrameLoad( newPanel, 'caseiframe-' + newPanel, searchTag, ".($project_type=='bpmn' ? "true" : "false" )."  ) ;
-                                                            } catch( evt ) {
-                                                                //debugger;
-                                                            }
-                                                        }
-                    });
-
-            ";
-
-            echo "});
-
-            ";
-
-            echo    "</script>";
-
-            echo "</td></tr>";
-
+         // show the list of cases attached to the $item ITIL object
+         if (!$PM_SOAP->config->fields['maintenance']) {
+            self::showForItem($item);
          } else {
-
-            //********************************
-            // no running case for this ticket
-            // propose to start one
-            //********************************
-            echo "<tr><th colspan='4'>".$LANG['processmaker']['item']['nocase'];
-
-            // check if item is not solved nor closed
-            if ($item->fields['status'] != 'solved' && $item->fields['status'] != 'closed' && $_SESSION['glpiactiveprofile']['interface'] != 'helpdesk') {
-               // propose case start
-               echo "&nbsp;-&nbsp;".$LANG['processmaker']['item']['startone'];
-               echo "</th></tr>";
-
-               echo "<tr class='tab_bg_2'><td class='tab_bg_2' colspan='1'>";
-               echo $LANG['processmaker']['item']['selectprocess']."&nbsp;";
-               echo "<input type='hidden' name='action' value='newcase'>";
-               echo "<input type='hidden' name='items_id' value='$items_id'>";
-               echo "<input type='hidden' name='itemtype' value='$itemtype'>";
-               PluginProcessmakerProcess::dropdown(array( 'value' => 0, 'entity' => $item->fields['entities_id'], 'name' => 'plugin_processmaker_processes_id', 'condition' => "is_active=1"));
-               echo "</td><td class='tab_bg_2'>";
-               echo "<input type='submit' name='additem' value='".$LANG['processmaker']['item']['start']."' class='submit'>";
-               echo "</td></tr>";
-            } else {
-               echo "</th></tr>";
-            }
+            PluginProcessmakerProcessmaker::showUnderMaintenance();
          }
-
-         echo "</table>";
-         Html::closeForm(true );
-         //echo "</form>";
-
-      } else {
-         // under maintenance
-         echo $LANG['processmaker']['config']['undermaintenance'];
       }
-
-      return true;
    }
+
 
    /**
    * Summary of deleteTasks
@@ -1053,22 +667,22 @@ class PluginProcessmakerCase extends CommonDBTM {
    }
 
 
-    /**
-     * Summary of deleteCase
-     * will delete case and all tasks associated with this case from the item
-     * @return true if case and tasks have been deleted from associated item and from case table
-     */
+   /**
+   * Summary of deleteCase
+   * will delete case and all tasks associated with this case from the item
+   * @return true if case and tasks have been deleted from associated item and from case table
+   */
    function deleteCase( ) {
       return $this->delete(['id' => $this->getID()]);
    }
 
 
-    /**
-     * Summary of cancelTasks
-     * will mark as information all to_do tasks
-     * BEWARE that this will only be done when case is in TO_DO status
-     * @return true if tasks have been deleted from associated item and from case table
-     */
+   /**
+   * Summary of cancelTasks
+   * will mark as information all to_do tasks
+   * BEWARE that this will only be done when case is in TO_DO status
+   * @return true if tasks have been deleted from associated item and from case table
+   */
    private function cancelTasks( ) {
       global $DB;
       $ret = false;
@@ -1117,7 +731,7 @@ class PluginProcessmakerCase extends CommonDBTM {
       if ($myCase->getFromItem( $item['item']->getType(), $item['item']->getID() )) {
          $pmVar = $myCase->getVariables(['GLPI_ITEM_CAN_BE_SOLVED']);
          // TODO also manage sub-cases
-         if ($myCase->fields['case_status'] != 'COMPLETED' && $myCase->fields['case_status'] != 'CANCELLED' && (!isset($pmVar['GLPI_ITEM_CAN_BE_SOLVED']) || $pmVar['GLPI_ITEM_CAN_BE_SOLVED'] != 1)) {
+         if ($myCase->fields['case_status'] != self::COMPLETED && $myCase->fields['case_status'] != self::CANCELLED && (!isset($pmVar['GLPI_ITEM_CAN_BE_SOLVED']) || $pmVar['GLPI_ITEM_CAN_BE_SOLVED'] != 1)) {
             // then item can't be solved
             return false;
          }
@@ -1185,9 +799,14 @@ class PluginProcessmakerCase extends CommonDBTM {
       return $menu;
    }
 
+   /**
+    * Summary of getSpecificValueToDisplay
+    * @param mixed $field
+    * @param mixed $values
+    * @param array $options
+    * @return mixed
+    */
    static function getSpecificValueToDisplay($field, $values, array $options=array()) {
-      global $LANG;
-
       if (!is_array($values)) {
          $values = array($field => $values);
       }
@@ -1217,7 +836,7 @@ class PluginProcessmakerCase extends CommonDBTM {
 
             }
          case 'case_status':
-            return $LANG['processmaker']['case']['statuses'][$values['case_status']];
+            return self::getStatus($values['case_status']);
 
          default:
             return parent::getSpecificValueToDisplay($field, $values, $options);
@@ -1277,18 +896,11 @@ class PluginProcessmakerCase extends CommonDBTM {
 
    static function getAllStatusArray($withmetaforsearch=false) {
 
-      $tab = array(self::DRAFT => _x('case_status', 'Draft'),
-                   self::TO_DO => _x('case_status', 'To do'),
-                   self::COMPLETED => _x('case_status', 'Completed'),
-                   self::CANCELLED  => _x('case_status', 'Cancelled'));
+      $tab = array(self::DRAFT     => _x('case_status', 'Draft', 'processmaker'),
+                   self::TO_DO     => _x('case_status', 'To do', 'processmaker'),
+                   self::COMPLETED => _x('case_status', 'Completed', 'processmaker'),
+                   self::CANCELLED => _x('case_status', 'Cancelled', 'processmaker'));
 
-      //if ($withmetaforsearch) {
-      //   $tab['notold']    = _x('status', 'Not solved');
-      //   $tab['notclosed'] = _x('status', 'Not closed');
-      //   $tab['process']   = __('Processing');
-      //   $tab['old']       = _x('status', 'Solved + Closed');
-      //   $tab['all']       = __('All');
-      //}
       return $tab;
    }
 
@@ -1305,11 +917,9 @@ class PluginProcessmakerCase extends CommonDBTM {
     * @return mixed
     */
    function getSearchOptions() {
-      global $LANG;
-
       $tab = array();
 
-      $tab['common'] = __('Process cases', 'processmaker'); //$LANG['processmaker']['title'][1];
+      $tab['common'] = __('Process cases', 'processmaker');
 
       $tab[1]['table']         = self::getTable();
       $tab[1]['field']         = 'id';
@@ -1365,13 +975,12 @@ class PluginProcessmakerCase extends CommonDBTM {
       $tab[14]['datatype']      = 'itemlink';
       $tab[14]['massiveaction'] = false;
 
-
       return $tab;
    }
 
 
    function showForm ($ID, $options=array('candel'=>false)) {
-      global $DB, $CFG_GLPI, $LANG;
+      //global $DB, $CFG_GLPI, $LANG;
 
       $options['candel'] = true;
 
@@ -1449,6 +1058,12 @@ class PluginProcessmakerCase extends CommonDBTM {
 
    }
 
+
+   /**
+    * Summary of defineTabs
+    * @param mixed $options
+    * @return array
+    */
    function defineTabs($options=array()) {
 
       //        $ong = array('empty' => $this->getTypeName(1));
@@ -1466,11 +1081,6 @@ class PluginProcessmakerCase extends CommonDBTM {
       $this->addStandardTab('PluginProcessmakerCasechangelog', $ong, $options);
 
       $this->addStandardTab('PluginProcessmakerCasedynaform', $ong, $options);
-
-      //$this->addStandardTab('Ticket', $ong, $options);
-      //$this->addStandardTab('Log', $ong, $options);
-
-      //TODO we are going to add tabs like tasks, map, history, dynaform...
 
       return $ong;
    }

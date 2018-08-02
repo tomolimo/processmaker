@@ -2,22 +2,17 @@
 
 include_once ("../../../inc/includes.php");
 
-Html::header($LANG['processmaker']['title'][1], $_SERVER['PHP_SELF'], "helpdesk", "PluginProcessmakerCase", "cases");
+Html::header(__('ProcessMaker', 'processmaker'), $_SERVER['PHP_SELF'], "helpdesk", "PluginProcessmakerCase", "cases");
 
-if (Session::haveRightsOr("plugin_processmaker_config", [READ, UPDATE])) {
-   //$process=new PluginProcessmakerProcess();
-
-   //if (isset( $_REQUEST['refresh'] ) && Session::haveRight("plugin_processmaker_config", UPDATE)) {
-   //   $process->refresh();
-   //   Html::back();
-   //}
-
-   //$process->title();
-
-   Search::show('PluginProcessmakerCase');
-
+if (!$PM_SOAP->config->fields['maintenance']) {
+   if (Session::haveRightsOr("plugin_processmaker_config", [READ, UPDATE])) {
+      Search::show('PluginProcessmakerCase');
+   } else {
+      Html::displayRightError();
+   }
 } else {
-   Html::displayRightError();
+   PluginProcessmakerProcessmaker::showUnderMaintenance();
 }
+
 Html::footer();
 

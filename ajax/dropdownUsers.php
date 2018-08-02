@@ -99,7 +99,7 @@ if ($_REQUEST['page'] == 1 && empty($_REQUEST['searchText'])) {
 
 if (count($users)) {
    foreach ($users as $ID => $output) {
-      $title = sprintf(__('%1$s - %2$s'), $output, $logins[$ID]);
+      $title = sprintf('%1$s - %2$s', $output, $logins[$ID]);
 
       array_push($datas, array('id'    => $ID,
                                'text'  => $output,

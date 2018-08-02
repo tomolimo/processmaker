@@ -22,8 +22,7 @@ class PluginProcessmakerTask extends CommonITILTask
     * @param $nb : number of item in the type (default 0)
     **/
    static function getTypeName($nb=0) {
-      return _n('Process case task', 'Process case tasks', $nb);
-
+      return _n('Process case task', 'Process case tasks', $nb, 'processmaker');
    }
 
    function getItilObjectItemType() {
@@ -71,7 +70,7 @@ class PluginProcessmakerTask extends CommonITILTask
 
       $query = "SELECT glpi_tickettasks.id as taskID from $itemTypeTaskTable
                   INNER JOIN $selfTable on $selfTable.items_id=$itemTypeTaskTable.id
-                  WHERE $itemTypeTaskTable.state=1 and $selfTable.case_id='$case_id';";
+                  WHERE $itemTypeTaskTable.state=1 and $selfTable.plugin_processmaker_cases_id='$case_id';";
       foreach ($DB->request($query) as $row) {
          $ret[$row['taskID']]=$row['taskID'];
       }
@@ -130,7 +129,9 @@ class PluginProcessmakerTask extends CommonITILTask
 
 
    function getTabNameForItem(CommonGLPI $case, $withtemplate = 0){
-      global $DB, $LANG;
+      global $DB;
+
+      $tab = [];
 
       $caseInfo = $case->getCaseInfo();
 
@@ -156,7 +157,6 @@ class PluginProcessmakerTask extends CommonITILTask
 
          $caseInfo->currentUsers = $case->sortTasks($caseInfo->currentUsers, $GLPICurrentPMUserId);
 
-         $tab = [];
          foreach ($caseInfo->currentUsers as $key => $caseUser) {
             $title = $caseUser->taskName;
             if (isset($tasks[$caseUser->delIndex])) {

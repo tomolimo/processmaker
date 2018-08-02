@@ -1,0 +1,548 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: processmaker-plugin\n"
+"POT-Creation-Date: 2018-08-02 14:42+0200\n"
+"PO-Revision-Date: 2018-08-02 16:54+0200\n"
+"Last-Translator: tomolimo\n"
+"Language-Team: Czech\n"
+"Language: cs_CZ\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 2.1.1\n"
+"X-Poedit-Basepath: ..\n"
+"Plural-Forms: nplurals=4; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 3;\n"
+"X-Poedit-KeywordsList: ;__:1,2t;_e:1,2t;_x:1c,2,3t;_n:1,2,4t;__s:1,2t;_ex:1c,2,3t;_sx:1c,2,3t;_nx:1c,2,3,5t\n"
+"X-Crowdin-Project: processmaker-plugin\n"
+"X-Crowdin-Language: cs\n"
+"X-Crowdin-File: /3.3.0/source.po\n"
+"X-Poedit-SearchPath-0: ajax\n"
+"X-Poedit-SearchPath-1: front\n"
+"X-Poedit-SearchPath-2: inc\n"
+"X-Poedit-SearchPath-3: install\n"
+"X-Poedit-SearchPath-4: js\n"
+"X-Poedit-SearchPath-5: hook.php\n"
+"X-Poedit-SearchPath-6: setup.php\n"
+
+#: ajax/task_users.php:25
+msgid "Re-assign task to"
+msgstr "Znovu přiřadit úkol"
+
+#: ajax/task_users.php:45
+msgid "Re-assign"
+msgstr "Znovu přiřadit"
+
+#: front/case.form.php:35
+msgid "Case has been deleted!"
+msgstr "Případ byl smazán!"
+
+#: front/case.form.php:37
+msgid "Unable to delete case!"
+msgstr "Případ se nedaří smazat!"
+
+#: front/case.form.php:50
+msgid "Case has been cancelled!"
+msgstr "Případ byl zrušen!"
+
+#: front/case.form.php:52 front/case.form.php:55
+msgid "Unable to cancel case!"
+msgstr "Případ se nedaří zrušit!"
+
+#: front/case.form.php:76 front/case.form.php:78 inc/case.class.php:922
+msgid "Process cases"
+msgstr ""
+
+#: front/case.php:5 front/caselink.form.php:27 front/caselink.php:5
+#: front/process.form.php:25 front/process.php:5 inc/caselink.class.php:143
+#: inc/config.class.php:50 inc/config.class.php:347 inc/process.class.php:393
+#: inc/profile.class.php:52 inc/profile.class.php:83
+msgid "ProcessMaker"
+msgstr "ProcessMaker"
+
+#: front/case.php:14 inc/case.class.php:644
+msgid "ProcessMaker plugin is under maintenance, please retry later, thank you."
+msgstr ""
+
+#: front/processmaker.form.php:85
+msgid "Task re-assigned!"
+msgstr "Úkol znovu přiřazen!"
+
+#: front/processmaker.form.php:87
+msgid "Error re-assigning task: "
+msgstr "Chyba při opětovném přiřazování úkolu: "
+
+#: front/processmaker.form.php:90
+msgid "Task already assigned to this person!"
+msgstr "Úkol už je této osobě přiřazen!"
+
+#: front/processmaker.helpdesk.form.php:21
+msgid "Process - Case"
+msgstr "Proces – případ"
+
+#: front/processmaker.helpdesk.form.php:24 inc/case.class.php:528
+msgid "Select the process you want to add"
+msgstr "Vyberte proces který chcete spustit"
+
+#: hook.php:31 inc/taskcategory.class.php:98
+msgid "Synchronize Task List"
+msgstr "Synchronizovat seznam úkolů"
+
+#: hook.php:158 inc/case.class.php:77
+msgid "Case"
+msgstr "Případ"
+
+#: hook.php:158 inc/case.class.php:509 inc/case.class.php:966
+msgid "Status"
+msgstr "Stav"
+
+#: inc/case.class.php:23 inc/case.class.php:85 inc/case.class.php:87
+msgid "Process case"
+msgid_plural "Process cases"
+msgstr[0] "Process case"
+msgstr[1] "Process cases"
+msgstr[2] ""
+msgstr[3] ""
+
+#: inc/case.class.php:285
+msgid "Case properties"
+msgstr ""
+
+#: inc/case.class.php:287 inc/case.class.php:507 inc/case.class.php:940
+#: inc/process.class.php:524
+msgid "Process"
+msgstr "Proces"
+
+#: inc/case.class.php:290
+msgid "Case title"
+msgstr ""
+
+#: inc/case.class.php:293
+msgid "Case number"
+msgstr ""
+
+#: inc/case.class.php:296
+msgid "Case status"
+msgstr ""
+
+#: inc/case.class.php:299
+msgid "Case guid"
+msgstr ""
+
+#: inc/case.class.php:302
+msgid "Creator"
+msgstr ""
+
+#: inc/case.class.php:305
+msgid "Creation date"
+msgstr ""
+
+#: inc/case.class.php:308
+msgid "Last update"
+msgstr ""
+
+#: inc/case.class.php:323
+msgid "Current task(s) properties"
+msgstr ""
+
+#: inc/case.class.php:327
+msgid "Task"
+msgstr ""
+
+#: inc/case.class.php:328
+msgid "Task guid"
+msgstr ""
+
+#: inc/case.class.php:329
+msgid "Current user"
+msgstr ""
+
+#: inc/case.class.php:330
+msgid "Task delegation date"
+msgstr ""
+
+#: inc/case.class.php:338
+msgid "To be claimed"
+msgstr ""
+
+#: inc/case.class.php:407
+msgid "Case item"
+msgstr ""
+
+#: inc/case.class.php:429
+msgid "Case cancellation"
+msgstr ""
+
+#: inc/case.class.php:430
+msgid "Cancel case"
+msgstr ""
+
+#: inc/case.class.php:434
+msgid "Confirm cancellation?"
+msgstr ""
+
+#: inc/case.class.php:434 inc/profile.class.php:23
+msgid "Cancel"
+msgstr "Storno"
+
+#: inc/case.class.php:455
+msgid "Case deletion"
+msgstr ""
+
+#: inc/case.class.php:456
+msgid "Delete case"
+msgstr ""
+
+#: inc/case.class.php:508 inc/case.class.php:933
+msgid "Title"
+msgstr ""
+
+#: inc/case.class.php:510 inc/case.class.php:974
+msgid "Subcase of"
+msgstr ""
+
+#: inc/case.class.php:525
+msgid "Add a new case"
+msgstr ""
+
+#: inc/case.class.php:899
+msgctxt "case_status"
+msgid "Draft"
+msgstr "Koncept"
+
+#: inc/case.class.php:900
+msgctxt "case_status"
+msgid "To do"
+msgstr "Dodělat"
+
+#: inc/case.class.php:901
+msgctxt "case_status"
+msgid "Completed"
+msgstr "Dokončeno"
+
+#: inc/case.class.php:902
+msgctxt "case_status"
+msgid "Cancelled"
+msgstr "Zrušeno"
+
+#: inc/case.class.php:926
+msgid "ID"
+msgstr ""
+
+#: inc/case.class.php:953
+msgid "Item"
+msgstr ""
+
+#: inc/case.class.php:960
+msgid "Item entity"
+msgstr ""
+
+#: inc/casechangelog.class.php:35
+msgid "Change log"
+msgstr "Zobrazit: záznam změn"
+
+#: inc/casedynaform.class.php:80
+msgid "Dynaforms"
+msgstr "Zobrazit: dynamické formuláře"
+
+#: inc/casehistory.class.php:35
+msgid "History"
+msgstr "Zobrazit: historie případu"
+
+#: inc/caselink.class.php:51
+msgid "Case-links"
+msgstr "Propojení případů"
+
+#: inc/caselink.class.php:53
+msgid "Case-link"
+msgstr "Propojení případu"
+
+#: inc/caselink.class.php:75 inc/caselink.class.php:165
+msgid "External data"
+msgstr ""
+
+#: inc/caselink.class.php:80 inc/caselink.class.php:171
+msgid "Self"
+msgstr ""
+
+#: inc/caselink.class.php:85 inc/caselink.class.php:189
+msgid "Source task GUID"
+msgstr ""
+
+#: inc/caselink.class.php:93 inc/caselink.class.php:195
+msgid "Target task GUID"
+msgstr ""
+
+#: inc/caselink.class.php:101 inc/caselink.class.php:207
+msgid "Target process GUID"
+msgstr ""
+
+#: inc/caselink.class.php:110 inc/caselink.class.php:201
+msgid "Target dynaform GUID"
+msgstr ""
+
+#: inc/caselink.class.php:115 inc/caselink.class.php:213
+msgid "Source condition"
+msgstr ""
+
+#: inc/caselink.class.php:121 inc/caselink.class.php:177
+msgid "Claim target task"
+msgstr ""
+
+#: inc/caselink.class.php:126 inc/caselink.class.php:183
+msgid "External application JSON config"
+msgstr ""
+
+#: inc/casemap.class.php:43
+msgid "Map"
+msgstr "Zobrazit: mapa případu"
+
+#: inc/config.class.php:41
+msgid "ProcessMaker setup"
+msgstr "Nastavení ProcessMaker"
+
+#: inc/config.class.php:156
+msgid "Server URL (must be in same domain than GLPI)"
+msgstr "URL adresa serveru (je třeba, aby byla ze stejné domény jako GLPI)"
+
+#: inc/config.class.php:161
+msgid "Common domain with GLPI"
+msgstr "Společná doména s GLPI"
+
+#: inc/config.class.php:190
+msgid "None!"
+msgstr "Žádná!"
+
+#: inc/config.class.php:199
+msgid "Workspace Name"
+msgstr "Název pracovního prostoru"
+
+#: inc/config.class.php:204
+msgid "Server administrator name"
+msgstr "Uživatelské jméno správce serveru"
+
+#: inc/config.class.php:209
+msgid "Server administrator password"
+msgstr "Heslo správce serveru"
+
+#: inc/config.class.php:215 inc/config.class.php:255
+msgid "Connection status"
+msgstr "Stav spojení"
+
+#: inc/config.class.php:231
+msgid "SQL server setup"
+msgstr "Nastavení SQL serveru"
+
+#: inc/config.class.php:234
+msgid "SQL server (MariaDB or MySQL)"
+msgstr ""
+
+#: inc/config.class.php:239
+msgid "Database name"
+msgstr ""
+
+#: inc/config.class.php:244
+msgid "SQL user"
+msgstr ""
+
+#: inc/config.class.php:249
+msgid "SQL password"
+msgstr ""
+
+#: inc/config.class.php:266
+msgid "Theme Name"
+msgstr "Název motivu vzhledu"
+
+#: inc/config.class.php:272
+msgid "Main Task Category (edit to change name)"
+msgstr "Hlavní kategorie úkolu (pro změnu názvu upravte)"
+
+#: inc/config.class.php:279
+msgid "Task Writer (edit to change name)"
+msgstr "Úkol zapsal (pro změnu jména upravte)"
+
+#: inc/config.class.php:299
+msgid "Group in ProcessMaker which will contain all GLPI users"
+msgstr "Skupina v ProcessMaker která bude obsahovat všechny uživatele z GLPI"
+
+#: inc/config.class.php:323
+msgid "Processmaker system information"
+msgstr ""
+
+#: inc/config.class.php:327 inc/config.class.php:337
+msgid "Version"
+msgstr ""
+
+#: inc/config.class.php:328
+msgid "Web server"
+msgstr ""
+
+#: inc/config.class.php:329
+msgid "Server name"
+msgstr ""
+
+#: inc/config.class.php:330
+msgid "PHP version"
+msgstr ""
+
+#: inc/config.class.php:331
+msgid "DB version"
+msgstr ""
+
+#: inc/config.class.php:332
+msgid "DB server IP"
+msgstr ""
+
+#: inc/config.class.php:333
+msgid "DB name"
+msgstr ""
+
+#: inc/config.class.php:334
+msgid "User browser"
+msgstr ""
+
+#: inc/config.class.php:335
+msgid "User IP"
+msgstr ""
+
+#: inc/config.class.php:337
+msgid "Not yet!"
+msgstr ""
+
+#: inc/process.class.php:350
+msgid "Synchronize Process List"
+msgstr "Synchronizovat seznam procesů"
+
+#: inc/process.class.php:427 inc/process.class.php:565
+msgid "Process GUID"
+msgstr "Nikde se neopakující identifikátor procesu"
+
+#: inc/process.class.php:433
+msgid "Project type"
+msgstr "Typ projektu"
+
+#: inc/process.class.php:439
+msgid "Hide case number and title"
+msgstr "Skrýt číslo a titulek případu"
+
+#: inc/process.class.php:445
+msgid "Insert Task Category"
+msgstr "Vložit kategorii úkolu"
+
+#: inc/process.class.php:457 inc/process.class.php:585
+msgid "Ticket type (self-service)"
+msgstr "Typ požadavku (samoobslužné)"
+
+#: inc/process.class.php:495
+msgctxt "process_type"
+msgid "Classic"
+msgstr "Klasický"
+
+#: inc/process.class.php:496
+msgctxt "process_type"
+msgid "BPMN"
+msgstr "BPMN"
+
+#: inc/process.class.php:522
+msgid "Processes"
+msgstr "Procesy"
+
+#: inc/process.class.php:575
+msgid "Hide case number and title in task descriptions"
+msgstr "V popisech úkolů skrýt číslo a titulek"
+
+#: inc/process.class.php:580
+msgid "Insert Task Category comments in Task Description"
+msgstr "Vložit komentáře kategorie úkolu do jeho popisu"
+
+#: inc/process.class.php:603
+msgid "ITIL Category (self-service)"
+msgstr "ITIL kategorie (samoobslužné)"
+
+#: inc/process.class.php:632
+msgid "Project type (to be changed if not up-to-date)"
+msgstr "Typ projektu (pokud není aktuální, bude změněno)"
+
+#: inc/process_profile.class.php:26 inc/process_profile.class.php:45
+msgid "Authorizations"
+msgstr "Pověření"
+
+#: inc/process_profile.class.php:179
+msgid "Authorization not added: already existing!"
+msgstr ""
+
+#: inc/processmaker.class.php:116 inc/processmaker.class.php:118
+msgctxt "errors"
+msgid "Error creating case!"
+msgstr "Chyba při vytváření případu!"
+
+#: inc/processmaker.class.php:117
+msgctxt "errors"
+msgid "Can't create case: no rights for it!"
+msgstr "Případ se nedaří vytvořit: nedostatečná oprávnění!"
+
+#: inc/processmaker.class.php:984
+msgid "Syncs GLPI users and groups into ProcessMaker."
+msgstr "Synchronizuje uživatele a skupiny z GLPI do ProcessMaker."
+
+#: inc/processmaker.class.php:986
+msgid "Cleaning of orphan cases."
+msgstr "Čištění osiřelých případů."
+
+#: inc/processmaker.class.php:986
+msgid "Number of days to keep orphan cases"
+msgstr "Po kolik dnů ponechávat osiřelé případy"
+
+#: inc/processmaker.class.php:988
+msgid "To apply task actions between cases."
+msgstr "Pro uplatnění akcí úkolu mezi případy."
+
+#: inc/processmaker.class.php:1696
+msgid "Case title: "
+msgstr "Titulek případu: "
+
+#: inc/processmaker.class.php:2178
+msgid "A 'Case' is running!"
+msgstr "Případ je v běhu!"
+
+#: inc/processmaker.class.php:2179
+msgid "You must manage it first (see 'Process - Case' tab)!"
+msgstr "Nejprve je třeba toto spravovat (viz panel „Proces – případ“)!"
+
+#: inc/profile.class.php:17
+msgid "Process configuration"
+msgstr "Nastavení procesu"
+
+#: inc/profile.class.php:21
+msgid "Cases"
+msgstr ""
+
+#: inc/task.class.php:25
+msgid "Process case task"
+msgid_plural "Process case tasks"
+msgstr[0] "Process case task"
+msgstr[1] "Process case tasks"
+msgstr[2] ""
+msgstr[3] ""
+
+#: inc/taskcategory.class.php:21 inc/taskcategory.class.php:31
+msgid "Task List"
+msgstr "Seznam úkolů"
+
+#: inc/taskcategory.class.php:32
+msgid "Task name"
+msgstr "Název úkolu"
+
+#: inc/taskcategory.class.php:34 inc/taskcategory.class.php:60
+msgid "Start"
+msgstr "Spustit"
+
+#: inc/taskcategory.class.php:35
+msgid "Task GUID"
+msgstr "Nikde se neopakující identifikátor úkolu"
+
+#: inc/taskcategory.class.php:38 inc/taskcategory.class.php:78
+msgid "Sub-process"
+msgstr ""
+
+#~ msgid "Plugin is under maintenance, please retry later, thank you."
+#~ msgstr "Plugin is under maintenance, please retry later, thank you."

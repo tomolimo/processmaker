@@ -24,7 +24,7 @@ if (isset($_REQUEST["update"])) {
    $PluginCaselink->redirectToList();
 } else {
 
-   Html::header($LANG['processmaker']['title'][1], $_SERVER['PHP_SELF'], "tools", "PluginProcessmakerMenu", "caselinks");
+   Html::header(__('ProcessMaker', 'processmaker'), $_SERVER['PHP_SELF'], "tools", "PluginProcessmakerMenu", "caselinks");
 
    $PluginCaselink->display($_REQUEST);
 

@@ -23,13 +23,12 @@ class PluginProcessmakerProcess_Profile extends CommonDBTM
    }
 
    function getTabNameForItem( CommonGLPI $item, $withtemplate=0) {
-      global $LANG;
-      return $LANG['processmaker']['title'][4];
+      return __('Authorizations', 'processmaker');
    }
 
    static function displayTabContentForItem(CommonGLPI $item, $tabnum=1, $withtemplate=0) {
 
-      global $DB,$CFG_GLPI, $LANG;
+      global $DB;
 
       $ID = $item->getField('id');
 
@@ -43,7 +42,7 @@ class PluginProcessmakerProcess_Profile extends CommonDBTM
          echo "<form name='entityprocess_form$rand' id='entityprocess_form$rand' method='post' action='";
          echo Toolbox::getItemTypeFormURL(__CLASS__)."'>";
          echo "<table class='tab_cadre_fixe'>";
-         echo "<tr class='tab_bg_1'><th colspan='6'>".$LANG['processmaker']['title'][4]."</tr>";
+         echo "<tr class='tab_bg_1'><th colspan='6'>".__('Authorizations', 'processmaker')."</tr>";
 
          echo "<tr class='tab_bg_2'><td class='center'>";
          echo "<input type='hidden' name='plugin_processmaker_processes_id' value='$ID'>";
@@ -99,7 +98,7 @@ class PluginProcessmakerProcess_Profile extends CommonDBTM
             $header_end    .= "</th>";
          }
          $header_end .= "<th>"._n('Entity', 'Entities', Session::getPluralNumber())."</th>";
-         $header_end .= "<th>".sprintf(__('%1$s (%2$s)'), Profile::getTypeName(Session::getPluralNumber()),
+         $header_end .= "<th>".sprintf('%1$s (%2$s)', Profile::getTypeName(Session::getPluralNumber()),
                                        __('D=Dynamic, R=Recursive'));
          $header_end .= "</th></tr>";
          echo $header_begin.$header_top.$header_end;
@@ -119,7 +118,7 @@ class PluginProcessmakerProcess_Profile extends CommonDBTM
 
             $link = $data["completename"];
             if ($_SESSION["glpiis_ids_visible"]) {
-                $link = sprintf(__('%1$s (%2$s)'), $link, $data["entities_id"]);
+                $link = sprintf('%1$s (%2$s)', $link, $data["entities_id"]);
             }
 
             if ($canshowentity) {
@@ -137,12 +136,12 @@ class PluginProcessmakerProcess_Profile extends CommonDBTM
             }
 
             if ($data["is_recursive"]) {
-                $entname = sprintf(__('%1$s %2$s'), $entname, "<span class='b'>(");
+                $entname = sprintf('%1$s %2$s', $entname, "<span class='b'>(");
                if ($data["is_recursive"]) {
                   //TRANS: letter 'R' for Recursive
-                  $entname = sprintf(__('%1$s%2$s'), $entname, __('R'));
+                  $entname = sprintf('%1$s%2$s', $entname, __('R'));
                }
-                $entname = sprintf(__('%1$s%2$s'), $entname, ")</span>");
+                $entname = sprintf('%1$s%2$s', $entname, ")</span>");
             }
             echo "<td>".$entname."</td>";
             echo "</tr>";

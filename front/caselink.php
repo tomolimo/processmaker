@@ -2,7 +2,7 @@
 
 include_once ("../../../inc/includes.php");
 
-Html::header($LANG['processmaker']['title'][1], $_SERVER['PHP_SELF'], "tools", "PluginProcessmakerMenu", "caselinks");
+Html::header(__('ProcessMaker', 'processmaker'), $_SERVER['PHP_SELF'], "tools", "PluginProcessmakerMenu", "caselinks");
 
 if (Session::haveRightsOr("plugin_processmaker_config", [READ, UPDATE])) {
 

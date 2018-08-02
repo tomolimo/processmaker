@@ -1,0 +1,547 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: processmaker-plugin\n"
+"POT-Creation-Date: 2018-08-02 14:42+0200\n"
+"PO-Revision-Date: 2018-08-02 16:55+0200\n"
+"Last-Translator: tomolimo\n"
+"Language-Team: English, United Kingdom\n"
+"Language: en_GB\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 2.1.1\n"
+"X-Poedit-Basepath: ..\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Poedit-KeywordsList: ;__:1,2t;_e:1,2t;_x:1c,2,3t;_n:1,2,4t;__s:1,2t;"
+"_ex:1c,2,3t;_sx:1c,2,3t;_nx:1c,2,3,5t\n"
+"X-Crowdin-Project: processmaker-plugin\n"
+"X-Crowdin-Language: en-GB\n"
+"X-Crowdin-File: /3.3.0/source.po\n"
+"X-Poedit-SearchPath-0: ajax\n"
+"X-Poedit-SearchPath-1: front\n"
+"X-Poedit-SearchPath-2: inc\n"
+"X-Poedit-SearchPath-3: install\n"
+"X-Poedit-SearchPath-4: js\n"
+"X-Poedit-SearchPath-5: hook.php\n"
+"X-Poedit-SearchPath-6: setup.php\n"
+
+#: ajax/task_users.php:25
+msgid "Re-assign task to"
+msgstr "Re-assign task to"
+
+#: ajax/task_users.php:45
+msgid "Re-assign"
+msgstr "Re-assign"
+
+#: front/case.form.php:35
+msgid "Case has been deleted!"
+msgstr "Case has been deleted!"
+
+#: front/case.form.php:37
+msgid "Unable to delete case!"
+msgstr "Unable to delete case!"
+
+#: front/case.form.php:50
+msgid "Case has been cancelled!"
+msgstr "Case has been cancelled!"
+
+#: front/case.form.php:52 front/case.form.php:55
+msgid "Unable to cancel case!"
+msgstr "Unable to cancel case!"
+
+#: front/case.form.php:76 front/case.form.php:78 inc/case.class.php:922
+msgid "Process cases"
+msgstr "Process cases"
+
+#: front/case.php:5 front/caselink.form.php:27 front/caselink.php:5
+#: front/process.form.php:25 front/process.php:5 inc/caselink.class.php:143
+#: inc/config.class.php:50 inc/config.class.php:347 inc/process.class.php:393
+#: inc/profile.class.php:52 inc/profile.class.php:83
+msgid "ProcessMaker"
+msgstr "ProcessMaker"
+
+#: front/case.php:14 inc/case.class.php:644
+msgid ""
+"ProcessMaker plugin is under maintenance, please retry later, thank you."
+msgstr ""
+"ProcessMaker plugin is under maintenance, please retry later, thank you."
+
+#: front/processmaker.form.php:85
+msgid "Task re-assigned!"
+msgstr "Task re-assigned!"
+
+#: front/processmaker.form.php:87
+msgid "Error re-assigning task: "
+msgstr "Error re-assigning task: "
+
+#: front/processmaker.form.php:90
+msgid "Task already assigned to this person!"
+msgstr "Task already assigned to this person!"
+
+#: front/processmaker.helpdesk.form.php:21
+msgid "Process - Case"
+msgstr "Process - Case"
+
+#: front/processmaker.helpdesk.form.php:24 inc/case.class.php:528
+msgid "Select the process you want to add"
+msgstr "Select the process you want to add"
+
+#: hook.php:31 inc/taskcategory.class.php:98
+msgid "Synchronize Task List"
+msgstr "Synchronize Task List"
+
+#: hook.php:158 inc/case.class.php:77
+msgid "Case"
+msgstr "Case"
+
+#: hook.php:158 inc/case.class.php:509 inc/case.class.php:966
+msgid "Status"
+msgstr "Status"
+
+#: inc/case.class.php:23 inc/case.class.php:85 inc/case.class.php:87
+msgid "Process case"
+msgid_plural "Process cases"
+msgstr[0] "Process case"
+msgstr[1] "Process cases"
+
+#: inc/case.class.php:285
+msgid "Case properties"
+msgstr "Case properties"
+
+#: inc/case.class.php:287 inc/case.class.php:507 inc/case.class.php:940
+#: inc/process.class.php:524
+msgid "Process"
+msgstr "Process"
+
+#: inc/case.class.php:290
+msgid "Case title"
+msgstr "Case title"
+
+#: inc/case.class.php:293
+msgid "Case number"
+msgstr "Case number"
+
+#: inc/case.class.php:296
+msgid "Case status"
+msgstr "Case status"
+
+#: inc/case.class.php:299
+msgid "Case guid"
+msgstr "Case guid"
+
+#: inc/case.class.php:302
+msgid "Creator"
+msgstr "Creator"
+
+#: inc/case.class.php:305
+msgid "Creation date"
+msgstr "Creation date"
+
+#: inc/case.class.php:308
+msgid "Last update"
+msgstr "Last update"
+
+#: inc/case.class.php:323
+msgid "Current task(s) properties"
+msgstr "Current task properties"
+
+#: inc/case.class.php:327
+msgid "Task"
+msgstr "Task"
+
+#: inc/case.class.php:328
+msgid "Task guid"
+msgstr "Task guid"
+
+#: inc/case.class.php:329
+msgid "Current user"
+msgstr "Current user"
+
+#: inc/case.class.php:330
+msgid "Task delegation date"
+msgstr "Task delegation date"
+
+#: inc/case.class.php:338
+msgid "To be claimed"
+msgstr "To be claimed"
+
+#: inc/case.class.php:407
+msgid "Case item"
+msgstr "Case item"
+
+#: inc/case.class.php:429
+msgid "Case cancellation"
+msgstr "Case cancellation"
+
+#: inc/case.class.php:430
+msgid "Cancel case"
+msgstr "Cancel case"
+
+#: inc/case.class.php:434
+msgid "Confirm cancellation?"
+msgstr "Confirm cancellation?"
+
+#: inc/case.class.php:434 inc/profile.class.php:23
+msgid "Cancel"
+msgstr "Cancel"
+
+#: inc/case.class.php:455
+msgid "Case deletion"
+msgstr "Case deletion"
+
+#: inc/case.class.php:456
+msgid "Delete case"
+msgstr "Delete case"
+
+#: inc/case.class.php:508 inc/case.class.php:933
+msgid "Title"
+msgstr "Title"
+
+#: inc/case.class.php:510 inc/case.class.php:974
+msgid "Subcase of"
+msgstr "Subcase of"
+
+#: inc/case.class.php:525
+msgid "Add a new case"
+msgstr "Add a new case"
+
+#: inc/case.class.php:899
+msgctxt "case_status"
+msgid "Draft"
+msgstr "Draft"
+
+#: inc/case.class.php:900
+msgctxt "case_status"
+msgid "To do"
+msgstr "To do"
+
+#: inc/case.class.php:901
+msgctxt "case_status"
+msgid "Completed"
+msgstr "Completed"
+
+#: inc/case.class.php:902
+msgctxt "case_status"
+msgid "Cancelled"
+msgstr "Cancelled"
+
+#: inc/case.class.php:926
+msgid "ID"
+msgstr "ID"
+
+#: inc/case.class.php:953
+msgid "Item"
+msgstr "Item"
+
+#: inc/case.class.php:960
+msgid "Item entity"
+msgstr "Item entity"
+
+#: inc/casechangelog.class.php:35
+msgid "Change log"
+msgstr "Change log"
+
+#: inc/casedynaform.class.php:80
+msgid "Dynaforms"
+msgstr "Dynaforms"
+
+#: inc/casehistory.class.php:35
+msgid "History"
+msgstr "History"
+
+#: inc/caselink.class.php:51
+msgid "Case-links"
+msgstr "Case-links"
+
+#: inc/caselink.class.php:53
+msgid "Case-link"
+msgstr "Case-link"
+
+#: inc/caselink.class.php:75 inc/caselink.class.php:165
+msgid "External data"
+msgstr "External data"
+
+#: inc/caselink.class.php:80 inc/caselink.class.php:171
+msgid "Self"
+msgstr "Self"
+
+#: inc/caselink.class.php:85 inc/caselink.class.php:189
+msgid "Source task GUID"
+msgstr "Source task GUID"
+
+#: inc/caselink.class.php:93 inc/caselink.class.php:195
+msgid "Target task GUID"
+msgstr "Target task GUID"
+
+#: inc/caselink.class.php:101 inc/caselink.class.php:207
+msgid "Target process GUID"
+msgstr "Target process GUID"
+
+#: inc/caselink.class.php:110 inc/caselink.class.php:201
+msgid "Target dynaform GUID"
+msgstr "Target dynaform GUID"
+
+#: inc/caselink.class.php:115 inc/caselink.class.php:213
+msgid "Source condition"
+msgstr "Source condition"
+
+#: inc/caselink.class.php:121 inc/caselink.class.php:177
+msgid "Claim target task"
+msgstr "Claim target task"
+
+#: inc/caselink.class.php:126 inc/caselink.class.php:183
+msgid "External application JSON config"
+msgstr "External application JSON config"
+
+#: inc/casemap.class.php:43
+msgid "Map"
+msgstr "Map"
+
+#: inc/config.class.php:41
+msgid "ProcessMaker setup"
+msgstr "ProcessMaker setup"
+
+#: inc/config.class.php:156
+msgid "Server URL (must be in same domain than GLPI)"
+msgstr "Server URL (must be in same domain than GLPI)"
+
+#: inc/config.class.php:161
+msgid "Common domain with GLPI"
+msgstr "Common domain with GLPI"
+
+#: inc/config.class.php:190
+msgid "None!"
+msgstr "None!"
+
+#: inc/config.class.php:199
+msgid "Workspace Name"
+msgstr "Workspace Name"
+
+#: inc/config.class.php:204
+msgid "Server administrator name"
+msgstr "Server administrator name"
+
+#: inc/config.class.php:209
+msgid "Server administrator password"
+msgstr "Server administrator password"
+
+#: inc/config.class.php:215 inc/config.class.php:255
+msgid "Connection status"
+msgstr "Connection status"
+
+#: inc/config.class.php:231
+msgid "SQL server setup"
+msgstr "SQL server setup"
+
+#: inc/config.class.php:234
+msgid "SQL server (MariaDB or MySQL)"
+msgstr "SQL server (MariaDB or MySQL)"
+
+#: inc/config.class.php:239
+msgid "Database name"
+msgstr "Database name"
+
+#: inc/config.class.php:244
+msgid "SQL user"
+msgstr "SQL user"
+
+#: inc/config.class.php:249
+msgid "SQL password"
+msgstr "SQL password"
+
+#: inc/config.class.php:266
+msgid "Theme Name"
+msgstr "Theme Name"
+
+#: inc/config.class.php:272
+msgid "Main Task Category (edit to change name)"
+msgstr "Main Task Category (edit to change name)"
+
+#: inc/config.class.php:279
+msgid "Task Writer (edit to change name)"
+msgstr "Task Writer (edit to change name)"
+
+#: inc/config.class.php:299
+msgid "Group in ProcessMaker which will contain all GLPI users"
+msgstr "Group in ProcessMaker which will contain all GLPI users"
+
+#: inc/config.class.php:323
+msgid "Processmaker system information"
+msgstr "Processmaker system information"
+
+#: inc/config.class.php:327 inc/config.class.php:337
+msgid "Version"
+msgstr "Version"
+
+#: inc/config.class.php:328
+msgid "Web server"
+msgstr "Web server"
+
+#: inc/config.class.php:329
+msgid "Server name"
+msgstr "Server name"
+
+#: inc/config.class.php:330
+msgid "PHP version"
+msgstr "PHP version"
+
+#: inc/config.class.php:331
+msgid "DB version"
+msgstr "DB version"
+
+#: inc/config.class.php:332
+msgid "DB server IP"
+msgstr "DB server IP"
+
+#: inc/config.class.php:333
+msgid "DB name"
+msgstr "DB name"
+
+#: inc/config.class.php:334
+msgid "User browser"
+msgstr "User browser"
+
+#: inc/config.class.php:335
+msgid "User IP"
+msgstr "User IP"
+
+#: inc/config.class.php:337
+msgid "Not yet!"
+msgstr "Not yet!"
+
+#: inc/process.class.php:350
+msgid "Synchronize Process List"
+msgstr "Synchronize Process List"
+
+#: inc/process.class.php:427 inc/process.class.php:565
+msgid "Process GUID"
+msgstr "Process GUID"
+
+#: inc/process.class.php:433
+msgid "Project type"
+msgstr "Project type"
+
+#: inc/process.class.php:439
+msgid "Hide case number and title"
+msgstr "Hide case number and title"
+
+#: inc/process.class.php:445
+msgid "Insert Task Category"
+msgstr "Insert Task Category"
+
+#: inc/process.class.php:457 inc/process.class.php:585
+msgid "Ticket type (self-service)"
+msgstr "Ticket type (self-service)"
+
+#: inc/process.class.php:495
+msgctxt "process_type"
+msgid "Classic"
+msgstr "Classic"
+
+#: inc/process.class.php:496
+msgctxt "process_type"
+msgid "BPMN"
+msgstr "BPMN"
+
+#: inc/process.class.php:522
+msgid "Processes"
+msgstr "Processes"
+
+#: inc/process.class.php:575
+msgid "Hide case number and title in task descriptions"
+msgstr "Hide case number and title in task descriptions"
+
+#: inc/process.class.php:580
+msgid "Insert Task Category comments in Task Description"
+msgstr "Insert Task Category comments in Task Description"
+
+#: inc/process.class.php:603
+msgid "ITIL Category (self-service)"
+msgstr "ITIL Category (self-service)"
+
+#: inc/process.class.php:632
+msgid "Project type (to be changed if not up-to-date)"
+msgstr "Project type (to be changed if not up-to-date)"
+
+#: inc/process_profile.class.php:26 inc/process_profile.class.php:45
+msgid "Authorizations"
+msgstr "Authorizations"
+
+#: inc/process_profile.class.php:179
+msgid "Authorization not added: already existing!"
+msgstr "Authorization not added: already existing!"
+
+#: inc/processmaker.class.php:116 inc/processmaker.class.php:118
+msgctxt "errors"
+msgid "Error creating case!"
+msgstr "Error creating case!"
+
+#: inc/processmaker.class.php:117
+msgctxt "errors"
+msgid "Can't create case: no rights for it!"
+msgstr "Can't create case: no rights for it!"
+
+#: inc/processmaker.class.php:984
+msgid "Syncs GLPI users and groups into ProcessMaker."
+msgstr "Syncs GLPI users and groups into ProcessMaker."
+
+#: inc/processmaker.class.php:986
+msgid "Cleaning of orphan cases."
+msgstr "Cleaning of orphan cases."
+
+#: inc/processmaker.class.php:986
+msgid "Number of days to keep orphan cases"
+msgstr "Number of days to keep orphan cases"
+
+#: inc/processmaker.class.php:988
+msgid "To apply task actions between cases."
+msgstr "To apply task actions between cases."
+
+#: inc/processmaker.class.php:1696
+msgid "Case title: "
+msgstr "Case title: "
+
+#: inc/processmaker.class.php:2178
+msgid "A 'Case' is running!"
+msgstr "A 'Case' is running!"
+
+#: inc/processmaker.class.php:2179
+msgid "You must manage it first (see 'Process - Case' tab)!"
+msgstr "You must manage it first (see 'Process - Case' tab)!"
+
+#: inc/profile.class.php:17
+msgid "Process configuration"
+msgstr "Process configuration"
+
+#: inc/profile.class.php:21
+msgid "Cases"
+msgstr "Cases"
+
+#: inc/task.class.php:25
+msgid "Process case task"
+msgid_plural "Process case tasks"
+msgstr[0] "Process case task"
+msgstr[1] "Process case tasks"
+
+#: inc/taskcategory.class.php:21 inc/taskcategory.class.php:31
+msgid "Task List"
+msgstr "Task List"
+
+#: inc/taskcategory.class.php:32
+msgid "Task name"
+msgstr "Task name"
+
+#: inc/taskcategory.class.php:34 inc/taskcategory.class.php:60
+msgid "Start"
+msgstr "Start"
+
+#: inc/taskcategory.class.php:35
+msgid "Task GUID"
+msgstr "Task GUID"
+
+#: inc/taskcategory.class.php:38 inc/taskcategory.class.php:78
+msgid "Sub-process"
+msgstr "Sub-process"
+
+#~ msgid "Plugin is under maintenance, please retry later, thank you."
+#~ msgstr "Plugin is under maintenance, please retry later, thank you."

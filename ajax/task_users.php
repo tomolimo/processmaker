@@ -22,7 +22,7 @@ $PM_DB = new PluginProcessmakerDB;
 $rand = rand();
 
 echo "<form style='margin-bottom: 0px' name='processmaker_form_task$rand-".$_REQUEST['delIndex']."' id='processmaker_form_task$rand-".$_REQUEST['delIndex']."' method='post' action='".Toolbox::getItemTypeFormURL("PluginProcessmakerProcessmaker")."'>";
-echo $LANG['processmaker']['item']['reassigncase']."&nbsp;";
+echo __('Re-assign task to', 'processmaker')."&nbsp;";
 echo "<input type='hidden' name='action' value='unpausecase_or_reassign_or_delete'>";
 echo "<input type='hidden' name='items_id' value='".$_REQUEST['items_id']."'>";
 echo "<input type='hidden' name='itemtype' value='".$_REQUEST['itemtype']."'>";
@@ -42,6 +42,6 @@ PluginProcessmakerUser::dropdown( array('name'   => 'users_id_recipient',
                                           'width' => '',
                                           'specific_tags' => array('taskGuid' => $_REQUEST['taskGuid'])));
 echo "&nbsp;&nbsp;";
-echo "<input type='submit' name='reassign' value='".$LANG['processmaker']['item']['buttonreassigncase']."' class='submit'>";
+echo "<input type='submit' name='reassign' value='".__('Re-assign', 'processmaker')."' class='submit'>";
 Html::closeForm(true);
 

@@ -32,9 +32,9 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'route' && isset( $_REQ
 if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'delete') {
    // delete case from case table, this will also delete the tasks
    if ($locCase->getFromDB($_POST['cases_id']) && $locCase->deleteCase()) {
-      Session::addMessageAfterRedirect($LANG['processmaker']['item']['case']['deleted'], true, INFO);
+      Session::addMessageAfterRedirect(__('Case has been deleted!', 'processmaker'), true, INFO);
    } else {
-      Session::addMessageAfterRedirect($LANG['processmaker']['item']['case']['errordeleted'], true, ERROR);
+      Session::addMessageAfterRedirect(__('Unable to delete case!', 'processmaker'), true, ERROR);
    }
    // will redirect to item or to list if no item
    $locCase->redirectToList();
@@ -47,12 +47,12 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'cancel') {
    $resultPM = $PM_SOAP->cancelCase($locCase->fields['case_guid']);
    if ($resultPM->status_code === 0) {
       if ($locCase->cancelCase()) {
-         Session::addMessageAfterRedirect($LANG['processmaker']['item']['case']['cancelled'], true, INFO);
+         Session::addMessageAfterRedirect(__('Case has been cancelled!', 'processmaker'), true, INFO);
       } else {
-         Session::addMessageAfterRedirect($LANG['processmaker']['item']['case']['errorcancelled'], true, ERROR);
+         Session::addMessageAfterRedirect(__('Unable to cancel case!', 'processmaker'), true, ERROR);
       }
    } else {
-      Session::addMessageAfterRedirect($LANG['processmaker']['item']['case']['errorcancelled'], true, ERROR);
+      Session::addMessageAfterRedirect(__('Unable to cancel case!', 'processmaker'), true, ERROR);
    }
    Html::back();
 } else
@@ -78,12 +78,15 @@ if (isset($_REQUEST['id']) && $_REQUEST['id'] > 0) {
       Html::header(__('Process cases', 'processmaker'), $_SERVER['PHP_SELF'], "helpdesk", "PluginProcessmakerCase", "cases");
    }
 
-   if ($locCase->getFromDB($_REQUEST['id'])) {
-
-      $locCase->display($_REQUEST);
-
-      Html::footer();
+   if (!$PM_SOAP->config->fields['maintenance']) {
+      if ($locCase->getFromDB($_REQUEST['id'])) {
+         $locCase->display($_REQUEST);
+      }
+   } else {
+      PluginProcessmakerProcessmaker::showUnderMaintenance();
    }
+
+   Html::footer();
 }
 
 

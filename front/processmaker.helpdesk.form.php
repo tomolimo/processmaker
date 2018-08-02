@@ -4,12 +4,12 @@ include_once ("../../../inc/includes.php");
 
 /**
  * Summary of processMakerShowProcessList
- * @param mixed $ID 
- * @param mixed $from_helpdesk 
+ * @param mixed $ID
+ * @param mixed $from_helpdesk
  * @return boolean
  */
 function processMakerShowProcessList ($ID, $from_helpdesk) {
-   global $DB, $CFG_GLPI, $LANG, $_SESSION;
+   global $DB, $CFG_GLPI, $_SESSION;
 
    if (!Session::haveRight("ticket", CREATE)) {
       return false;
@@ -18,10 +18,10 @@ function processMakerShowProcessList ($ID, $from_helpdesk) {
    $rand = rand();
    echo "<form name=   'processmaker_form$rand' id='processmaker_form$rand' method='post' action='".Toolbox::getItemTypeFormURL("PluginProcessmakerProcessmaker")."'>";
    echo "<div class='center'><table class='tab_cadre_fixehov'>";
-   echo "<tr><th colspan='2'>".$LANG['processmaker']['item']['tab']."</th></tr>";
+   echo "<tr><th colspan='2'>".__('Process - Case','processmaker')."</th></tr>";
 
    echo "<tr class='tab_bg_2'><td class='right'  colspan='1'>";
-   echo $LANG['processmaker']['item']['selectprocess']."&nbsp;";
+   _e('Select the process you want to add', 'processmaker');
    echo "<input type='hidden' name='action' value='newcase'>";
    echo "<input type='hidden' name='id' value='-1'>";
    echo "<input type='hidden' name='itemtype' value='Ticket'>";
@@ -41,8 +41,8 @@ function processMakerShowProcessList ($ID, $from_helpdesk) {
 
 /**
  * Summary of processMakerShowCase
- * @param mixed $ID 
- * @param mixed $from_helpdesk 
+ * @param mixed $ID
+ * @param mixed $from_helpdesk
  */
 function processMakerShowCase( $ID, $from_helpdesk ) {
    global $CFG_GLPI, $PM_SOAP;
