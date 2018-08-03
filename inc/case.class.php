@@ -769,9 +769,9 @@ class PluginProcessmakerCase extends CommonDBTM {
       $menu['title'] = self::getTypeName(Session::getPluralNumber());
       $menu['page']  = "$front_page/case.php";
       $menu['links']['search'] = PluginProcessmakerCase::getSearchURL(false);
-      //if (Session::haveRightsOr("config", [READ, UPDATE])) {
-      //   $menu['links']['config'] = PluginProcessmakerConfig::getFormURL(false);
-      //}
+      if (Session::haveRightsOr("config", [READ, UPDATE])) {
+         $menu['links']['config'] = PluginProcessmakerConfig::getFormURL(false);
+      }
 
       $itemtypes = [
                  'PluginProcessmakerCase' => 'cases'
@@ -781,9 +781,9 @@ class PluginProcessmakerCase extends CommonDBTM {
          //$menu['options'][$option]['title']           = $itemtype::getTypeName(Session::getPluralNumber());
          $menu['options'][$option]['page']            = $itemtype::getSearchURL(false);
          $menu['options'][$option]['links']['search'] = $itemtype::getSearchURL(false);
-         //if (Session::haveRightsOr("config", [READ, UPDATE])) {
-         //   $menu['options'][$option]['links']['config'] = PluginProcessmakerConfig::getFormURL(false);
-         //}
+         if (Session::haveRightsOr("config", [READ, UPDATE])) {
+            $menu['options'][$option]['links']['config'] = PluginProcessmakerConfig::getFormURL(false);
+         }
          switch( $itemtype ) {
             case 'PluginProcessmakerCase':
                //if ($itemtype::canCreate()) {

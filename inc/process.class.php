@@ -633,10 +633,10 @@ class PluginProcessmakerProcess extends CommonDBTM {
       Dropdown::showFromArray( 'project_type', self::getAllTypeArray(), array( 'value' => $this->fields["project_type"] ) );
       echo "</td></tr>";
 
-      echo "<tr class='tab_bg_1'>";
-      echo "<td >".__("Last update")."</td><td>";
-      echo Html::convDateTime($this->fields["date_mod"]);
-      echo "</td></tr>";
+      //echo "<tr class='tab_bg_1'>";
+      //echo "<td >".__("Last update")."</td><td>";
+      //echo Html::convDateTime($this->fields["date_mod"]);
+      //echo "</td></tr>";
 
       $this->showFormButtons($options);
    }
