@@ -2163,7 +2163,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
          case 'Ticket':
          case 'Problem':
          case 'Change':
-            if ($params['options']['id']) {
+            if ($params['options']['id'] && $params['options']['itemtype'] == $itemtype) {
                // then we are in an ITIL Object
                if (isset($_SESSION['glpiactiveprofile']['interface']) && $_SESSION['glpiactiveprofile']['interface'] != "helpdesk") {
                   $tabnum = $params['options']['tabnum'];
@@ -2173,8 +2173,8 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                         // we must check if we can solve item even if PM case is still running (ex: PIR tasks for Change Management)
                         $pmCanSolve = PluginProcessmakerCase::canSolve( $params );
                      if (!$pmCanSolve) {
-                        // don't display message if arbehaviours is install
-                        if (!($plugin->isInstalled('arbehaviours') && $plugin->isActivated('arbehaviours'))) {
+                        // don't display message if arbehaviours is install and activated
+                        if (!$plugin->isInstalled('arbehaviours') || !$plugin->isActivated('arbehaviours')) {
                            $messageOne = __('A \'Case\' is running!', 'processmaker');
                            $messageTwo = __('You must manage it first (see \'Process - Case\' tab)!', 'processmaker');
                            // output explicit message to explain why it's not possible to add solution
@@ -2213,8 +2213,8 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                         $pmHideSolution = true;
                         $itemtype = strtolower($itemtype);
                         if ($tabnum == 1 && isset($_SESSION['glpiactiveprofile'][$itemtype.'_status'])) {
-                           // don't display message if arbehaviours is install
-                           if (!($plugin->isInstalled('arbehaviours') && $plugin->isActivated('arbehaviours'))) {
+                           // don't display message if arbehaviours is install and activated
+                           if (!$plugin->isInstalled('arbehaviours') || !$plugin->isActivated('arbehaviours')) {
                               self::displayMessage($message, '', WARNING);
 
                               //save current  $_SESSION['glpiactiveprofile'][$itemtype.'_status'']

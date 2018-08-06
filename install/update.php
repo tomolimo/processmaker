@@ -28,6 +28,11 @@ function processmaker_update(){
          // will upgrade 3.2.9 to 3.3.0
          include_once(GLPI_ROOT."/plugins/processmaker/install/update_3_2_9_to_3_3_0.php");
          $new_version = update_3_2_9_to_3_3_0();
+
+      case '3.3.0' :
+         // will upgrade 3.3.0 to 3.3.1
+         include_once(GLPI_ROOT."/plugins/processmaker/install/update_3_3_0_to_3_3_1.php");
+         $new_version = update_3_3_0_to_3_3_1();
    }
 
    // end update by updating the db version number

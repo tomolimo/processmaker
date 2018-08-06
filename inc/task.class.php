@@ -16,6 +16,10 @@ class PluginProcessmakerTask extends CommonITILTask
       $this->itemtype=$itemtype;
    }
 
+
+   const OPEN   = 'OPEN';
+   const CLOSED = 'CLOSED';
+
    /**
     * Name of the type
     *
@@ -66,11 +70,14 @@ class PluginProcessmakerTask extends CommonITILTask
       global $DB;
       $ret = array();
       $selfTable = getTableForItemType( __CLASS__);
-      $itemTypeTaskTable = getTableForItemType( $itemtype );
+      //$itemTypeTaskTable = getTableForItemType( $itemtype );
 
-      $query = "SELECT glpi_tickettasks.id as taskID from $itemTypeTaskTable
-                  INNER JOIN $selfTable on $selfTable.items_id=$itemTypeTaskTable.id
-                  WHERE $itemTypeTaskTable.state=1 and $selfTable.plugin_processmaker_cases_id='$case_id';";
+      $query = "SELECT `$selfTable``items_id` as taskID from $selfTable
+                  WHERE `$selfTable`.`del_thread_status` = '".self::OPEN."' AND `$selfTable`.`plugin_processmaker_cases_id` = '$case_id';";
+
+      //$query = "SELECT $itemTypeTaskTable.id as taskID from $itemTypeTaskTable
+      //            INNER JOIN $selfTable on $selfTable.items_id=$itemTypeTaskTable.id
+      //            WHERE $itemTypeTaskTable.state=1 and $selfTable.plugin_processmaker_cases_id='$case_id';";
       foreach ($DB->request($query) as $row) {
          $ret[$row['taskID']]=$row['taskID'];
       }
@@ -129,7 +136,7 @@ class PluginProcessmakerTask extends CommonITILTask
 
 
    function getTabNameForItem(CommonGLPI $case, $withtemplate = 0){
-      global $DB;
+      global $DB, $PM_DB;
 
       $tab = [];
 
@@ -146,18 +153,19 @@ class PluginProcessmakerTask extends CommonITILTask
             $tasks[$task['del_index']] = $task;
          }
 
-         // get all tasks that are OPEN for any sub-case of this case
-         $sub_tasks = [];
-         $query = "SELECT `glpi_plugin_processmaker_tasks`.*  FROM `glpi_plugin_processmaker_tasks`
-                  JOIN `glpi_plugin_processmaker_cases` on `glpi_plugin_processmaker_cases`.`id`=`glpi_plugin_processmaker_tasks`.`plugin_processmaker_cases_id`
-                  WHERE `glpi_plugin_processmaker_cases`.`plugin_processmaker_cases_id`={$case->fields['id']} AND `del_thread_status`='OPEN'";
-         foreach($DB->request($query) as $task) {
-            $sub_tasks[$task['plugin_processmaker_cases_id']][$task['del_index']] = $task;
-         }
+         //// get all tasks that are OPEN for any sub-case of this case
+         //$sub_cases = [];
+         //$query = "SELECT `glpi_plugin_processmaker_tasks`.*  FROM `glpi_plugin_processmaker_tasks`
+         //         JOIN `glpi_plugin_processmaker_cases` on `glpi_plugin_processmaker_cases`.`id`=`glpi_plugin_processmaker_tasks`.`plugin_processmaker_cases_id`
+         //         WHERE `glpi_plugin_processmaker_cases`.`plugin_processmaker_cases_id`={$case->fields['id']} AND `del_thread_status`='OPEN'";
+         //foreach($DB->request($query) as $task) {
+         //   $sub_cases[$task['plugin_processmaker_cases_id']][$task['del_index']] = $task;
+         //}
 
          $caseInfo->currentUsers = $case->sortTasks($caseInfo->currentUsers, $GLPICurrentPMUserId);
 
-         foreach ($caseInfo->currentUsers as $key => $caseUser) {
+         $main_tasks = []; //will contains the tasks that are main-processes
+         foreach ($caseInfo->currentUsers as $caseUser) {
             $title = $caseUser->taskName;
             if (isset($tasks[$caseUser->delIndex])) {
                $hide_claim_button = false;
@@ -170,17 +178,45 @@ class PluginProcessmakerTask extends CommonITILTask
                   }
                }
                $tab[$tasks[$caseUser->delIndex]['id']] = ($caseUser->userId != '' && $caseUser->userId != $GLPICurrentPMUserId) || $hide_claim_button ? "<i><sub>$title</sub></i>" : $title;
+            } else {
+               $main_tasks[$caseUser->delIndex] = $caseUser;
             }
          }
+
+         foreach ($main_tasks as $task) {
+            $res = $PM_DB->query("SELECT APP_UID FROM SUB_APPLICATION WHERE APP_PARENT='{$case->fields['case_guid']}' AND DEL_INDEX_PARENT={$task->delIndex} AND SA_STATUS='ACTIVE'");
+            if ($res && $PM_DB->numrows($res) == 1) {
+               $row = $PM_DB->fetch_assoc($res);
+               $loc_case = new PluginProcessmakerCase;
+               $loc_case->getFromGUID($row['APP_UID']);
+               $tab[$loc_case->getID()."-".$task->delIndex] = "<i><sub>> ".$task->taskName."</sub></i>";
+            }
+         }
+         //$sub_case = new PluginProcessmakerCase;
+         //foreach ($sub_cases as $sub_cases_id => $sub_tasks) {
+         //   $sub_case->getFromDB($sub_cases_id);
+         //   $sub_case_info = $sub_case->getCaseInfo();
+         //   $sub_case_info->currentUsers = $sub_case->sortTasks($sub_case_info->currentUsers, $GLPICurrentPMUserId);
+         //   foreach ($sub_case_info->currentUsers as $caseUser) {
+         //      $title = $caseUser->taskName;
+         //      if (isset($sub_tasks[$caseUser->delIndex])) {
+         //         $hide_claim_button = false;
+         //         if ($caseUser->userId == '') { // task to be claimed
+         //            $itemtask = getItemForItemtype($sub_tasks[$caseUser->delIndex]['itemtype']);
+         //            $itemtask->getFromDB($sub_tasks[$caseUser->delIndex]['items_id']);
+         //            // check if this group can be found in the current user's groups
+         //            if (!isset($_SESSION['glpigroups']) || !in_array( $itemtask->fields['groups_id_tech'], $_SESSION['glpigroups'] )) {
+         //               $hide_claim_button = true;
+         //            }
+         //         }
+         //         $tab["$sub_cases_id-".$sub_tasks[$caseUser->delIndex]['id']] = ($caseUser->userId != '' && $caseUser->userId != $GLPICurrentPMUserId) || $hide_claim_button ? "<i><sub>> $title</sub></i>" : "> $title";
+         //      }
+         //   }
+         //}
+
       }
 
-      //// TODO manage of sub-tasks.
-      //foreach ($sub_tasks as $scases_id => $scase) {
-      //   foreach (
-      //}
-
-
-   return $tab;
+      return $tab;
 
    }
 
@@ -192,7 +228,67 @@ class PluginProcessmakerTask extends CommonITILTask
     * @param mixed $withtemplate
     */
    static function displayTabContentForItem(CommonGLPI $case, $tabnum=1, $withtemplate=0) {
-      global $CFG_GLPI, $PM_SOAP;
+      global $CFG_GLPI, $PM_SOAP, $DB, $PM_DB;
+
+      // check if we are going to view a sub-task, then redirect to sub-case itself
+      if (preg_match('/^(?\'cases_id\'\d+)-(\d+)$/', $tabnum, $matches)) {
+         // Show sub-task list
+
+         // get all tasks that are OPEN for any sub-case of this case
+         $sub_tasks = [];
+         $query = "SELECT `glpi_plugin_processmaker_tasks`.*  FROM `glpi_plugin_processmaker_tasks`
+                  WHERE `glpi_plugin_processmaker_tasks`.`plugin_processmaker_cases_id`={$matches['cases_id']} AND `del_thread_status`='OPEN'";
+         foreach($DB->request($query) as $task) {
+            $sub_tasks[$task['plugin_processmaker_cases_id']][$task['del_index']] = $task;
+         }
+         $sub_case = new PluginProcessmakerCase;
+         $sub_case->getFromDB($matches['cases_id']);
+         $sub_case_url = $sub_case->getLinkURL().'&forcetab=PluginProcessmakerTask$';
+
+         $query = "SELECT `DEL_INDEX`, `DEL_DELEGATE_DATE` FROM `APP_DELEGATION` WHERE `APP_UID`='{$sub_case->fields['case_guid']}'";
+         $sub_tasks_pm = [];
+         foreach($PM_DB->request($query) as $row){
+            $sub_tasks_pm[$row['DEL_INDEX']] = $row['DEL_DELEGATE_DATE'];
+         }
+
+         $sub_case_info = $sub_case->getCaseInfo();
+         echo "<div class='center'>";
+         echo "<table style='margin-bottom: 0px' class='tab_cadre_fixe'>";
+
+         echo "<tr><th colspan=4>".__('Sub-case task(s)', 'processmaker')."</th></tr>";
+
+         if (property_exists($sub_case_info, 'currentUsers') && count($sub_case_info->currentUsers) > 0) {
+
+            echo "<tr style='font-weight: bold;'>
+               <th>".__('Task', 'processmaker')."</th>
+               <th>".__('Task guid', 'processmaker')."</th>
+               <th>".__('Current user', 'processmaker')."</th>
+               <th>".__('Task delegation date', 'processmaker')."</th>
+            </tr>";
+
+            foreach($sub_case_info->currentUsers as $currentTask) {
+               echo "<tr>";
+               $sub_case_url .= $sub_tasks[$matches['cases_id']][$currentTask->delIndex]['id'];
+               echo "<td class='tab_bg_2'><a href='$sub_case_url'>".$currentTask->taskName."</a></td>";
+               echo "<td class='tab_bg_2'>".$currentTask->taskId."</td>";
+               if ($currentTask->userName == '') {
+                  echo "<td class='tab_bg_2'>".__('To be claimed', 'processmaker')."</td>";
+               } else {
+                  echo "<td class='tab_bg_2'>".$currentTask->userName."</td>";
+               }
+               echo "<td class='tab_bg_2'>".$sub_tasks_pm[$currentTask->delIndex]."</td>";
+               echo "</tr>";
+            }
+         } else {
+            echo "<td colspan=4>".__('None')."</td>";
+         }
+
+         echo "</table>";
+
+         echo "</div>";
+
+         return;
+      }
 
       $hide_claim_button = false;
       $config = $PM_SOAP->config;
@@ -200,8 +296,6 @@ class PluginProcessmakerTask extends CommonITILTask
 
       // get infos for the current task
       $task = getAllDatasFromTable('glpi_plugin_processmaker_tasks', "id = $tabnum");
-
-      // TODO manage sub-tasks
 
       // shows the re-assign form
       $caseInfo = $case->getCaseInfo();

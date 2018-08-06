@@ -9,8 +9,8 @@ function plugin_init_processmaker() {
 
    $PLUGIN_HOOKS['csrf_compliant']['processmaker'] = true;
 
-//   $objects = ['Ticket', 'Change', 'Problem'];
-   $objects = ['Ticket'];
+   $objects = ['Ticket', 'Change', 'Problem'];
+//   $objects = ['Ticket'];
 
    Plugin::registerClass('PluginProcessmakerProcessmaker');
 
@@ -124,7 +124,7 @@ function plugin_init_processmaker() {
 // Get the name and the version of the plugin - Needed
 function plugin_version_processmaker() {
    return array ('name'          => 'Process Maker',
-                'version'        => '3.3.0',
+                'version'        => '3.3.1',
                 'author'         => 'Olivier Moron',
                 'homepage'       => 'https://github.com/tomolimo/processmaker',
                 'minGlpiVersion' => '9.1');

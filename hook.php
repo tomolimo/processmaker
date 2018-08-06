@@ -147,7 +147,7 @@ function plugin_processmaker_uninstall() {
 
 
 function plugin_processmaker_getAddSearchOptions($itemtype) {
-   
+
    $sopt = array();
    // TODO add Change and Problem + other fields to the search
    if ($itemtype == 'Ticket') {
@@ -260,10 +260,13 @@ function plugin_pre_item_update_processmaker(CommonITILObject $parm) {
  */
 function plugin_item_update_processmaker_satisfaction($parm) {
 
-   $locCase = new PluginProcessmakerCase;
-   if ($locCase->getFromItem( 'Ticket', $parm->fields['tickets_id'] )) {
-      // case is existing for this item
-      $locCase->sendVariables( ['GLPI_SATISFACTION_QUALITY' => $parm->fields['satisfaction']] );
+   $cases = PluginProcessmakerCase::getIDsFromItem('Ticket', $parm->fields['tickets_id']);
+   foreach ($cases as $cases_id) {
+      $locCase = new PluginProcessmakerCase;
+      if ($locCase->getFromDB($cases_id)) {
+         // case is existing for this item
+         $locCase->sendVariables( ['GLPI_SATISFACTION_QUALITY' => $parm->fields['satisfaction']] );
+      }
    }
 }
 
@@ -299,60 +302,38 @@ function plugin_item_purge_processmaker($parm) {
       // We just deleted a tech from this ticket then we must if needed "de-assign" the tasks assigned to this tech
       // and re-assign them to the first tech in the list !!!!
 
-      $locCase = new PluginProcessmakerCase;
+      $itemType = strtolower(explode('_', $parm->getType())[0]); // $parm->getType() returns 'Ticket_User';
+      $itemId = $parm->fields[$itemType.'s_id'];
+      $cases = PluginProcessmakerCase::getIDsFromItem($itemType, $itemId);
+      foreach ($cases as $cases_id) {
+         // cases are existing for this item
+         $locCase = new PluginProcessmakerCase;
+         if ($locCase->getFromDB($cases_id)) {
+            $technicians = PluginProcessmakerProcessmaker::getItemUsers($itemType, $itemId, CommonITILActor::ASSIGN);
 
-      $itemId = $parm->fields['tickets_id'];
-      $itemType = explode('_', $parm->getType())[0]; // 'Ticket';
+            $locVars = array( 'GLPI_TICKET_TECHNICIAN_GLPI_ID' => $technicians[0]['glpi_id'],
+                              'GLPI_ITEM_TECHNICIAN_GLPI_ID'   => $technicians[0]['glpi_id'],
+                              'GLPI_TICKET_TECHNICIAN_PM_ID'   => $technicians[0]['pm_id'],
+                              'GLPI_ITEM_TECHNICIAN_PM_ID'     => $technicians[0]['pm_id']
+                            );
 
-      if ($locCase->getFromItem( $itemType, $itemId )) {
-         // case is existing for this item
-         $technicians = PluginProcessmakerProcessmaker::getItemUsers( $itemType, $itemId, CommonITILActor::ASSIGN ); // 2 for technicians
-         //$locPM = new PluginProcessmakerProcessmaker;
-         //$locPM->login();
-         $locVars = array( 'GLPI_TICKET_TECHNICIAN_GLPI_ID' => $technicians[0]['glpi_id'],
-                           'GLPI_ITEM_TECHNICIAN_GLPI_ID'   => $technicians[0]['glpi_id'],
-                           'GLPI_TICKET_TECHNICIAN_PM_ID'   => $technicians[0]['pm_id'],
-                           'GLPI_ITEM_TECHNICIAN_PM_ID'     => $technicians[0]['pm_id']
-                         );
-
-         // and we must find all tasks assigned to this former user and re-assigned them to new user (if any :))!
-         //$caseInfo = $locPM->getCaseInfo( $locCase->getID() );
-         $caseInfo = $locCase->getCaseInfo( );
-         if ($caseInfo !== false) {
-            //$locPM->sendVariables( $locCase->getID( ), $locVars );
-            $locCase->sendVariables( $locVars);
-            // need to get info on the thread of the GLPI current user
-            // we must retreive currentGLPI user from this array
-            $GLPICurrentPMUserId = PluginProcessmakerUser::getPMUserId( $parm->fields['users_id'] );
-            if (property_exists($caseInfo, 'currentUsers') && is_array( $caseInfo->currentUsers )) {
-               foreach ($caseInfo->currentUsers as $caseUser) {
-                  if ($caseUser->userId == $GLPICurrentPMUserId && in_array( $caseUser->delThreadStatus, array('DRAFT', 'OPEN', 'PAUSE' ) )) {
-
-                     //$pmResponse = $locPM->reassignCase( $locCase->getID(), $caseUser->delIndex, $GLPICurrentPMUserId, $technicians[0]['pm_id'] );
-                     $locCase->reassignCase($caseUser->delIndex, $caseUser->taskId, $caseUser->delThread, $parm->fields['users_id'], $technicians[0]['pm_id'] );
-                     //// now should managed GLPI Tasks previously assigned to the $GLPICurrentPMUserId
-                     //if ($pmResponse->status_code == 0) {
-                     //   // ATTENTION: should be aware of: ticket tech == task tech
-                     //   // In this particular flow due to 'Change Management'
-
-                     //   // we need to change the delindex of the glpi task and the assigned tech to prevent creation of new tasks
-                     //   // we need the delindex of the current glpi task, and the delindex of the new one
-                     //   // search for new delindex
-                     //   $newCaseInfo = $locPM->getCaseInfo( $locCase->getID() );
-                     //   $newDelIndex = 0;
-                     //   foreach ($newCaseInfo->currentUsers as $newCaseUser) {
-                     //      if ($newCaseUser->taskId == $caseUser->taskId && $newCaseUser->delThread == $caseUser->delThread) {
-                     //         $newDelIndex = $newCaseUser->delIndex;
-                     //         break;
-                     //      }
-                     //   }
-                     //   $locPM->reassignTask( $locCase->getID(), $caseUser->delIndex, $newDelIndex, $technicians[0]['glpi_id'] );
-                     //}
+            // and we must find all tasks assigned to this former user and re-assigned them to new user (if any :))!
+            $caseInfo = $locCase->getCaseInfo( );
+            if ($caseInfo !== false) {
+               $locCase->sendVariables( $locVars);
+               // need to get info on the thread of the GLPI current user
+               // we must retreive currentGLPI user from this array
+               $GLPICurrentPMUserId = PluginProcessmakerUser::getPMUserId( $parm->fields['users_id'] );
+               if (property_exists($caseInfo, 'currentUsers') && is_array( $caseInfo->currentUsers )) {
+                  foreach ($caseInfo->currentUsers as $caseUser) {
+                     if ($caseUser->userId == $GLPICurrentPMUserId && in_array( $caseUser->delThreadStatus, array('DRAFT', 'OPEN', 'PAUSE' ) )) {
+                        $locCase->reassignCase($caseUser->delIndex, $caseUser->taskId, $caseUser->delThread, $parm->fields['users_id'], $technicians[0]['pm_id'] );
+                     }
                   }
                }
             }
-         }
 
+         }
       }
    }
 }

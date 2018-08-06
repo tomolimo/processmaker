@@ -1,8 +1,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: processmaker-plugin\n"
-"POT-Creation-Date: 2018-08-02 14:42+0200\n"
-"PO-Revision-Date: 2018-08-03 09:44+0200\n"
+"POT-Creation-Date: 2018-08-06 14:32+0200\n"
+"PO-Revision-Date: 2018-08-06 14:44+0200\n"
 "Last-Translator: tomolimo\n"
 "Language-Team: French\n"
 "Language: fr_FR\n"
@@ -49,23 +49,16 @@ msgstr "Le cas a été annulé !"
 msgid "Unable to cancel case!"
 msgstr "Impossible d'annuler le cas !"
 
-#: front/case.form.php:76 front/case.form.php:78 inc/case.class.php:922
+#: front/case.form.php:76 front/case.form.php:78 inc/case.class.php:1018
 msgid "Process cases"
 msgstr "Cas des processus"
 
 #: front/case.php:5 front/caselink.form.php:27 front/caselink.php:5
 #: front/process.form.php:25 front/process.php:5 inc/caselink.class.php:143
-#: inc/config.class.php:50 inc/config.class.php:347 inc/process.class.php:393
+#: inc/config.class.php:50 inc/config.class.php:354 inc/process.class.php:393
 #: inc/profile.class.php:52 inc/profile.class.php:83
 msgid "ProcessMaker"
 msgstr "ProcessMaker"
-
-#: front/case.php:14 inc/case.class.php:644
-msgid ""
-"ProcessMaker plugin is under maintenance, please retry later, thank you."
-msgstr ""
-"Le plugin ProcessMaker est en maintenance, veuillez ré-essayer plus tard, "
-"merci."
 
 #: front/processmaker.form.php:85
 msgid "Task re-assigned!"
@@ -83,7 +76,7 @@ msgstr "Tâche déjà affectée à cette personne !"
 msgid "Process - Case"
 msgstr "Processus - Cas"
 
-#: front/processmaker.helpdesk.form.php:24 inc/case.class.php:528
+#: front/processmaker.helpdesk.form.php:24 inc/case.class.php:605
 msgid "Select the process you want to add"
 msgstr "Choisir le processus à démarrer"
 
@@ -95,146 +88,164 @@ msgstr "Synchroniser la liste des Tâches"
 msgid "Case"
 msgstr "Cas"
 
-#: hook.php:158 inc/case.class.php:509 inc/case.class.php:966
+#: hook.php:158 inc/case.class.php:586 inc/case.class.php:1062
 msgid "Status"
 msgstr "Statut"
 
-#: inc/case.class.php:23 inc/case.class.php:85 inc/case.class.php:87
+#: inc/case.class.php:23 inc/case.class.php:90 inc/case.class.php:92
 msgid "Process case"
 msgid_plural "Process cases"
 msgstr[0] "Cas du processus"
 msgstr[1] "Cas des processus"
 
-#: inc/case.class.php:285
-msgid "Case properties"
-msgstr "Propriétés du cas"
+#: inc/case.class.php:80
+msgid "Sub-case"
+msgstr "Sous-cas"
 
-#: inc/case.class.php:287 inc/case.class.php:507 inc/case.class.php:940
-#: inc/process.class.php:524
-msgid "Process"
-msgstr "Processus"
-
-#: inc/case.class.php:290
-msgid "Case title"
-msgstr "Titre du cas"
-
-#: inc/case.class.php:293
-msgid "Case number"
-msgstr "Numéro du cas"
-
-#: inc/case.class.php:296
-msgid "Case status"
-msgstr "Statut du cas"
-
-#: inc/case.class.php:299
-msgid "Case guid"
-msgstr "Guid du cas"
-
-#: inc/case.class.php:302
-msgid "Creator"
-msgstr "Créateur"
-
-#: inc/case.class.php:305
-msgid "Creation date"
-msgstr "Date de création"
-
-#: inc/case.class.php:308
-msgid "Last update"
-msgstr "Dernière mise à jour"
-
-#: inc/case.class.php:323
+#: inc/case.class.php:312
 msgid "Current task(s) properties"
 msgstr "Propriétés des tâches en cours"
 
-#: inc/case.class.php:327
+#: inc/case.class.php:316 inc/task.class.php:263
 msgid "Task"
 msgstr "Tâche"
 
-#: inc/case.class.php:328
+#: inc/case.class.php:317 inc/task.class.php:264
 msgid "Task guid"
 msgstr "Guid de la tâche"
 
-#: inc/case.class.php:329
+#: inc/case.class.php:318 inc/task.class.php:265
 msgid "Current user"
 msgstr "Utilisateur actuel"
 
-#: inc/case.class.php:330
+#: inc/case.class.php:319 inc/task.class.php:266
 msgid "Task delegation date"
 msgstr "Date de délégation de tâche"
 
-#: inc/case.class.php:338
+#: inc/case.class.php:341 inc/task.class.php:275
 msgid "To be claimed"
 msgstr "A réclamer"
 
-#: inc/case.class.php:407
-msgid "Case item"
-msgstr "Item du cas"
+#: inc/case.class.php:377
+msgid "Sub-case properties"
+msgstr "Propriétés du sous-cas"
 
-#: inc/case.class.php:429
+#: inc/case.class.php:380
+msgid "Parent case properties"
+msgstr "Propriétés du cas parent"
+
+#: inc/case.class.php:382
+msgid "Case properties"
+msgstr "Propriétés du cas"
+
+#: inc/case.class.php:387 inc/case.class.php:584 inc/case.class.php:1036
+#: inc/process.class.php:548
+msgid "Process"
+msgstr "Processus"
+
+#: inc/case.class.php:388
+msgid "Case title"
+msgstr "Titre du cas"
+
+#: inc/case.class.php:389
+msgid "Case number"
+msgstr "Numéro du cas"
+
+#: inc/case.class.php:390
+msgid "Case status"
+msgstr "Statut du cas"
+
+#: inc/case.class.php:391
+msgid "Case guid"
+msgstr "Guid du cas"
+
+#: inc/case.class.php:392
+msgid "Creator"
+msgstr "Créateur"
+
+#: inc/case.class.php:393
+msgid "Creation date"
+msgstr "Date de création"
+
+#: inc/case.class.php:394
+msgid "Last update"
+msgstr "Dernière mise à jour"
+
+#: inc/case.class.php:479
+#, php-format
+msgid "Case is linked to a %1s"
+msgstr "Le cas est lié à un %1s"
+
+#: inc/case.class.php:481
+#, php-format
+msgid "Sub-case is linked to a %1s"
+msgstr "Le sous-cas est lié à un %1s"
+
+#: inc/case.class.php:506
 msgid "Case cancellation"
 msgstr "Annulation du cas"
 
-#: inc/case.class.php:430
+#: inc/case.class.php:507
 msgid "Cancel case"
 msgstr "Annuler cas"
 
-#: inc/case.class.php:434
+#: inc/case.class.php:511
 msgid "Confirm cancellation?"
 msgstr "Confirmer l’annulation ?"
 
-#: inc/case.class.php:434 inc/profile.class.php:23
+#: inc/case.class.php:511 inc/profile.class.php:23
 msgid "Cancel"
 msgstr "Annuler"
 
-#: inc/case.class.php:455
+#: inc/case.class.php:532
 msgid "Case deletion"
 msgstr "Suppression du cas"
 
-#: inc/case.class.php:456
+#: inc/case.class.php:533
 msgid "Delete case"
 msgstr "Supprimer le cas"
 
-#: inc/case.class.php:508 inc/case.class.php:933
+#: inc/case.class.php:585 inc/case.class.php:1029
 msgid "Title"
 msgstr "Titre"
 
-#: inc/case.class.php:510 inc/case.class.php:974
-msgid "Subcase of"
+#: inc/case.class.php:587 inc/case.class.php:1070
+msgid "Sub-case of"
 msgstr "Sous-cas de"
 
-#: inc/case.class.php:525
+#: inc/case.class.php:602
 msgid "Add a new case"
 msgstr "Ajouter un nouveau cas"
 
-#: inc/case.class.php:899
+#: inc/case.class.php:995
 msgctxt "case_status"
 msgid "Draft"
 msgstr "Brouillon"
 
-#: inc/case.class.php:900
+#: inc/case.class.php:996
 msgctxt "case_status"
 msgid "To do"
 msgstr "A faire"
 
-#: inc/case.class.php:901
+#: inc/case.class.php:997
 msgctxt "case_status"
 msgid "Completed"
 msgstr "Terminé"
 
-#: inc/case.class.php:902
+#: inc/case.class.php:998
 msgctxt "case_status"
 msgid "Cancelled"
 msgstr "Annulé"
 
-#: inc/case.class.php:926
+#: inc/case.class.php:1022
 msgid "ID"
 msgstr "ID"
 
-#: inc/case.class.php:953
+#: inc/case.class.php:1049
 msgid "Item"
 msgstr "Item"
 
-#: inc/case.class.php:960
+#: inc/case.class.php:1056
 msgid "Item entity"
 msgstr "Entité de l'item"
 
@@ -302,111 +313,111 @@ msgstr "Carte"
 msgid "ProcessMaker setup"
 msgstr "Configuration du serveur ProcessMaker"
 
-#: inc/config.class.php:156
+#: inc/config.class.php:159
 msgid "Server URL (must be in same domain than GLPI)"
 msgstr "URL du serveur (doit être dans le même domaine que GLPI)"
 
-#: inc/config.class.php:161
+#: inc/config.class.php:164
 msgid "Common domain with GLPI"
 msgstr "Domaine commun avec GLPI"
 
-#: inc/config.class.php:190
+#: inc/config.class.php:193
 msgid "None!"
 msgstr "Aucun !"
 
-#: inc/config.class.php:199
+#: inc/config.class.php:202
 msgid "Workspace Name"
 msgstr "Nom du Workspace"
 
-#: inc/config.class.php:204
+#: inc/config.class.php:207
 msgid "Server administrator name"
 msgstr "Non de l'administreur du server ProcessMaker"
 
-#: inc/config.class.php:209
+#: inc/config.class.php:212
 msgid "Server administrator password"
 msgstr "Mot de passe de l'administrateur du serveur ProcessMaker"
 
-#: inc/config.class.php:215 inc/config.class.php:255
+#: inc/config.class.php:218 inc/config.class.php:258
 msgid "Connection status"
 msgstr "Status de la connexion"
 
-#: inc/config.class.php:231
+#: inc/config.class.php:234
 msgid "SQL server setup"
 msgstr "Configuration du serveur SQL"
 
-#: inc/config.class.php:234
+#: inc/config.class.php:237
 msgid "SQL server (MariaDB or MySQL)"
 msgstr "SQL server (MariaDB ou MySQL)"
 
-#: inc/config.class.php:239
+#: inc/config.class.php:242
 msgid "Database name"
 msgstr "Nom de la base de données"
 
-#: inc/config.class.php:244
+#: inc/config.class.php:247
 msgid "SQL user"
 msgstr "Utilisateur SQL"
 
-#: inc/config.class.php:249
+#: inc/config.class.php:252
 msgid "SQL password"
 msgstr "Mot de passe SQL"
 
-#: inc/config.class.php:266
+#: inc/config.class.php:269
 msgid "Theme Name"
 msgstr "Nom du thème"
 
-#: inc/config.class.php:272
+#: inc/config.class.php:275
 msgid "Main Task Category (edit to change name)"
 msgstr "Catégorie principale des tâches (éditer pour changer le nom)"
 
-#: inc/config.class.php:279
+#: inc/config.class.php:282
 msgid "Task Writer (edit to change name)"
 msgstr "Auteur des tâches (éditer pour changer le nom)"
 
-#: inc/config.class.php:299
+#: inc/config.class.php:302
 msgid "Group in ProcessMaker which will contain all GLPI users"
 msgstr "Groupe dans ProcessMaker qui contiendra les utilisateurs de GLPI"
 
-#: inc/config.class.php:323
+#: inc/config.class.php:331
 msgid "Processmaker system information"
 msgstr "Informations système du serveur ProcessMaker"
 
-#: inc/config.class.php:327 inc/config.class.php:337
+#: inc/config.class.php:334 inc/config.class.php:344
 msgid "Version"
 msgstr "Version"
 
-#: inc/config.class.php:328
+#: inc/config.class.php:335
 msgid "Web server"
 msgstr "Serveur web"
 
-#: inc/config.class.php:329
+#: inc/config.class.php:336
 msgid "Server name"
 msgstr "Nom du serveur"
 
-#: inc/config.class.php:330
+#: inc/config.class.php:337
 msgid "PHP version"
 msgstr "Version de PHP"
 
-#: inc/config.class.php:331
+#: inc/config.class.php:338
 msgid "DB version"
 msgstr "Version de la Db"
 
-#: inc/config.class.php:332
+#: inc/config.class.php:339
 msgid "DB server IP"
 msgstr "IP du serveur DB"
 
-#: inc/config.class.php:333
+#: inc/config.class.php:340
 msgid "DB name"
 msgstr "Nom de la BD"
 
-#: inc/config.class.php:334
+#: inc/config.class.php:341
 msgid "User browser"
 msgstr "Navigateur de l’utilisateur"
 
-#: inc/config.class.php:335
+#: inc/config.class.php:342
 msgid "User IP"
 msgstr "IP de l'utilisateur"
 
-#: inc/config.class.php:337
+#: inc/config.class.php:344
 msgid "Not yet!"
 msgstr "Pas encore !"
 
@@ -414,57 +425,78 @@ msgstr "Pas encore !"
 msgid "Synchronize Process List"
 msgstr "Synchroniser la liste des processus"
 
-#: inc/process.class.php:427 inc/process.class.php:565
+#: inc/process.class.php:427 inc/process.class.php:589
 msgid "Process GUID"
 msgstr "GUID du Processus"
 
 #: inc/process.class.php:433
-msgid "Project type"
-msgstr "Type de projet"
+msgid "Process type"
+msgstr "Type de processus"
 
 #: inc/process.class.php:439
-msgid "Hide case number and title"
-msgstr "Masquer numéro et titre des cas"
+msgid "Hide case num. & title"
+msgstr "Cacher num. et titre du cas"
 
 #: inc/process.class.php:445
 msgid "Insert Task Category"
 msgstr "Insérer la catégorie des tâches"
 
-#: inc/process.class.php:457 inc/process.class.php:585
+#: inc/process.class.php:457
 msgid "Ticket type (self-service)"
 msgstr "Type de ticket (self-service)"
 
-#: inc/process.class.php:495
+#: inc/process.class.php:464 inc/process.class.php:609
+msgid "Visible in Incident for Central interface"
+msgstr "Visible pour un Incident sur l'interface Centrale"
+
+#: inc/process.class.php:470 inc/process.class.php:614
+msgid "Visible in Request for Central interface"
+msgstr "Visible pour une demande sur l'interface Centrale"
+
+#: inc/process.class.php:476 inc/process.class.php:666
+msgid "Visible in Change"
+msgstr "Visible dans un Changement"
+
+#: inc/process.class.php:482 inc/process.class.php:671
+msgid "Visible in Problem"
+msgstr "Visible dans un Problème"
+
+#: inc/process.class.php:519
 msgctxt "process_type"
 msgid "Classic"
 msgstr "Classique"
 
-#: inc/process.class.php:496
+#: inc/process.class.php:520
 msgctxt "process_type"
 msgid "BPMN"
 msgstr "BPMN"
 
-#: inc/process.class.php:522
+#: inc/process.class.php:546
 msgid "Processes"
 msgstr "Processus"
 
-#: inc/process.class.php:575
+#: inc/process.class.php:599
 msgid "Hide case number and title in task descriptions"
 msgstr "Masquer numéro et titre des cas dans les descriptions des tâches"
 
-#: inc/process.class.php:580
+#: inc/process.class.php:604
 msgid "Insert Task Category comments in Task Description"
 msgstr ""
 "Insérer les commentaires des Catégories de Tâches dans les descriptions des "
 "Tâches"
 
-#: inc/process.class.php:603
-msgid "ITIL Category (self-service)"
-msgstr "Catégorie ITIL (self-service)"
+#: inc/process.class.php:619
+msgid "ITIL Category for Self-service interface (left empty to disable)"
+msgstr ""
+"Catégorie ITIL pour l'interface libre-service (laissez vide pour désactiver)"
 
-#: inc/process.class.php:632
-msgid "Project type (to be changed if not up-to-date)"
-msgstr "Type de projet (à modifier si pas à jour)"
+#: inc/process.class.php:646
+msgid "Type for Self-service interface"
+msgstr "Type de ticket pour l'interface libre-service"
+
+#: inc/process.class.php:676
+msgid "Process type (to be changed only if not up-to-date)"
+msgstr "Type de processus (à modifier uniquement si pas à jour)"
 
 #: inc/process_profile.class.php:26 inc/process_profile.class.php:45
 msgid "Authorizations"
@@ -512,6 +544,13 @@ msgstr "Un 'Cas' est en cours !"
 msgid "You must manage it first (see 'Process - Case' tab)!"
 msgstr "Vous devez d'abord le terminer (voir onglet 'Processus - Cas') !"
 
+#: inc/processmaker.class.php:3038
+msgid ""
+"ProcessMaker plugin is under maintenance, please retry later, thank you."
+msgstr ""
+"Le plugin ProcessMaker est en maintenance, veuillez ré-essayer plus tard, "
+"merci."
+
 #: inc/profile.class.php:17
 msgid "Process configuration"
 msgstr "Configuration des Processus"
@@ -520,11 +559,15 @@ msgstr "Configuration des Processus"
 msgid "Cases"
 msgstr "Cas"
 
-#: inc/task.class.php:25
+#: inc/task.class.php:29
 msgid "Process case task"
 msgid_plural "Process case tasks"
 msgstr[0] "Tâche d'un cas"
 msgstr[1] "Tâches d'un cas"
+
+#: inc/task.class.php:258
+msgid "Sub-case task(s)"
+msgstr "Tache(s) du sous-cas"
 
 #: inc/taskcategory.class.php:21 inc/taskcategory.class.php:31
 msgid "Task List"
@@ -545,6 +588,24 @@ msgstr "GUID de la Tâche"
 #: inc/taskcategory.class.php:38 inc/taskcategory.class.php:78
 msgid "Sub-process"
 msgstr "Sous-processus"
+
+#~ msgid "Case item"
+#~ msgstr "Case item"
+
+#~ msgid "Subcase of"
+#~ msgstr "Subcase of"
+
+#~ msgid "Project type"
+#~ msgstr "Project type"
+
+#~ msgid "Hide case number and title"
+#~ msgstr "Hide case number and title"
+
+#~ msgid "ITIL Category (self-service)"
+#~ msgstr "ITIL Category (self-service)"
+
+#~ msgid "Project type (to be changed if not up-to-date)"
+#~ msgstr "Project type (to be changed if not up-to-date)"
 
 #~ msgid "Plugin is under maintenance, please retry later, thank you."
 #~ msgstr "Plugin is under maintenance, please retry later, thank you."

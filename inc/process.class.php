@@ -430,13 +430,13 @@ class PluginProcessmakerProcess extends CommonDBTM {
 
       $tab[11]['table']        = 'glpi_plugin_processmaker_processes';
       $tab[11]['field']        =  'project_type';
-      $tab[11]['name']         =  __('Project type', 'processmaker');
+      $tab[11]['name']         =  __('Process type', 'processmaker');
       $tab[11]['massiveaction'] = false;
       $tab[11]['datatype']     =  'specific';
 
       $tab[12]['table']         = 'glpi_plugin_processmaker_processes';
       $tab[12]['field']         = 'hide_case_num_title';
-      $tab[12]['name']          = __('Hide case number and title', 'processmaker');
+      $tab[12]['name']          = __('Hide case num. & title', 'processmaker');
       $tab[12]['massiveaction'] = true;
       $tab[12]['datatype']      = 'bool';
 
@@ -458,6 +458,30 @@ class PluginProcessmakerProcess extends CommonDBTM {
       $tab[15]['searchtype']    = 'equals';
       $tab[15]['datatype']      = 'specific';
       $tab[15]['massiveaction'] = false;
+
+      $tab[16]['table']         = 'glpi_plugin_processmaker_processes';
+      $tab[16]['field']         = 'is_incident';
+      $tab[16]['name']          = __('Visible in Incident for Central interface', 'processmaker');
+      $tab[16]['massiveaction'] = true;
+      $tab[16]['datatype']      = 'bool';
+
+      $tab[17]['table']         = 'glpi_plugin_processmaker_processes';
+      $tab[17]['field']         = 'is_request';
+      $tab[17]['name']          = __('Visible in Request for Central interface', 'processmaker');
+      $tab[17]['massiveaction'] = true;
+      $tab[17]['datatype']      = 'bool';
+
+      $tab[18]['table']         = 'glpi_plugin_processmaker_processes';
+      $tab[18]['field']         = 'is_change';
+      $tab[18]['name']          = __('Visible in Change', 'processmaker');
+      $tab[18]['massiveaction'] = true;
+      $tab[18]['datatype']      = 'bool';
+
+      $tab[19]['table']         = 'glpi_plugin_processmaker_processes';
+      $tab[19]['field']         = 'is_problem';
+      $tab[19]['name']          = __('Visible in Problem', 'processmaker');
+      $tab[19]['massiveaction'] = true;
+      $tab[19]['datatype']      = 'bool';
 
       return $tab;
    }
@@ -501,7 +525,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
 
    /**
     * Summary of getProcessTypeName
-    * @param mixed $value 
+    * @param mixed $value
     * @return mixed
     */
    static function getProcessTypeName($value) {
@@ -582,25 +606,17 @@ class PluginProcessmakerProcess extends CommonDBTM {
       echo "</td></tr>";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td >".__('Ticket type (self-service)', 'processmaker')."</td><td>";
-      if (true) { // $canupdate || !$ID
-            $idticketcategorysearch = mt_rand(); $opt = array('value' => $this->fields["type"]);
-            $rand = Ticket::dropdownType('type', $opt, array(), array('toupdate' => "search_".$idticketcategorysearch ));
-            $opt = array('value' => $this->fields["type"]);
-            $params = array('type'            => '__VALUE__',
-                            //'entity_restrict' => -1, //$this->fields['entities_id'],
-                            'value'           => $this->fields['itilcategories_id'],
-                            'currenttype'     => $this->fields['type']);
+      echo "<td >".__('Visible in Incident for Central interface', 'processmaker')."</td><td>";
+      Dropdown::showYesNo("is_incident", $this->fields["is_incident"]);
+      echo "</td></tr>";
 
-            Ajax::updateItemOnSelectEvent("dropdown_type$rand", "show_category_by_type",
-                                            $CFG_GLPI["root_doc"]."/ajax/dropdownTicketCategories.php",
-                                            $params);
-      } else {
-          echo Ticket::getTicketTypeName($this->fields["type"]);
-      }
-      echo "</td>";
+      echo "<tr class='tab_bg_1'>";
+      echo "<td >".__('Visible in Request for Central interface', 'processmaker')."</td><td>";
+      Dropdown::showYesNo("is_request", $this->fields["is_request"]);
+      echo "</td></tr>";
 
-      echo "<td >".__('ITIL Category (self-service)', 'processmaker')."</td><td>";
+      echo "<tr class='tab_bg_1'>";
+      echo "<td >".__('ITIL Category for Self-service interface (left empty to disable)', 'processmaker')."</td><td>";
       if (true) { // $canupdate || !$ID || $canupdate_descr
           $opt = array('value'  => $this->fields["itilcategories_id"]);
 
@@ -626,17 +642,40 @@ class PluginProcessmakerProcess extends CommonDBTM {
       } else {
           echo Dropdown::getDropdownName("glpi_itilcategories", $this->fields["itilcategories_id"]);
       }
+
+      echo "<td >".__('Type for Self-service interface', 'processmaker')."</td><td>";
+      if (true) { // $canupdate || !$ID
+         $idticketcategorysearch = mt_rand(); $opt = array('value' => $this->fields["type"]);
+         $rand = Ticket::dropdownType('type', $opt, array(), array('toupdate' => "search_".$idticketcategorysearch ));
+         $opt = array('value' => $this->fields["type"]);
+         $params = array('type'            => '__VALUE__',
+                         //'entity_restrict' => -1, //$this->fields['entities_id'],
+                         'value'           => $this->fields['itilcategories_id'],
+                         'currenttype'     => $this->fields['type']);
+
+         Ajax::updateItemOnSelectEvent("dropdown_type$rand", "show_category_by_type",
+                                         $CFG_GLPI["root_doc"]."/ajax/dropdownTicketCategories.php",
+                                         $params);
+      } else {
+         echo Ticket::getTicketTypeName($this->fields["type"]);
+      }
+      echo "</td>";
+      echo "</tr>";
+
+      echo "<tr class='tab_bg_1'>";
+      echo "<td >".__('Visible in Change', 'processmaker')."</td><td>";
+      Dropdown::showYesNo("is_change", $this->fields["is_change"]);
       echo "</td></tr>";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td >".__('Project type (to be changed if not up-to-date)', 'processmaker')."</td><td>";
-      Dropdown::showFromArray( 'project_type', self::getAllTypeArray(), array( 'value' => $this->fields["project_type"] ) );
+      echo "<td >".__('Visible in Problem', 'processmaker')."</td><td>";
+      Dropdown::showYesNo("is_problem", $this->fields["is_problem"]);
       echo "</td></tr>";
 
-      //echo "<tr class='tab_bg_1'>";
-      //echo "<td >".__("Last update")."</td><td>";
-      //echo Html::convDateTime($this->fields["date_mod"]);
-      //echo "</td></tr>";
+      echo "<tr class='tab_bg_1'>";
+      echo "<td >".__('Process type (to be changed only if not up-to-date)', 'processmaker')."</td><td>";
+      Dropdown::showFromArray( 'project_type', self::getAllTypeArray(), array( 'value' => $this->fields["project_type"] ) );
+      echo "</td></tr>";
 
       $this->showFormButtons($options);
    }
@@ -658,7 +697,9 @@ class PluginProcessmakerProcess extends CommonDBTM {
 
       $orderby = '';
 
-      $where = ' WHERE glpi_plugin_processmaker_processes.is_active=1 ';
+      if (isset($_REQUEST['condition']) && isset($_SESSION['glpicondition'][$_REQUEST['condition']])) {
+         $where = ' WHERE '.$_SESSION['glpicondition'][$_REQUEST['condition']]; //glpi_plugin_processmaker_processes.is_active=1 ';
+      }
 
       if ($count) {
          $fields = " COUNT(DISTINCT glpi_plugin_processmaker_processes.id) AS cpt ";
