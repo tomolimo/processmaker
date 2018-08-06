@@ -4,7 +4,7 @@ GLPI plugin that provides an interface with ProcessMaker server (http://www.proc
 
 Is currently compatible with GLPI 9.1 and 9.2
 
-Is currently compatible with ProcessMaker 3.0.1.8-RE-1.8 (see https://github.com/tomolimo/processmaker-server/releases/latest)
+Is currently compatible with ProcessMaker 3.0.1.8-RE-1.9 (see https://github.com/tomolimo/processmaker-server/releases/latest)
 This plugin can run classic and bpmn processes
 
 An IRC channel is available: #processmaker-glpi on https://webchat.freenode.net/

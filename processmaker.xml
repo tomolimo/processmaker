@@ -23,17 +23,18 @@
    </authors>
    <versions>
       <version>
-         <num>3.2.9</num>
+         <num>3.3.1</num>
          <compatibility>9.2</compatibility>
       </version>
       <version>
-          <num>3.2.9</num>
+          <num>3.3.1</num>
           <compatibility>9.1</compatibility>
       </version>
    </versions>
    <langs>
       <lang>en_gb</lang>
       <lang>fr_fr</lang>
+      <lang>cs_cz</lang>
    </langs>
    <license>GPL v2+</license>
    <tags>
@@ -41,13 +42,13 @@
             <tag>Processus</tag>
             <tag>Workflow</tag>
 			<tag>Helpdesk</tag>
-			<tag>Tickets</tag>
+			<tag>Ticket</tag>
          </fr>
          <en>
             <tag>Processes</tag>
             <tag>Helpdesk</tag>
 			<tag>Workflows</tag>
-			<tag>Tickets</tag>
+			<tag>Ticket</tag>
          </en>
    </tags>
 </root>
