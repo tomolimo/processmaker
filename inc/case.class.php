@@ -843,7 +843,7 @@ class PluginProcessmakerCase extends CommonDBTM {
 
       $cases = self::getIDsFromItem($item->getType(), $item->getID());
       foreach ($cases as $cases_id) {
-         $ret = array_merge($ret, PluginProcessmakerTask::getToDoTasks($cases_id, $item->getType()."Task"));
+         $ret = $ret + PluginProcessmakerTask::getToDoTasks($cases_id, $item->getType()."Task");
       }
 
       return $ret;
