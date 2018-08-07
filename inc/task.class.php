@@ -72,7 +72,7 @@ class PluginProcessmakerTask extends CommonITILTask
       $selfTable = getTableForItemType( __CLASS__);
       //$itemTypeTaskTable = getTableForItemType( $itemtype );
 
-      $query = "SELECT `$selfTable``items_id` as taskID from $selfTable
+      $query = "SELECT `$selfTable`.`items_id` as taskID from $selfTable
                   WHERE `$selfTable`.`del_thread_status` = '".self::OPEN."' AND `$selfTable`.`plugin_processmaker_cases_id` = '$case_id';";
 
       //$query = "SELECT $itemTypeTaskTable.id as taskID from $itemTypeTaskTable
