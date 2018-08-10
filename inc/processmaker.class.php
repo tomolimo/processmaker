@@ -1124,9 +1124,9 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
       // get list of case assigned to GLPI items
       $draftCases = array(0);
-      $query = "SELECT case_num FROM glpi_plugin_processmaker_cases WHERE case_status = 'DRAFT';";
+      $query = "SELECT id FROM glpi_plugin_processmaker_cases WHERE case_status = 'DRAFT';";
       foreach ($DB->request( $query ) as $row) {
-         $draftCases[] = $row['case_num'];
+         $draftCases[] = $row['id'];
       }
 
       $actionCode = 0; // by default
@@ -2331,6 +2331,15 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       $request = stripcslashes_deep( $request );
 
       $data = http_formdata_flat_hierarchy( $request );
+
+      // check if any files are in the $_FILES global array
+      // and add them to the curl POST 
+      if (isset($_FILES['form']['name'])) {
+         foreach ($_FILES['form']['name'] as $key => $file) {
+            $cfile = new CURLFile($_FILES['form']['tmp_name'][$key], $_FILES['form']['type'][$key],$_FILES['form']['name'][$key]);
+            $data["form[$key]"] = $cfile;
+         }
+      }
 
       $ch = curl_init();
 
