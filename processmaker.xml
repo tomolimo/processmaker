@@ -8,10 +8,12 @@
       <short>
 		 <fr>Ce plugin fournit la possibilité d'intégrer un processus (workflow) aux tickets.</fr>
          <en>This plugin provides a process (workflow) management linked to tickets.</en>
+	 <cs>Tento zásuvný modul poskytuje správu procesů (pracovní postup) napojený na požadavky.</cs>
       </short>
       <long>
          <en>This plugin is dedicated to provide a process (workflow) management linked to tickets. This goal is achieved using ProcessMaker (URL: http://www.processmaker.com/). ProcessMaker will provide Process design and Workflow execution. This plugin is the glue between GLPI and ProcessMaker.</en>
 		 <fr>Ce plugin est dédié à la gestion de processus (workflows) liés à des tickets. Ce but est atteint par l'utilisation de ProcessMaker (URL: http://www.processmaker.com/). ProcessMaker fournit un outil graphique de création de processus et permet l'exécution de ceux-ci. Ce plugin sert de glue entre GLPI et ProcessMaker.</fr>
+	 <cs>Tento zásuvný modul je věnován poskytnutí správy procesu (pracovní postup), napojeného na požadavky. Tohoto cíle je dosaženo použitím ProcessMaker (URL: http://www.processmaker.com/). ProcessMaker poskytne návrh procesu a vykonání pracovního postupu. Tento zásuvný modul je můstkem mezi GLPI a ProcessMaker.</cs>
       </long>
    </description>
    <homepage>https://github.com/tomolimo/processmaker</homepage>
@@ -50,5 +52,11 @@
 			<tag>Workflows</tag>
 			<tag>Ticket</tag>
          </en>
+	 <cs>
+            <tag>Procesy</tag>
+            <tag>Službapodpory</tag>
+	    <tag>Pracovnípostupy</tag>
+	    <tag>Požadavek</tag>
+         </cs>
    </tags>
 </root>
