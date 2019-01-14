@@ -48,26 +48,28 @@ if (!empty($_REQUEST['searchText'])) {
    $search = Search::makeTextSearch($_REQUEST['searchText']);
 }
 
-$processes = array();
+$processes = [];
 
 // Empty search text : display first
 if (empty($_REQUEST['searchText'])) {
    if ($_REQUEST['display_emptychoice']) {
       if (($one_item < 0) || ($one_item  == 0)) {
-         array_push($processes, array('id'   => 0,
-                                  'text' => $_REQUEST['emptylabel']));
+         array_push($processes, ['id'   => 0,
+                                  'text' => $_REQUEST['emptylabel']]);
       }
    }
 }
+
+$processall = (isset($_REQUEST['specific_tags']['process_restrict']) && !$_REQUEST['specific_tags']['process_restrict']);
 
 $result = PluginProcessmakerProcess::getSqlSearchResult(false, $search);
 
 if ($DB->numrows($result)) {
    while ($data = $DB->fetch_array($result)) {
       $process_entities = PluginProcessmakerProcess::getEntitiesForProfileByProcess($data["id"], $_SESSION['glpiactiveprofile']['id'], true);
-      if (in_array( $_REQUEST["entity_restrict"],  $process_entities)) {
-         array_push( $processes, array( 'id'   => $data["id"],
-                                        'text' => $data["name"] ));
+      if ($processall || in_array( $_REQUEST["entity_restrict"], $process_entities)) {
+         array_push( $processes, [ 'id'   => $data["id"],
+                                        'text' => $data["name"] ]);
          $count++;
       }
    }

@@ -23,6 +23,7 @@ if (!defined('GLPI_ROOT')) {
 Session::checkLoginUser();
 
 $PM_DB = new PluginProcessmakerDB;
+$dbu = new DbUtils;
 
 if (!isset($_REQUEST['right'])) {
     $_REQUEST['right'] = "all";
@@ -33,7 +34,7 @@ if (!isset($_REQUEST['all'])) {
     $_REQUEST['all'] = 0;
 }
 
-$used = array();
+$used = [];
 
 if (isset($_REQUEST['used'])) {
    $used = $_REQUEST['used'];
@@ -64,13 +65,13 @@ if ($one_item < 0) {
              WHERE `glpi_users`.`id` = '$one_item';";
    $result = $DB->query($query);
 }
-$users = array();
+$users = [];
 
 // Count real items returned
 $count = 0;
 if ($DB->numrows($result)) {
    while ($data = $DB->fetch_assoc($result)) {
-      $users[$data["id"]] = formatUserName($data["id"], $data["name"], $data["realname"],
+      $users[$data["id"]] = $dbu->formatUserName($data["id"], $data["name"], $data["realname"],
                                            $data["firstname"]);
       $logins[$data["id"]] = $data["name"];
    }
@@ -82,17 +83,17 @@ if (!function_exists('dpuser_cmp')) {
    }
 }
 
-$datas = array();
+$datas = [];
 
 // Display first if empty search
 if ($_REQUEST['page'] == 1 && empty($_REQUEST['searchText'])) {
    if (($one_item < 0) || ($one_item == 0)) {
       if ($_REQUEST['all'] == 0) {
-         array_push($datas, array('id'   => 0,
-                                  'text' => Dropdown::EMPTY_VALUE));
+         array_push($datas, ['id'   => 0,
+                                  'text' => Dropdown::EMPTY_VALUE]);
       } else if ($_REQUEST['all'] == 1) {
-         array_push($datas, array('id'   => 0,
-                                  'text' => __('All')));
+         array_push($datas, ['id'   => 0,
+                                  'text' => __('All')]);
       }
    }
 }
@@ -101,9 +102,9 @@ if (count($users)) {
    foreach ($users as $ID => $output) {
       $title = sprintf('%1$s - %2$s', $output, $logins[$ID]);
 
-      array_push($datas, array('id'    => $ID,
+      array_push($datas, ['id'    => $ID,
                                'text'  => $output,
-                               'title' => $title));
+                               'title' => $title]);
       $count++;
    }
 }

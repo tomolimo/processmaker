@@ -162,7 +162,7 @@ function onTaskFrameLoad(event, delIndex, hideClaimButton, csrf) {
          // nothing to do here for the moment
       }
 
-    }, 10);
+   }, 10);
 
 }
 
@@ -181,44 +181,44 @@ function redimTaskFrame(taskFrame, delIndex) {
    }
 }
 
-function onTaskFrameActivation(delIndex) {
-   var taskFrameId = "caseiframe-" + delIndex;
-   var taskFrameTimerCounter = 0;
-   var redimIFrame = false;
+//function onTaskFrameActivation(delIndex) {
+//   var taskFrameId = "caseiframe-" + delIndex;
+//   var taskFrameTimerCounter = 0;
+//   var redimIFrame = false;
 
-   var taskFrameTimer = window.setInterval(function () {
-      try {
-         var locContentDocument;
-         var taskFrame = document.getElementById(taskFrameId);
+//   var taskFrameTimer = window.setInterval(function () {
+//      try {
+//         var locContentDocument;
+//         var taskFrame = document.getElementById(taskFrameId);
 
-         if (taskFrame != undefined && taskFrame.contentDocument != undefined) {
-            // here we've caught the content of the iframe
-            locContentDocument = taskFrame.contentDocument;
+//         if (taskFrame != undefined && taskFrame.contentDocument != undefined) {
+//            // here we've caught the content of the iframe
+//            locContentDocument = taskFrame.contentDocument;
 
-            // try to redim caseIFrame
-            if (!redimIFrame) {
-               var newHeight;
-               var locElt = locContentDocument.getElementsByTagName("html")[0];
-               newHeight = parseInt(getComputedStyle(locElt, null).getPropertyValue('height'), 10);
+//            // try to redim caseIFrame
+//            if (!redimIFrame) {
+//               var newHeight;
+//               var locElt = locContentDocument.getElementsByTagName("html")[0];
+//               newHeight = parseInt(getComputedStyle(locElt, null).getPropertyValue('height'), 10);
 
-               tabs.getItem('task-' + delIndex).setHeight(newHeight);
-               taskFrame.height = newHeight;
-               redimIFrame = true;
-            }
-         }
+//               tabs.getItem('task-' + delIndex).setHeight(newHeight);
+//               taskFrame.height = newHeight;
+//               redimIFrame = true;
+//            }
+//         }
 
-         taskFrameTimerCounter = taskFrameTimerCounter + 1;
+//         taskFrameTimerCounter = taskFrameTimerCounter + 1;
 
-         if (taskFrameTimerCounter > 3000 || redimIFrame) { // timeout
-            window.clearInterval(taskFrameTimer);
-         }
+//         if (taskFrameTimerCounter > 3000 || redimIFrame) { // timeout
+//            window.clearInterval(taskFrameTimer);
+//         }
 
-      } catch (evt) {
-         // nothing to do here for the moment
-      }
+//      } catch (evt) {
+//         // nothing to do here for the moment
+//      }
 
-    }, 10);
-}
+//   }, 10);
+//}
 function clearClass(lociFrame) {
 
    try {
@@ -307,6 +307,6 @@ function onOtherFrameLoad(tabPanelName, frameName, eltTagName, isMap3) {
       } catch (ev) {
          // nothing to do here for the moment
       }
-    }, 10);
+   }, 10);
 
 }

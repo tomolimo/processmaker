@@ -18,6 +18,7 @@ if (!defined('GLPI_ROOT')) {
 
 Session::checkLoginUser();
 
+$PM_SOAP = new PluginProcessmakerProcessmaker; // not used in this context, just here to define the type of $PM_SOAP
 $PM_DB = new PluginProcessmakerDB;
 $rand = rand();
 
@@ -32,7 +33,7 @@ echo "<input type='hidden' name='users_id' value='".$_REQUEST['users_id']."'>";
 echo "<input type='hidden' name='taskGuid' value='".$_REQUEST['taskGuid']."'>";
 echo "<input type='hidden' name='delThread' value='".$_REQUEST['delThread']."'>";
 
-PluginProcessmakerUser::dropdown( array('name'   => 'users_id_recipient',
+PluginProcessmakerUser::dropdown( ['name'   => 'users_id_recipient',
                                           'value'  => $_REQUEST['users_id'],
                                           'used' => [$_REQUEST['users_id']],
                                           'entity' => 0, //$item->fields["entities_id"], // not used, as any user can be assigned to any tasks
@@ -40,7 +41,7 @@ PluginProcessmakerUser::dropdown( array('name'   => 'users_id_recipient',
                                           'right'  => 'all',
                                           'rand'  => $rand,
                                           'width' => '',
-                                          'specific_tags' => array('taskGuid' => $_REQUEST['taskGuid'])));
+                                          'specific_tags' => ['taskGuid' => $_REQUEST['taskGuid']]]);
 echo "&nbsp;&nbsp;";
 echo "<input type='submit' name='reassign' value='".__('Re-assign', 'processmaker')."' class='submit'>";
 Html::closeForm(true);

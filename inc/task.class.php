@@ -11,9 +11,9 @@
 class PluginProcessmakerTask extends CommonITILTask
 {
    private $itemtype;
-   function __construct($itemtype='TicketTask') {
+   function __construct($itemtype = 'TicketTask') {
       parent::__construct();
-      $this->itemtype=$itemtype;
+      $this->itemtype = $itemtype;
    }
 
 
@@ -25,7 +25,7 @@ class PluginProcessmakerTask extends CommonITILTask
     *
     * @param $nb : number of item in the type (default 0)
     **/
-   static function getTypeName($nb=0) {
+   static function getTypeName($nb = 0) {
       return _n('Process case task', 'Process case tasks', $nb, 'processmaker');
    }
 
@@ -66,10 +66,11 @@ class PluginProcessmakerTask extends CommonITILTask
      * returns all 'to do' tasks associated with this case
      * @param mixed $case_id
      */
-   public static function getToDoTasks( $case_id, $itemtype ) {
+   public static function getToDoTasks($case_id, $itemtype) {
       global $DB;
-      $ret = array();
-      $selfTable = getTableForItemType( __CLASS__);
+      $ret = [];
+      $dbu = new DbUtils;
+      $selfTable = $dbu->getTableForItemType( __CLASS__);
       //$itemTypeTaskTable = getTableForItemType( $itemtype );
 
       $query = "SELECT `$selfTable`.`items_id` as taskID from $selfTable
@@ -84,15 +85,15 @@ class PluginProcessmakerTask extends CommonITILTask
       return $ret;
    }
 
-   static function canView( ) {
+   static function canView() {
       return true;
    }
 
    static function populatePlanning($params) {
-      global $CFG_GLPI;
+      //global $CFG_GLPI;
 
-      $ret = array();
-      $events = array();
+      $events = [];
+
       if (isset($params['start'])) {
          $params['begin'] = '2000-01-01 00:00:00';
          if ($params['type'] == 'group') {
@@ -100,33 +101,42 @@ class PluginProcessmakerTask extends CommonITILTask
             $params['whogroup'] = $params['who'];
             $params['who'] = 0;
          }
-         $ret = CommonITILTask::genericPopulatePlanning( 'TicketTask', $params );
 
-         foreach ($ret as $key => $event) {
-            if ($event['state'] == 1 || ($params['display_done_events'] == 1 && $event['state'] == 2)) { // if todo or done but need to show them (=planning)
-               // check if task is one within a case
-               $pmTask = new self('TicketTask');
-               if ($pmTask->getFromDB( $event['tickettasks_id'] )) { // $pmTask->getFromDBByQuery( " WHERE itemtype = 'TicketTask' AND items_id = ". $event['tickettasks_id'] ) ) {
-                  $event['editable'] = false;
-                  //$event['url'] .= '&forcetab=PluginProcessmakerCase$processmakercases';
-                  $tmpCase = new PluginProcessmakerCase;
-                  $tmpCase->getFromDB($pmTask->fields['plugin_processmaker_cases_id']);
-                  $event['url'] = $tmpCase->getLinkURL().'&forcetab=PluginProcessmakerTask$'.$pmTask->fields['items_id'];
+         $objects = ['TicketTask', 'ChangeTask', 'ProblemTask'];
+         //foreach ($objects as $itemtype) {
+         foreach ($_SESSION['glpi_plannings']['filters'] as $tasktype => $iteminfo) {
+            if (!$iteminfo['display'] || !in_array($tasktype, $objects)) {
+               continue;
+            }
+            $ret = CommonITILTask::genericPopulatePlanning($tasktype, $params);
 
-                  $taskCat = new TaskCategory;
-                  $taskCat->getFromDB( $pmTask->fields['taskcategories_id'] );
-                  $taskComment = isset($taskCat->fields['comment']) ? $taskCat->fields['comment'] : '';
-                  if (Session::haveTranslations('TaskCategory', 'comment')) {
-                     $taskComment = DropdownTranslation::getTranslatedValue( $taskCat->getID(), 'TaskCategory', 'comment', $_SESSION['glpilanguage'], $taskComment );
+            foreach ($ret as $key => $event) {
+               // if todo or done but need to show them (=planning)
+               if ($event['state'] == Planning::TODO || $event['state'] == Planning::INFO || ($params['display_done_events'] == 1 && $event['state'] == Planning::DONE)) {
+                  // check if task is one within a case
+                  $pmTask = new PluginProcessmakerTask($tasktype);
+                  if ($pmTask->getFromDB($event[strtolower($tasktype).'s_id'])) { // $pmTask->getFromDBByQuery( " WHERE itemtype = 'TicketTask' AND items_id = ". $event['tickettasks_id'] ) ) {
+                     $event['editable'] = false;
+                     //$event['url'] .= '&forcetab=PluginProcessmakerCase$processmakercases';
+                     $tmpCase = new PluginProcessmakerCase;
+                     $tmpCase->getFromDB($pmTask->fields['plugin_processmaker_cases_id']);
+                     $event['url'] = $tmpCase->getLinkURL().'&forcetab=PluginProcessmakerTask$'.$pmTask->fields['items_id'];
+
+                     $taskCat = new TaskCategory;
+                     $taskCat->getFromDB( $pmTask->fields['taskcategories_id'] );
+                     $taskComment = isset($taskCat->fields['comment']) ? $taskCat->fields['comment'] : '';
+                     if (Session::haveTranslations('TaskCategory', 'comment')) {
+                        $taskComment = DropdownTranslation::getTranslatedValue( $taskCat->getID(), 'TaskCategory', 'comment', $_SESSION['glpilanguage'], $taskComment );
+                     }
+
+                     $event['content'] = str_replace( '##processmaker.taskcomment##', $taskComment, $event['content'] );
+                     $event['content'] = str_replace( ['\n##processmakercase.url##', '##processmakercase.url##'], "", $event['content'] ); //<a href=\"".$event['url']."\">"."Click to manage task"."</a>
+                     //if( $event['state'] == 1 && $event['end'] < $params['start'] ) { // if todo and late
+                     //   $event['name'] = $event['end'].' '.$event['name'] ; //$event['begin'].' to '.$event['end'].' '.$event['name'] ;
+                     //   $event['end'] = $params['start'].' 24:00:00'; //.$CFG_GLPI['planning_end'];
+                     //}
+                     $events[$key] = $event;
                   }
-
-                  $event['content'] = str_replace( '##processmaker.taskcomment##', $taskComment, $event['content'] );
-                  $event['content'] = str_replace( '##processmakercase.url##', "", $event['content'] ); //<a href=\"".$event['url']."\">"."Click to manage task"."</a>
-                  //if( $event['state'] == 1 && $event['end'] < $params['start'] ) { // if todo and late
-                  //   $event['name'] = $event['end'].' '.$event['name'] ; //$event['begin'].' to '.$event['end'].' '.$event['name'] ;
-                  //   $event['end'] = $params['start'].' 24:00:00'; //.$CFG_GLPI['planning_end'];
-                  //}
-                  $events[$key] = $event;
                }
             }
          }
@@ -135,7 +145,7 @@ class PluginProcessmakerTask extends CommonITILTask
    }
 
 
-   function getTabNameForItem(CommonGLPI $case, $withtemplate = 0){
+   function getTabNameForItem(CommonGLPI $case, $withtemplate = 0) {
       global $DB, $PM_DB;
 
       $tab = [];
@@ -143,13 +153,13 @@ class PluginProcessmakerTask extends CommonITILTask
       $caseInfo = $case->getCaseInfo();
 
       if (property_exists($caseInfo, 'currentUsers')) {
-
+         $dbu = new DbUtils;
          $GLPICurrentPMUserId = PluginProcessmakerUser::getPMUserId(Session::getLoginUserID());
 
          // get all tasks that are OPEN for this case
          $tasks = [];
          $query = "SELECT * FROM `glpi_plugin_processmaker_tasks` WHERE `plugin_processmaker_cases_id`={$case->fields['id']} AND `del_thread_status`='OPEN'";
-         foreach($DB->request($query) as $task) {
+         foreach ($DB->request($query) as $task) {
             $tasks[$task['del_index']] = $task;
          }
 
@@ -170,7 +180,7 @@ class PluginProcessmakerTask extends CommonITILTask
             if (isset($tasks[$caseUser->delIndex])) {
                $hide_claim_button = false;
                if ($caseUser->userId == '') { // task to be claimed
-                  $itemtask = getItemForItemtype($tasks[$caseUser->delIndex]['itemtype']);
+                  $itemtask = $dbu->getItemForItemtype($tasks[$caseUser->delIndex]['itemtype']);
                   $itemtask->getFromDB($tasks[$caseUser->delIndex]['items_id']);
                   // check if this group can be found in the current user's groups
                   if (!isset($_SESSION['glpigroups']) || !in_array( $itemtask->fields['groups_id_tech'], $_SESSION['glpigroups'] )) {
@@ -227,8 +237,9 @@ class PluginProcessmakerTask extends CommonITILTask
     * @param integer $tabnum contains the PluginProcessmakerTask id
     * @param mixed $withtemplate
     */
-   static function displayTabContentForItem(CommonGLPI $case, $tabnum=1, $withtemplate=0) {
+   static function displayTabContentForItem(CommonGLPI $case, $tabnum = 1, $withtemplate = 0) {
       global $CFG_GLPI, $PM_SOAP, $DB, $PM_DB;
+      $dbu = new DbUtils;
 
       // check if we are going to view a sub-task, then redirect to sub-case itself
       if (preg_match('/^(?\'cases_id\'\d+)-(\d+)$/', $tabnum, $matches)) {
@@ -238,7 +249,7 @@ class PluginProcessmakerTask extends CommonITILTask
          $sub_tasks = [];
          $query = "SELECT `glpi_plugin_processmaker_tasks`.*  FROM `glpi_plugin_processmaker_tasks`
                   WHERE `glpi_plugin_processmaker_tasks`.`plugin_processmaker_cases_id`={$matches['cases_id']} AND `del_thread_status`='OPEN'";
-         foreach($DB->request($query) as $task) {
+         foreach ($DB->request($query) as $task) {
             $sub_tasks[$task['plugin_processmaker_cases_id']][$task['del_index']] = $task;
          }
          $sub_case = new PluginProcessmakerCase;
@@ -247,7 +258,7 @@ class PluginProcessmakerTask extends CommonITILTask
 
          $query = "SELECT `DEL_INDEX`, `DEL_DELEGATE_DATE` FROM `APP_DELEGATION` WHERE `APP_UID`='{$sub_case->fields['case_guid']}'";
          $sub_tasks_pm = [];
-         foreach($PM_DB->request($query) as $row){
+         foreach ($PM_DB->request($query) as $row) {
             $sub_tasks_pm[$row['DEL_INDEX']] = $row['DEL_DELEGATE_DATE'];
          }
 
@@ -266,7 +277,7 @@ class PluginProcessmakerTask extends CommonITILTask
                <th>".__('Task delegation date', 'processmaker')."</th>
             </tr>";
 
-            foreach($sub_case_info->currentUsers as $currentTask) {
+            foreach ($sub_case_info->currentUsers as $currentTask) {
                echo "<tr>";
                $sub_case_url .= $sub_tasks[$matches['cases_id']][$currentTask->delIndex]['id'];
                echo "<td class='tab_bg_2'><a href='$sub_case_url'>".$currentTask->taskName."</a></td>";
@@ -295,7 +306,7 @@ class PluginProcessmakerTask extends CommonITILTask
       $rand = rand();
 
       // get infos for the current task
-      $task = getAllDatasFromTable('glpi_plugin_processmaker_tasks', "id = $tabnum");
+      $task = $dbu->getAllDataFromTable('glpi_plugin_processmaker_tasks', "id = $tabnum");
 
       // shows the re-assign form
       $caseInfo = $case->getCaseInfo();
@@ -327,7 +338,7 @@ class PluginProcessmakerTask extends CommonITILTask
             // manages the claim
             // current task is to be claimed
             // get the assigned group to the item task
-            $itemtask = getItemForItemtype( $task[$tabnum]['itemtype'] );
+            $itemtask = $dbu->getItemForItemtype( $task[$tabnum]['itemtype'] );
             $itemtask->getFromDB( $task[$tabnum]['items_id'] );
             // check if this group can be found in the current user's groups
             if (!isset($_SESSION['glpigroups']) || !in_array( $itemtask->fields['groups_id_tech'], $_SESSION['glpigroups'] )) {
@@ -340,18 +351,55 @@ class PluginProcessmakerTask extends CommonITILTask
 
       $csrf = Session::getNewCSRFToken();
 
+      //echo "<iframe id='caseiframe-task-{$task[$tabnum]['del_index']}' onload=\"onTaskFrameLoad( event, {$task[$tabnum]['del_index']}, "
+      //   .($hide_claim_button?"true":"false")
+      //   .", '$csrf' );\" style='border:none;' class='tab_bg_2' width='100%' src='";
+      //echo $PM_SOAP->serverURL
+      //   ."/cases/cases_Open?sid="
+      //   .$PM_SOAP->getPMSessionID()
+      //   ."&APP_UID="
+      //   .$case->fields['case_guid']
+      //   ."&DEL_INDEX="
+      //   .$task[$tabnum]['del_index']
+      //   ."&action=TO_DO";
+      //echo "&rand=$rand&glpi_domain={$config->fields['domain']}'></iframe></div>";
+      $url = $PM_SOAP->serverURL
+         ."/cases/cases_Open?sid=".$PM_SOAP->getPMSessionID()
+         ."&APP_UID=".$case->fields['case_guid']
+         ."&DEL_INDEX=".$task[$tabnum]['del_index']
+         ."&action=TO_DO"
+         ."&rand=$rand"
+         ."&glpi_domain={$config->fields['domain']}";
+
+      $encoded_url = urlencode($url);
+
       echo "<iframe id='caseiframe-task-{$task[$tabnum]['del_index']}' onload=\"onTaskFrameLoad( event, {$task[$tabnum]['del_index']}, "
-         .($hide_claim_button?"true":"false")
-         .", '$csrf' );\" style='border:none;' class='tab_bg_2' width='100%' src='";
-      echo $PM_SOAP->serverURL
-         ."/cases/cases_Open?sid="
-         .$PM_SOAP->getPMSessionID()
-         ."&APP_UID="
-         .$case->fields['case_guid']
-         ."&DEL_INDEX="
-         .$task[$tabnum]['del_index']
-         ."&action=TO_DO";
-      echo "&rand=$rand&glpi_domain={$config->fields['domain']}'></iframe></div>";
+         .($hide_claim_button?"true":"false").", '$csrf');\" style='border:none;' class='tab_bg_2' width='100%' src='$url'></iframe></div>";
+
+      echo Html::scriptBlock("
+         $('#tabspanel').next('div[id^=\"tabs\"]').on( 'tabsbeforeactivate', function(event, ui) {
+            function urldecode(url) {
+               return decodeURIComponent(url.replace(/\+/g, ' '));
+            }
+            var iframe_id = 'caseiframe-task-{$task[$tabnum]['del_index']}';
+            var iframe = ui.newPanel.children('iframe[id=\"' + iframe_id + '\"]');
+            if (iframe.length != 0) {
+               var str = urldecode('$encoded_url');
+               $.ajax( { url: str,
+                           xhrFields: { withCredentials: true },
+                           success: function (jqXHR) {
+                              //debugger;
+                              },
+                           error: function (jqXHR) {
+                                // debugger;
+                              },
+                           cache: false,
+                           crossDomain: true
+                           }
+                        );
+            }
+         });
+      ");
 
    }
 

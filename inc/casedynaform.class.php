@@ -10,7 +10,7 @@
  */
 class PluginProcessmakerCasedynaform extends CommonDBTM {
 
-   static function displayTabContentForItem(CommonGLPI $case, $tabnum=1, $withtemplate=0) {
+   static function displayTabContentForItem(CommonGLPI $case, $tabnum = 1, $withtemplate = 0) {
       global $CFG_GLPI, $PM_SOAP;
 
       $config = $PM_SOAP->config;
@@ -20,7 +20,6 @@ class PluginProcessmakerCasedynaform extends CommonDBTM {
       $proj->getFromDB($case->fields['plugin_processmaker_processes_id']);
 
       echo "<script type='text/javascript' src='".$CFG_GLPI["root_doc"]."/plugins/processmaker/js/cases.js'></script>"; //?rand=$rand'
-
 
       echo "<script type='text/javascript'>
                var historyGridListChangeLogGlobal = { viewIdHistory: '', viewIdDin: '', viewDynaformName: '', idHistory: '' } ;
@@ -36,7 +35,10 @@ class PluginProcessmakerCasedynaform extends CommonDBTM {
                         loctabs.find('ul').append( '<li><a href=\'#' + name + '\'>' + title + '</a></li>' );
                      }
                      $.ajax( { url: '".$PM_SOAP->serverURL."/cases/cases_Open?sid=".$PM_SOAP->getPMSessionID()."&APP_UID={$case->fields['case_guid']}&DEL_INDEX=1&action=TO_DO&glpi_init_case=1&glpi_domain={$config->fields['domain']}',
-                              complete: function() {
+                            xhrFields: { withCredentials: true },
+                            cache: false,
+                            crossDomain: true,  
+                            success: function(jqXHR) {
                                     //debugger;
                                     loctabs.append( '<div id=\'' + name + '\'>' + html + '</div>');
                                     loctabs.tabs('refresh'); // to show the panel
@@ -72,11 +74,11 @@ class PluginProcessmakerCasedynaform extends CommonDBTM {
                   onload=\"onOtherFrameLoad( 'historyDynaformPage', 'caseiframe-historyDynaformPage', 'body', 0 );\">
                  </iframe>";
 
-      $PM_SOAP->initCaseAndShowTab(['APP_UID' => $case->fields['case_guid'], 'DEL_INDEX' => 1], $iframe, $rand) ;
+      $PM_SOAP->initCaseAndShowTab(['APP_UID' => $case->fields['case_guid'], 'DEL_INDEX' => 1], $iframe, $rand);
 
    }
 
-   function getTabNameForItem(CommonGLPI $case, $withtemplate = 0){
+   function getTabNameForItem(CommonGLPI $case, $withtemplate = 0) {
       return __('Dynaforms', 'processmaker');
    }
 

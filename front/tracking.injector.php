@@ -4,8 +4,8 @@
 // Original Author of file: MoronO
 // Purpose of file: mimic tracking.injector.php
 // ----------------------------------------------------------------------
-if( isset( $_REQUEST['_glpi_csrf_token'] ) ) {
-   define('GLPI_KEEP_CSRF_TOKEN', true) ;
+if (isset( $_REQUEST['_glpi_csrf_token'] )) {
+   define('GLPI_KEEP_CSRF_TOKEN', true);
 }
 $PM_POST = $_POST;
 $PM_REQUEST = $_REQUEST;
@@ -24,7 +24,7 @@ if (empty($_POST) || count($_POST) == 0) {
 }
 
 // here we are going to test if we must start a process
-if( isset($_POST["_from_helpdesk"]) && $_POST["_from_helpdesk"] == 1
+if (isset($_POST["_from_helpdesk"]) && $_POST["_from_helpdesk"] == 1
     && isset($_POST["type"]) //&& $_POST["type"] == Ticket::DEMAND_TYPE
     && isset($_POST["itilcategories_id"])
     && isset($_POST["entities_id"])) {
@@ -33,26 +33,26 @@ if( isset($_POST["_from_helpdesk"]) && $_POST["_from_helpdesk"] == 1
    // if not we will continue
    // special case if RUMT plugin is enabled and no process is available and category is 'User Management' then must start RUMT.
 
-   $processList = PluginProcessmakerProcessmaker::getProcessesWithCategoryAndProfile( $_POST["itilcategories_id"], $_POST["type"], $_SESSION['glpiactiveprofile']['id'], $_POST["entities_id"] ) ;
+   $processList = PluginProcessmakerProcessmaker::getProcessesWithCategoryAndProfile( $_POST["itilcategories_id"], $_POST["type"], $_SESSION['glpiactiveprofile']['id'], $_POST["entities_id"] );
 
    // currently only one process should be assigned to this itilcategory so this array should contain only one row
-   $processQt = count( $processList ) ;
-   if( $processQt == 1 ) {
+   $processQt = count( $processList );
+   if ($processQt == 1) {
       $_POST['action']='newcase';
       $_POST['plugin_processmaker_processes_id'] = $processList[0]['id'];
       include (GLPI_ROOT . "/plugins/processmaker/front/processmaker.form.php");
-      die() ;
-   } elseif( $processQt > 1 ) {
+      die();
+   } else if ($processQt > 1) {
       // in this case we should show the process dropdown selection
       include (GLPI_ROOT . "/plugins/processmaker/front/processmaker.helpdesk.form.php");
-      die() ;
-   } else{
+      die();
+   } else {
       // in this case should start RUMT
       // if and only if itilcategories_id matches one of the 'User Management' categories
       // could be done via ARBehviours or RUMT itself
-      $userManagementCat = array( 100556, 100557, 100558 ) ;
-      $plug = new Plugin ;
-      if( $processQt == 0 && in_array( $_POST["itilcategories_id"], $userManagementCat) && $plug->isActivated('rayusermanagementticket' )) {
+      $userManagementCat = [ 100556, 100557, 100558 ];
+      $plug = new Plugin;
+      if ($processQt == 0 && in_array( $_POST["itilcategories_id"], $userManagementCat) && $plug->isActivated('rayusermanagementticket' )) {
          Html::redirect($CFG_GLPI['root_doc']."/plugins/rayusermanagementticket/front/rayusermanagementticket.helpdesk.public.php");
       }
    }

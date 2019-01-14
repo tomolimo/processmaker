@@ -2,6 +2,7 @@
 
 include_once ("../../../inc/includes.php");
 
+Session::checkLoginUser();
 
 $locCase = new PluginProcessmakerCase();
 
@@ -28,8 +29,7 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'route' && isset( $_REQ
    }
    glpi_processmaker_case_reload_page();
 
-} else
-if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'delete') {
+} else if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'delete') {
    // delete case from case table, this will also delete the tasks
    if ($locCase->getFromDB($_POST['cases_id']) && $locCase->deleteCase()) {
       Session::addMessageAfterRedirect(__('Case has been deleted!', 'processmaker'), true, INFO);
@@ -39,8 +39,7 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'delete') {
    // will redirect to item or to list if no item
    $locCase->redirectToList();
 
-} else
-if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'cancel') {
+} else if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'cancel') {
    // cancel case from PM
    $locCase = new PluginProcessmakerCase;
    $locCase->getFromDB($_POST['cases_id']);
@@ -55,8 +54,7 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'cancel') {
       Session::addMessageAfterRedirect(__('Unable to cancel case!', 'processmaker'), true, ERROR);
    }
    Html::back();
-} else
-if (isset( $_REQUEST['form'] ) && isset( $_REQUEST['form']['BTN_CATCH'] ) && isset( $_REQUEST['form']['APP_UID'])) {
+} else if (isset( $_REQUEST['form'] ) && isset( $_REQUEST['form']['BTN_CATCH'] ) && isset( $_REQUEST['form']['APP_UID'])) {
    // Claim task management
    // here we are in a Claim request
    $myCase = new PluginProcessmakerCase;
@@ -69,8 +67,7 @@ if (isset( $_REQUEST['form'] ) && isset( $_REQUEST['form']['BTN_CATCH'] ) && iss
    }
    glpi_processmaker_case_reload_page();
 
-} else
-if (isset($_REQUEST['id']) && $_REQUEST['id'] > 0) {
+} else if (isset($_REQUEST['id']) && $_REQUEST['id'] > 0) {
 
    if ($_SESSION["glpiactiveprofile"]["interface"] == "helpdesk") {
       Html::helpHeader(__('Process cases', 'processmaker'), '', $_SESSION["glpiname"]);

@@ -6,7 +6,7 @@ class PluginProcessmakerConfig extends CommonDBTM {
 
    static $rightname = '';
 
-   static private $_instance = NULL;
+   static private $_instance = null;
 
    /**
     * Summary of canCreate
@@ -37,7 +37,7 @@ class PluginProcessmakerConfig extends CommonDBTM {
     * @param mixed $nb plural
     * @return mixed
     */
-   static function getTypeName($nb=0) {
+   static function getTypeName($nb = 0) {
       return __('ProcessMaker setup', 'processmaker');
    }
 
@@ -46,7 +46,7 @@ class PluginProcessmakerConfig extends CommonDBTM {
     * @param mixed $with_comment with comment
     * @return mixed
     */
-   function getName($with_comment=0) {
+   function getName($with_comment = 0) {
       return __('ProcessMaker', 'processmaker');
    }
 
@@ -145,10 +145,10 @@ class PluginProcessmakerConfig extends CommonDBTM {
 
       $setup_ok = false;
 
-      $ui_theme = array(
+      $ui_theme = [
         'glpi_classic' => 'glpi_classic',
         'glpi_neoclassic' => 'glpi_neoclassic'
-      );
+      ];
 
       $config = $PM_SOAP->config;
       $config->showFormHeader(['colspan' => 4]);
@@ -158,9 +158,8 @@ class PluginProcessmakerConfig extends CommonDBTM {
          echo "<tr class='tab_bg_1'>";
          echo "<td >".__('Server URL (must be in same domain than GLPI)', 'processmaker')."</td><td >";
          echo "<input size='50' type='text' name='pm_server_URL' value='".$config->fields['pm_server_URL']."'>";
-         echo "</td></tr>\n";
+         echo "</td>";
 
-         echo "<tr class='tab_bg_1'>";
          echo "<td>".__('Common domain with GLPI', 'processmaker')."</td>";
          echo "<td><font color='red'><div name='domain'>".$config->fields['domain']."</div></font>";
 
@@ -199,6 +198,11 @@ class PluginProcessmakerConfig extends CommonDBTM {
          echo "</td></tr>\n";
 
          echo "<tr class='tab_bg_1'>";
+         echo "<td >".__('Verify SSL certificate', 'processmaker')."</td><td >";
+         Dropdown::showYesNo("ssl_verify", $config->fields['ssl_verify']);
+         echo "</td></tr>";
+
+         echo "<tr class='tab_bg_1'>";
          echo "<td >".__('Workspace Name', 'processmaker')."</td><td >";
          echo "<input type='text' name='pm_workspace' value='".$config->fields['pm_workspace']."'>";
          echo "</td></tr>\n";
@@ -221,7 +225,7 @@ class PluginProcessmakerConfig extends CommonDBTM {
          if ($config->fields['pm_server_URL'] != ''
             && $config->fields['pm_workspace'] != ''
             && $config->fields["pm_admin_user"] != ''
-   //         && ($pm->login(true))) {
+         //         && ($pm->login(true))) {
             && ($PM_SOAP->login(true))) {
             echo "<font color='green'>".__('Test successful');
             $setup_ok = true;
@@ -268,24 +272,24 @@ class PluginProcessmakerConfig extends CommonDBTM {
          echo "<tr class='tab_bg_1'>";
          echo "<td >".__('Theme Name', 'processmaker')."</td><td >";
          Dropdown::showFromArray('pm_theme', $ui_theme,
-                         array('value' => $config->fields['pm_theme']));
+                         ['value' => $config->fields['pm_theme']]);
          echo "</td></tr>";
 
          echo "<tr class='tab_bg_1'>";
          echo "<td >".__('Main Task Category (edit to change name)', 'processmaker')."</td><td >";
-         TaskCategory::dropdown(array('name'              => 'taskcategories_id',
+         TaskCategory::dropdown(['name'              => 'taskcategories_id',
                                   'display_emptychoice'   => true,
-                                  'value'                 => $config->fields['taskcategories_id']));
+                                  'value'                 => $config->fields['taskcategories_id']]);
          echo "</td></tr>\n";
 
          echo "<tr class='tab_bg_1'>";
          echo "<td >".__('Task Writer (edit to change name)', 'processmaker')."</td><td >";
          $rand = mt_rand();
-         User::dropdown(array('name'             => 'users_id',
+         User::dropdown(['name'             => 'users_id',
                           'display_emptychoice'  => true,
                           'right'                => 'all',
                           'rand'                 => $rand,
-                          'value'                => $config->fields['users_id']));
+                          'value'                => $config->fields['users_id']]);
 
          // this code adds the + sign to the form
          echo "<img alt='' title=\"".__s('Add')."\" src='".$CFG_GLPI["root_doc"].
@@ -293,7 +297,7 @@ class PluginProcessmakerConfig extends CommonDBTM {
                             onClick=\"".Html::jsGetElementbyID('add_dropdown'.$rand).".dialog('open');\">";
          echo Ajax::createIframeModalWindow('add_dropdown'.$rand,
                                                   User::getFormURL(),
-                                                  array('display' => false));
+                                                  ['display' => false]);
          // end of + sign
 
          echo "</td></tr>\n";
@@ -301,13 +305,13 @@ class PluginProcessmakerConfig extends CommonDBTM {
          echo "<tr class='tab_bg_1'>";
          echo "<td >".__('Group in ProcessMaker which will contain all GLPI users', 'processmaker')."</td><td >";
 
-         $pmGroups = array( 0 => Dropdown::EMPTY_VALUE );
+         $pmGroups = [ 0 => Dropdown::EMPTY_VALUE ];
          $query = "SELECT DISTINCT CON_ID, CON_VALUE FROM CONTENT WHERE CON_CATEGORY='GRP_TITLE' ORDER BY CON_VALUE;";
          if ($PM_DB->connected) {
             foreach ($PM_DB->request( $query ) as $row) {
                $pmGroups[ $row['CON_ID'] ] = $row['CON_VALUE'];
             }
-            Dropdown::showFromArray( 'pm_group_guid', $pmGroups, array('value' => $config->fields['pm_group_guid']) );
+            Dropdown::showFromArray( 'pm_group_guid', $pmGroups, ['value' => $config->fields['pm_group_guid']] );
          } else {
             echo "<font color='red'>".__('Not connected');
          }
@@ -329,27 +333,27 @@ class PluginProcessmakerConfig extends CommonDBTM {
        echo "<tr><td colspan='4'></td></tr>";
 
        echo "<tr><th  colspan='4'>".__('Processmaker system information', 'processmaker')."</th></tr>";
-       if ($setup_ok) {
-          $info = $PM_SOAP->systemInformation( );
-          echo '<tr><td>'.__('Version', 'processmaker').'</td><td>'.$info->version.'</td></tr>';
-          echo '<tr><td>'.__('Web server', 'processmaker').'</td><td>'.$info->webServer.'</td></tr>';
-          echo '<tr><td>'.__('Server name', 'processmaker').'</td><td>'.$info->serverName.'</td></tr>';
-          echo '<tr><td>'.__('PHP version', 'processmaker').'</td><td>'.$info->phpVersion.'</td></tr>';
-          echo '<tr><td>'.__('DB version', 'processmaker').'</td><td>'.$info->databaseVersion.'</td></tr>';
-          echo '<tr><td>'.__('DB server IP', 'processmaker').'</td><td>'.$info->databaseServerIp.'</td></tr>';
-          echo '<tr><td>'.__('DB name', 'processmaker').'</td><td>'.$info->databaseName.'</td></tr>';
-          echo '<tr><td>'.__('User browser', 'processmaker').'</td><td>'.$info->userBrowser.'</td></tr>';
-          echo '<tr><td>'.__('User IP', 'processmaker').'</td><td>'.$info->userIp.'</td></tr>';
-       } else {
-          echo '<tr><td>'.__('Version', 'processmaker').'</td><td>'.__('Not yet!', 'processmaker').'</td></tr>';
-       }
-      $config->showFormButtons(array('candel'=>false));
+      if ($setup_ok) {
+         $info = $PM_SOAP->systemInformation( );
+         echo '<tr><td>'.__('Version', 'processmaker').'</td><td>'.$info->version.'</td></tr>';
+         echo '<tr><td>'.__('Web server', 'processmaker').'</td><td>'.$info->webServer.'</td></tr>';
+         echo '<tr><td>'.__('Server name', 'processmaker').'</td><td>'.$info->serverName.'</td></tr>';
+         echo '<tr><td>'.__('PHP version', 'processmaker').'</td><td>'.$info->phpVersion.'</td></tr>';
+         echo '<tr><td>'.__('DB version', 'processmaker').'</td><td>'.$info->databaseVersion.'</td></tr>';
+         echo '<tr><td>'.__('DB server IP', 'processmaker').'</td><td>'.$info->databaseServerIp.'</td></tr>';
+         echo '<tr><td>'.__('DB name', 'processmaker').'</td><td>'.$info->databaseName.'</td></tr>';
+         echo '<tr><td>'.__('User browser', 'processmaker').'</td><td>'.$info->userBrowser.'</td></tr>';
+         echo '<tr><td>'.__('User IP', 'processmaker').'</td><td>'.$info->userIp.'</td></tr>';
+      } else {
+         echo '<tr><td>'.__('Version', 'processmaker').'</td><td>'.__('Not yet!', 'processmaker').'</td></tr>';
+      }
+      $config->showFormButtons(['candel'=>false]);
 
       return false;
    }
 
 
-   function getTabNameForItem(CommonGLPI $item, $withtemplate=0) {
+   function getTabNameForItem(CommonGLPI $item, $withtemplate = 0) {
       if ($item->getType()=='Config') {
          return __('ProcessMaker', 'processmaker');
       }
@@ -357,7 +361,7 @@ class PluginProcessmakerConfig extends CommonDBTM {
    }
 
 
-   static function displayTabContentForItem(CommonGLPI $item, $tabnum=1, $withtemplate=0) {
+   static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0) {
 
       if ($item->getType()=='Config') {
          self::showConfigForm($item);

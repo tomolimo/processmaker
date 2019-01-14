@@ -18,11 +18,11 @@ class PluginProcessmakerCaselink extends CommonDBTM {
       return Session::haveRightsOr('plugin_processmaker_config', [READ, UPDATE]);
    }
 
-   static function canUpdate( ) {
+   static function canUpdate() {
       return Session::haveRight('plugin_processmaker_config', UPDATE);
    }
 
-   static function canDelete( ) {
+   static function canDelete() {
       return Session::haveRight('plugin_processmaker_config', UPDATE);
    }
 
@@ -46,14 +46,14 @@ class PluginProcessmakerCaselink extends CommonDBTM {
       return false;
    }
 
-   static function getTypeName($nb=0) {
+   static function getTypeName($nb = 0) {
       if ($nb>1) {
          return __('Case-links', 'processmaker');
       }
       return __('Case-link', 'processmaker');
    }
 
-   function showForm ($ID, $options=array('candel'=>false)) {
+   function showForm ($ID, $options = ['candel'=>false]) {
       global $DB, $CFG_GLPI;
 
       $options['candel'] = true;
@@ -69,6 +69,11 @@ class PluginProcessmakerCaselink extends CommonDBTM {
       echo "<tr class='tab_bg_1'>";
       echo "<td >".__('Active')."</td><td>";
       Dropdown::showYesNo("is_active", $this->fields["is_active"]);
+      echo "</td></tr>";
+
+      echo "<tr class='tab_bg_1'>";
+      echo "<td >".__('Synchronous', 'processmaker')."</td><td>";
+      Dropdown::showYesNo("is_synchronous", $this->fields["is_synchronous"]);
       echo "</td></tr>";
 
       echo "<tr class='tab_bg_1'>";
@@ -122,11 +127,20 @@ class PluginProcessmakerCaselink extends CommonDBTM {
       Dropdown::showYesNo("is_targettoclaim", $this->fields["is_targettoclaim"]);
       echo "</td></tr>";
 
+      //echo "<tr class='tab_bg_1'>";
+      //echo "<td >".__('Reassign target task', 'processmaker')."</td><td>";
+      //Dropdown::showYesNo("is_targettoreassign", $this->fields["is_targettoreassign"]);
+      //echo "</td></tr>";
+
+      echo "<tr class='tab_bg_1'>";
+      echo "<td >".__('Impersonate target task user', 'processmaker')."</td><td>";
+      Dropdown::showYesNo("is_targettoimpersonate", $this->fields["is_targettoimpersonate"]);
+      echo "</td></tr>";
+
       echo "<tr class='tab_bg_1'>";
       echo "<td>".__('External application JSON config', 'processmaker')."</td><td>";
       echo "<textarea cols='100' rows='6' name='externalapplication' >".$this->fields["externalapplication"]."</textarea>";
       echo "</td></tr>";
-
 
       $this->showFormButtons($options );
 
@@ -138,7 +152,7 @@ class PluginProcessmakerCaselink extends CommonDBTM {
     * @return mixed
     */
    function getSearchOptions() {
-      $tab = array();
+      $tab = [];
 
       $tab['common'] = __('ProcessMaker', 'processmaker');
 
@@ -214,7 +228,7 @@ class PluginProcessmakerCaselink extends CommonDBTM {
       $tab[18]['massiveaction'] = false;
       $tab[18]['datatype']      = 'text';
 
-//$tab[14]['table']         = 'glpi_taskcategories';
+      //$tab[14]['table']         = 'glpi_taskcategories';
       //$tab[14]['field']         = 'completename'; //'plugin_processmaker_taskcategories_id_source';
       //$tab[14]['name']          = __('Source task');
       //$tab[14]['massiveaction'] = false;
@@ -231,7 +245,6 @@ class PluginProcessmakerCaselink extends CommonDBTM {
       //         ]
       //      ]
       //   ];
-
 
       return $tab;
    }

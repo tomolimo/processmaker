@@ -2,38 +2,16 @@
 
 include_once 'inc/processmaker.class.php';
 
-if (!function_exists('arTableExists')) {
-   function arTableExists($table) {
-      global $DB;
-      if (method_exists( $DB, 'tableExists')) {
-         return $DB->tableExists($table);
-      } else {
-         return TableExists($table);
-      }
-   }
-}
-
-if (!function_exists('arFieldExists')) {
-   function arFieldExists($table, $field, $usecache = true) {
-      global $DB;
-      if (method_exists( $DB, 'fieldExists')) {
-         return $DB->fieldExists($table, $field, $usecache);
-      } else {
-         return FieldExists($table, $field, $usecache);
-      }
-   }
-}
-
 function plugin_processmaker_MassiveActions($type) {
    switch ($type) {
       case 'PluginProcessmakerProcess' :
          if (plugin_processmaker_haveRight('config', UPDATE)) {
-            return array('plugin_processmaker_taskrefresh' => __('Synchronize Task List', 'processmaker'));
+            return ['plugin_processmaker_taskrefresh' => __('Synchronize Task List', 'processmaker')];
          }
           break;
       case 'PluginProcessmakerProcess_Profile' :
          if (plugin_processmaker_haveRight('config', UPDATE)) {
-            return array('purge' => __('Delete permanently'));
+            return ['purge' => __('Delete permanently')];
          }
          break;
       //case 'PluginProcessmakerCase' :
@@ -42,7 +20,7 @@ function plugin_processmaker_MassiveActions($type) {
       //   }
       //break;
    }
-   return array();
+   return [];
 }
 
 
@@ -113,8 +91,8 @@ function plugin_processmaker_MassiveActions($type) {
  * @return true or die!
  */
 function plugin_processmaker_install() {
-
-   if (!arTableExists("glpi_plugin_processmaker_cases")) {
+   global $DB;
+   if (!$DB->tableExists("glpi_plugin_processmaker_cases")) {
       // new installation
       include_once(GLPI_ROOT."/plugins/processmaker/install/install.php");
       processmaker_install();
@@ -127,9 +105,9 @@ function plugin_processmaker_install() {
 
    // To be called for each task managed by the plugin
    // task in class
-   CronTask::Register('PluginProcessmakerProcessmaker', 'pmusers', DAY_TIMESTAMP, array( 'state' => CronTask::STATE_DISABLE, 'mode' => CronTask::MODE_EXTERNAL));
-   CronTask::Register('PluginProcessmakerProcessmaker', 'pmorphancases', DAY_TIMESTAMP, array('param' => 10, 'state' => CronTask::STATE_DISABLE, 'mode' => CronTask::MODE_EXTERNAL));
-   CronTask::Register('PluginProcessmakerProcessmaker', 'pmtaskactions', MINUTE_TIMESTAMP, array('state' => CronTask::STATE_DISABLE, 'mode' => CronTask::MODE_EXTERNAL));
+   CronTask::Register('PluginProcessmakerProcessmaker', 'pmusers', DAY_TIMESTAMP, [ 'state' => CronTask::STATE_DISABLE, 'mode' => CronTask::MODE_EXTERNAL]);
+   CronTask::Register('PluginProcessmakerProcessmaker', 'pmorphancases', DAY_TIMESTAMP, ['param' => 10, 'state' => CronTask::STATE_DISABLE, 'mode' => CronTask::MODE_EXTERNAL]);
+   CronTask::Register('PluginProcessmakerProcessmaker', 'pmtaskactions', MINUTE_TIMESTAMP, ['state' => CronTask::STATE_DISABLE, 'mode' => CronTask::MODE_EXTERNAL]);
 
    // required because autoload doesn't work for unactive plugin'
    include_once(GLPI_ROOT."/plugins/processmaker/inc/profile.class.php");
@@ -148,7 +126,7 @@ function plugin_processmaker_uninstall() {
 
 function plugin_processmaker_getAddSearchOptions($itemtype) {
 
-   $sopt = array();
+   $sopt = [];
    // TODO add Change and Problem + other fields to the search
    if ($itemtype == 'Ticket') {
       $sopt[10001]['table']     = 'glpi_plugin_processmaker_cases';
@@ -179,7 +157,7 @@ function plugin_processmaker_getAddSearchOptions($itemtype) {
     return $sopt;
 }
 
-function plugin_processmaker_addLeftJoin($type,$ref_table,$new_table,$linkfield,&$already_link_tables) {
+function plugin_processmaker_addLeftJoin($type, $ref_table, $new_table, $linkfield, &$already_link_tables) {
 
    switch ($type) {
 
@@ -208,8 +186,8 @@ function plugin_processmaker_addLeftJoin($type,$ref_table,$new_table,$linkfield,
 function plugin_pre_item_update_processmaker(CommonITILObject $parm) {
    global $DB;//, $PM_SOAP;
 
-      if (isset($_SESSION['glpiname'])) { // && $parm->getType() == 'Ticket') {
-      $locVar = array( );
+   if (isset($_SESSION['glpiname'])) { // && $parm->getType() == 'Ticket') {
+      $locVar = [ ];
       foreach ($parm->input as $key => $val) {
          switch ($key) {
             case 'global_validation' :
@@ -218,7 +196,10 @@ function plugin_pre_item_update_processmaker(CommonITILObject $parm) {
             case 'itilcategories_id' :
                $locVar[ 'GLPI_ITEM_ITIL_CATEGORY_ID' ] = $val;
                break;
-            case 'due_date' :
+            case 'date' :
+               $locVar[ 'GLPI_ITEM_OPENING_DATE' ] = $val;
+               break;
+            case 'time_to_resolve' :
                $locVar[ 'GLPI_TICKET_DUE_DATE' ] = $val;
                $locVar[ 'GLPI_ITEM_DUE_DATE' ] = $val;
                break;
@@ -239,7 +220,7 @@ function plugin_pre_item_update_processmaker(CommonITILObject $parm) {
       $itemType = $parm->getType();
 
       $locCase = new PluginProcessmakerCase;
-      foreach(PluginProcessmakerCase::getIDsFromItem($itemType, $itemId ) as $cases_id){
+      foreach (PluginProcessmakerCase::getIDsFromItem($itemType, $itemId ) as $cases_id) {
          $locCase->getFromDB($cases_id);
          $locCase->sendVariables($locVar);
 
@@ -249,7 +230,6 @@ function plugin_pre_item_update_processmaker(CommonITILObject $parm) {
          }
       }
    }
-
 
 }
 
@@ -270,73 +250,73 @@ function plugin_item_update_processmaker_satisfaction($parm) {
    }
 }
 
-/**
- * Summary of plugin_pre_item_purge_processmaker
- * @param mixed $parm is the object
- */
-function plugin_pre_item_purge_processmaker ( $parm ) {
+///**
+// * Summary of plugin_pre_item_purge_processmaker
+// * @param mixed $parm is the object
+// */
+//function plugin_pre_item_purge_processmaker ( $parm ) {
 
-   if ($parm->getType() == 'Ticket_User' && is_array( $parm->fields ) && isset( $parm->fields['type'] )  && $parm->fields['type'] == 2) {
-      $itemId = $parm->fields['tickets_id'];
-      $itemType = 'Ticket';
-      $technicians = PluginProcessmakerProcessmaker::getItemUsers( $itemType, $itemId, 2 ); // 2 for technicians
+//   if ($parm->getType() == 'Ticket_User' && is_array( $parm->fields ) && isset( $parm->fields['type'] )  && $parm->fields['type'] == 2) {
+//      $itemId = $parm->fields['tickets_id'];
+//      $itemType = 'Ticket';
+//      $technicians = PluginProcessmakerProcessmaker::getItemUsers( $itemType, $itemId, 2 ); // 2 for technicians
 
-      if (PluginProcessmakerCase::getIDFromItem($itemType, $itemId) && count($technicians) == 1) {
-         $parm->input = null; // to cancel deletion of the last tech in the ticket
-      }
-   }
-}
+//      if (PluginProcessmakerCase::getIDFromItem($itemType, $itemId) && count($technicians) == 1) {
+//         $parm->input = null; // to cancel deletion of the last tech in the ticket
+//      }
+//   }
+//}
 
-/**
- * Summary of plugin_item_purge_processmaker
- * @param mixed $parm is the object
- */
-function plugin_item_purge_processmaker($parm) {
-   global $DB, $PM_SOAP;
+///**
+// * Summary of plugin_item_purge_processmaker
+// * @param mixed $parm is the object
+// */
+//function plugin_item_purge_processmaker($parm) {
+//   global $DB, $PM_SOAP;
 
-   //$objects = ['Ticket', 'Change', 'Problem'];
-   $object_users = ['Ticket_User', 'Change_User', 'Problem_User'];
+//   //$objects = ['Ticket', 'Change', 'Problem'];
+//   $object_users = ['Ticket_User', 'Change_User', 'Problem_User'];
 
-   if (in_array($parm->getType(), $object_users) && is_array( $parm->fields ) && isset( $parm->fields['type'] )  && $parm->fields['type'] == 2) {
+//   if (in_array($parm->getType(), $object_users) && is_array( $parm->fields ) && isset( $parm->fields['type'] )  && $parm->fields['type'] == 2) {
 
-      // We just deleted a tech from this ticket then we must if needed "de-assign" the tasks assigned to this tech
-      // and re-assign them to the first tech in the list !!!!
+//      // We just deleted a tech from this ticket then we must if needed "de-assign" the tasks assigned to this tech
+//      // and re-assign them to the first tech in the list !!!!
 
-      $itemType = strtolower(explode('_', $parm->getType())[0]); // $parm->getType() returns 'Ticket_User';
-      $itemId = $parm->fields[$itemType.'s_id'];
-      $cases = PluginProcessmakerCase::getIDsFromItem($itemType, $itemId);
-      foreach ($cases as $cases_id) {
-         // cases are existing for this item
-         $locCase = new PluginProcessmakerCase;
-         if ($locCase->getFromDB($cases_id)) {
-            $technicians = PluginProcessmakerProcessmaker::getItemUsers($itemType, $itemId, CommonITILActor::ASSIGN);
+//      $itemType = strtolower(explode('_', $parm->getType())[0]); // $parm->getType() returns 'Ticket_User';
+//      $itemId = $parm->fields[$itemType.'s_id'];
+//      $cases = PluginProcessmakerCase::getIDsFromItem($itemType, $itemId);
+//      foreach ($cases as $cases_id) {
+//         // cases are existing for this item
+//         $locCase = new PluginProcessmakerCase;
+//         if ($locCase->getFromDB($cases_id)) {
+//            $technicians = PluginProcessmakerProcessmaker::getItemUsers($itemType, $itemId, CommonITILActor::ASSIGN);
 
-            $locVars = array( 'GLPI_TICKET_TECHNICIAN_GLPI_ID' => $technicians[0]['glpi_id'],
-                              'GLPI_ITEM_TECHNICIAN_GLPI_ID'   => $technicians[0]['glpi_id'],
-                              'GLPI_TICKET_TECHNICIAN_PM_ID'   => $technicians[0]['pm_id'],
-                              'GLPI_ITEM_TECHNICIAN_PM_ID'     => $technicians[0]['pm_id']
-                            );
+//            $locVars = array( 'GLPI_TICKET_TECHNICIAN_GLPI_ID' => $technicians[0]['glpi_id'],
+//                              'GLPI_ITEM_TECHNICIAN_GLPI_ID'   => $technicians[0]['glpi_id'],
+//                              'GLPI_TICKET_TECHNICIAN_PM_ID'   => $technicians[0]['pm_id'],
+//                              'GLPI_ITEM_TECHNICIAN_PM_ID'     => $technicians[0]['pm_id']
+//                            );
 
-            // and we must find all tasks assigned to this former user and re-assigned them to new user (if any :))!
-            $caseInfo = $locCase->getCaseInfo( );
-            if ($caseInfo !== false) {
-               $locCase->sendVariables( $locVars);
-               // need to get info on the thread of the GLPI current user
-               // we must retreive currentGLPI user from this array
-               $GLPICurrentPMUserId = PluginProcessmakerUser::getPMUserId( $parm->fields['users_id'] );
-               if (property_exists($caseInfo, 'currentUsers') && is_array( $caseInfo->currentUsers )) {
-                  foreach ($caseInfo->currentUsers as $caseUser) {
-                     if ($caseUser->userId == $GLPICurrentPMUserId && in_array( $caseUser->delThreadStatus, array('DRAFT', 'OPEN', 'PAUSE' ) )) {
-                        $locCase->reassignCase($caseUser->delIndex, $caseUser->taskId, $caseUser->delThread, $parm->fields['users_id'], $technicians[0]['pm_id'] );
-                     }
-                  }
-               }
-            }
+//            // and we must find all tasks assigned to this former user and re-assigned them to new user (if any :))!
+//            $caseInfo = $locCase->getCaseInfo( );
+//            if ($caseInfo !== false) {
+//               $locCase->sendVariables( $locVars);
+//               // need to get info on the thread of the GLPI current user
+//               // we must retreive currentGLPI user from this array
+//               $GLPICurrentPMUserId = PluginProcessmakerUser::getPMUserId( $parm->fields['users_id'] );
+//               if (property_exists($caseInfo, 'currentUsers') && is_array( $caseInfo->currentUsers )) {
+//                  foreach ($caseInfo->currentUsers as $caseUser) {
+//                     if ($caseUser->userId == $GLPICurrentPMUserId && in_array( $caseUser->delThreadStatus, array('DRAFT', 'OPEN', 'PAUSE' ) )) {
+//                        $locCase->reassignCase($caseUser->delIndex, $caseUser->taskId, $caseUser->delThread, $parm->fields['users_id'], $technicians[0]['pm_id'] );
+//                     }
+//                  }
+//               }
+//            }
 
-         }
-      }
-   }
-}
+//         }
+//      }
+//   }
+//}
 
 function plugin_processmaker_post_init() {
    global $PM_DB, $PM_SOAP;
@@ -346,19 +326,19 @@ function plugin_processmaker_post_init() {
    if (!isset($PM_SOAP)) {
       $PM_SOAP = new PluginProcessmakerProcessmaker;
       // and default login is current running user if any
-      if (Session::getLoginUserID() ) {
+      if (Session::getLoginUserID()) {
          $PM_SOAP->login();
       }
    }
 }
 
 
-function plugin_processmaker_giveItem($itemtype,$ID,$data,$num) {
+function plugin_processmaker_giveItem($itemtype, $ID, $data, $num) {
 
    return;
 }
 
-function plugin_processmaker_change_profile($parm) {
+function plugin_processmaker_change_profile() {
    if ($_SESSION['glpiactiveprofile']['interface'] == "helpdesk") {
       // must add the rights for simplified interface
       $_SESSION['glpiactiveprofile']['plugin_processmaker_case'] = READ;
@@ -391,14 +371,14 @@ function plugin_item_update_processmaker_tasks($parm) {
       foreach ($DB->request( 'glpi_plugin_processmaker_caselinks', "is_active = 1 AND sourcetask_guid='".$pmTaskCat->fields['pm_task_guid']."'") as $targetTask) {
 
          // Must check the condition
-         $casevariables = array();
+         $casevariables = [];
 
-         $matches = array();
+         $matches = [];
          if (preg_match_all( "/@@(\w+)/u", $targetTask['sourcecondition'], $matches  )) {
             $casevariables = $matches[1];
          }
 
-         $targetTask['targetactions'] = array(); // empty array by default
+         $targetTask['targetactions'] = []; // empty array by default
          foreach ($DB->request( 'glpi_plugin_processmaker_caselinkactions', 'plugin_processmaker_caselinks_id = '.$targetTask['id']) as $actionvalue) {
             $targetTask['targetactions'][$actionvalue['name']] = $actionvalue['value'];
             if (preg_match_all( "/@@(\w+)/u", $actionvalue['value'], $matches  )) {
@@ -436,7 +416,7 @@ function plugin_item_update_processmaker_tasks($parm) {
             // look at each linked ticket if a case is attached and then if a task like $val is TO_DO
             // then will try to routeCase for each tasks in $val
 
-            $postdata = array();
+            $postdata = [];
             foreach ($targetTask['targetactions'] as $action => $actionvalue) {
                $postdata['form'][$action] = eval( "return ".str_replace( array_keys($infoForTasks), $infoForTasks, $actionvalue)." ;" );
             }
@@ -446,7 +426,7 @@ function plugin_item_update_processmaker_tasks($parm) {
             $postdata['DynaformRequiredFields']     = '[]';
             $postdata['form']['btnGLPISendRequest'] = 'submit';
 
-            $externalapplicationparams = array();
+            $externalapplicationparams = [];
             if ($externalapplication) {
                // must call curl
                foreach ($externalapplication['params'] as $paramname => $variable) {
@@ -459,17 +439,6 @@ function plugin_item_update_processmaker_tasks($parm) {
             }
 
             if ($targetTask['is_self']) {
-               // MUST BE done on a add task hook, and not on an update task hook
-
-               //$query = "SELECT glpi_plugin_processmaker_cases.id, MAX(glpi_plugin_processmaker_tasks.del_index) AS del_index FROM glpi_tickettasks
-               //            JOIN glpi_plugin_processmaker_taskcategories ON glpi_plugin_processmaker_taskcategories.taskcategories_id=glpi_tickettasks.taskcategories_id
-               //            JOIN glpi_plugin_processmaker_cases ON glpi_plugin_processmaker_cases.processes_id=glpi_plugin_processmaker_taskcategories.processes_id
-               //            RIGHT JOIN glpi_plugin_processmaker_tasks ON glpi_plugin_processmaker_tasks.items_id=glpi_tickettasks.id AND glpi_plugin_processmaker_tasks.case_id=glpi_plugin_processmaker_cases.id
-               //            WHERE glpi_plugin_processmaker_taskcategories.pm_task_guid = '".$targetTask['targettask_guid']."' AND glpi_tickettasks.state = 1 AND glpi_tickettasks.tickets_id=".$parm->fields['tickets_id'] ;
-
-               //$res = $DB->query($query) ;
-               //if( $res && $DB->numrows($res) > 0 && $case=$DB->fetch_assoc($res) && isset($case['id']) && isset($case['del_index']) ) {
-               //foreach( $DB->request($query) as $case ) {
                $taskCase = $PM_SOAP->taskCase( $srccase_guid );
                foreach ($taskCase as $task) {
                   // search for target task guid
@@ -485,7 +454,7 @@ function plugin_item_update_processmaker_tasks($parm) {
                $pmconfig = $PM_SOAP->config; //PluginProcessmakerConfig::getInstance();
 
                $cronaction = new PluginProcessmakerCrontaskaction;
-               $cronaction->add( array( 'plugin_processmaker_caselinks_id' => $targetTask['id'],
+               $cronaction->add( [ 'plugin_processmaker_caselinks_id' => $targetTask['id'],
                                         'plugin_processmaker_cases_id' => $locCase->getID(),
                                           //'itemtype'         => $itemtype,
                                           //'items_id'         => $parm->fields['tickets_id'],
@@ -494,7 +463,7 @@ function plugin_item_update_processmaker_tasks($parm) {
                                           'state'            => ($targetTask['is_externaldata'] ? PluginProcessmakerCrontaskaction::WAITING_DATA : PluginProcessmakerCrontaskaction::DATA_READY),
                                           'postdata'         => json_encode( $postdata, JSON_HEX_APOS | JSON_HEX_QUOT),
                                           'logs_out'         => json_encode( $externalapplicationparams, JSON_HEX_APOS | JSON_HEX_QUOT)
-                                          ),
+                                          ],
                                  null,
                                  false);
 
@@ -510,7 +479,7 @@ function plugin_item_update_processmaker_tasks($parm) {
 
                   curl_setopt($ch, CURLOPT_POST, 1);
                   curl_setopt($ch, CURLOPT_POSTFIELDS, $externalapplicationparams);
-                  curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json', 'Content-Length: ' . strlen($externalapplicationparams)));
+                  curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'Content-Length: ' . strlen($externalapplicationparams), 'Expect:']);
                   curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1 );
 
                    //curl_setopt($ch, CURLOPT_HTTPPROXYTUNNEL, 1 ) ;
@@ -538,7 +507,7 @@ function plugin_item_update_processmaker_tasks($parm) {
                         $postdata['DEL_INDEX']                  = $case['del_index'];
 
                         $cronaction = new PluginProcessmakerCrontaskaction;
-                        $cronaction->add( array( 'plugin_processmaker_caselinks_id' => $targetTask['id'],
+                        $cronaction->add( [ 'plugin_processmaker_caselinks_id' => $targetTask['id'],
                                                  'plugin_processmaker_cases_id' => $locCase->getID(),
                                                    //'itemtype'         => $itemtype,
                                                    //'items_id'         => $parm->fields['tickets_id'],
@@ -547,12 +516,17 @@ function plugin_item_update_processmaker_tasks($parm) {
                                                    'state'            => ($targetTask['is_externaldata'] ? PluginProcessmakerCrontaskaction::WAITING_DATA : PluginProcessmakerCrontaskaction::DATA_READY),
                                                    'postdata'         => json_encode( $postdata, JSON_HEX_APOS | JSON_HEX_QUOT),
                                                    'logs_out'         => json_encode( $externalapplicationparams, JSON_HEX_APOS | JSON_HEX_QUOT)
-                                                   ),
+                                                   ],
                                           null,
                                           false);
                      }
                   }
                }
+            }
+
+            if ($targetTask['is_synchronous']) {
+               // must call PluginProcessmakerProcessmaker::cronPMTaskActions()
+               PluginProcessmakerProcessmaker::cronPMTaskActions();
             }
          }
 

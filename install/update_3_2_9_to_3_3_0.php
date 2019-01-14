@@ -1,14 +1,13 @@
 <?php
 
-function update_3_2_9_to_3_3_0(){
+function update_3_2_9_to_3_3_0() {
    global $DB, $PM_DB; //, $PM_SOAP;
-
 
    // to be sure
    $PM_DB = new PluginProcessmakerDB;
 
    // Alter table plugin_processmaker_cases
-   if (!arFieldExists("glpi_plugin_processmaker_cases", "plugin_processmaker_processes_id" )) {
+   if (!$DB->fieldExists("glpi_plugin_processmaker_cases", "plugin_processmaker_processes_id" )) {
       $query = "ALTER TABLE `glpi_plugin_processmaker_cases`
                	ALTER `id` DROP DEFAULT;";
       $DB->query($query) or die("error normalizing glpi_plugin_processmaker_cases table step 1" . $DB->error());
@@ -35,13 +34,13 @@ function update_3_2_9_to_3_3_0(){
 
       // needs to set entities_id and name fields
       // for this needs to browse all cases and do a getCaseInfo for each and to get entities_id from itemtype(items_id)
-      foreach($DB->request(PluginProcessmakerCase::getTable()) as $row) {
+      foreach ($DB->request(PluginProcessmakerCase::getTable()) as $row) {
          $tmp = new $row['itemtype'];
          $entities_id = 0;
          if ($tmp->getFromDB($row['items_id'])) {
             $entities_id = $tmp->fields['entities_id'];
          }
-         foreach($PM_DB->request("SELECT CON_VALUE FROM CONTENT WHERE CON_CATEGORY='APP_TITLE' AND CON_LANG='en' AND CON_ID='{$row['case_guid']}'") as $name) {
+         foreach ($PM_DB->request("SELECT CON_VALUE FROM CONTENT WHERE CON_CATEGORY='APP_TITLE' AND CON_LANG='en' AND CON_ID='{$row['case_guid']}'") as $name) {
             // there is only one record :)
             $name = $PM_DB->escape($name['CON_VALUE']);
             $query = "UPDATE ".PluginProcessmakerCase::getTable()." SET `name` = '{$name}', `entities_id` = $entities_id WHERE `id` = {$row['id']};";
@@ -50,7 +49,7 @@ function update_3_2_9_to_3_3_0(){
       }
    }
 
-   if (!arFieldExists("glpi_plugin_processmaker_processes_profiles", "plugin_processmaker_processes_id")) {
+   if (!$DB->fieldExists("glpi_plugin_processmaker_processes_profiles", "plugin_processmaker_processes_id")) {
       $query = "ALTER TABLE `glpi_plugin_processmaker_processes_profiles`
 	               CHANGE COLUMN `processes_id` `plugin_processmaker_processes_id` INT(11) NOT NULL DEFAULT '0' AFTER `id`,
                   DROP INDEX `processes_id`,
@@ -63,7 +62,7 @@ function update_3_2_9_to_3_3_0(){
                   GROUP BY gpp.plugin_processmaker_processes_id, gpp.profiles_id, gpp.entities_id
                   HAVING COUNT(id) > 1;";
 
-      foreach($DB->request($query) as $rec){
+      foreach ($DB->request($query) as $rec) {
          // there we have one rec per duplicates
          // so we may delete all records in the table, and a new one
          $del_query = "DELETE FROM glpi_plugin_processmaker_processes_profiles WHERE plugin_processmaker_processes_id=".$rec['plugin_processmaker_processes_id']."
@@ -81,7 +80,7 @@ function update_3_2_9_to_3_3_0(){
       $DB->query($query) or die("error when adding new index on glpi_plugin_processmaker_processes_profiles table " . $DB->error());
    }
 
-   if (!arFieldExists("glpi_plugin_processmaker_tasks", "plugin_processmaker_cases_id" )) {
+   if (!$DB->fieldExists("glpi_plugin_processmaker_tasks", "plugin_processmaker_cases_id" )) {
       $query = "ALTER TABLE `glpi_plugin_processmaker_tasks`
 	               ALTER `itemtype` DROP DEFAULT;";
       $DB->query($query) or die("error normalizing glpi_plugin_processmaker_tasks table step 1" . $DB->error());
@@ -110,15 +109,15 @@ function update_3_2_9_to_3_3_0(){
       // set real thread status get it from APP_DELEGATION
       $query = "SELECT APP_UID, DEL_INDEX, DEL_THREAD, DEL_THREAD_STATUS FROM APP_DELEGATION WHERE DEL_THREAD_STATUS = 'CLOSED';";
       $locThreads = [];
-      foreach($PM_DB->request($query) as $thread){
+      foreach ($PM_DB->request($query) as $thread) {
          $locThreads[$thread['APP_UID']][] = $thread;
       }
       $locCase = new PluginProcessmakerCase;
-      foreach($locThreads as $key => $threads){
+      foreach ($locThreads as $key => $threads) {
          // get GLPI case id
          $locCase->getFromGUID($key);
          $del_indexes = [];
-         foreach($threads as $thread){
+         foreach ($threads as $thread) {
             $del_indexes[] = $thread['DEL_INDEX'];
          }
          $del_indexes = implode(", ", $del_indexes);
@@ -130,18 +129,18 @@ function update_3_2_9_to_3_3_0(){
       $app_delegation = [];
       $query = "SELECT CONCAT(APPLICATION.APP_NUMBER, '-', APP_DELEGATION.DEL_INDEX) AS 'key', APP_DELEGATION.TAS_UID FROM APP_DELEGATION
                LEFT JOIN APPLICATION ON APPLICATION.APP_UID=APP_DELEGATION.APP_UID";
-      foreach($PM_DB->request($query) as $row) {
+      foreach ($PM_DB->request($query) as $row) {
          $app_delegation[$row['key']]=$row['TAS_UID'];
       }
 
       $taskcats = [];
       $query = "SELECT * FROM glpi_plugin_processmaker_taskcategories";
-      foreach($DB->request($query) as $row) {
+      foreach ($DB->request($query) as $row) {
          $taskcats[$row['pm_task_guid']] = $row['id'];
       }
 
       $query = "SELECT * FROM glpi_plugin_processmaker_tasks";
-      foreach($DB->request($query) as $row) {
+      foreach ($DB->request($query) as $row) {
          $key = $row['plugin_processmaker_cases_id']."-".$row['del_index'];
          if (isset($app_delegation[$key]) && isset($taskcats[$app_delegation[$key]])) {
             $DB->query("UPDATE glpi_plugin_processmaker_tasks SET plugin_processmaker_taskcategories_id={$taskcats[$app_delegation[$key]]} WHERE id={$row['id']}") or
@@ -155,7 +154,7 @@ function update_3_2_9_to_3_3_0(){
 
    }
 
-   if (!arFieldExists("glpi_plugin_processmaker_taskcategories", "is_subprocess" )) {
+   if (!$DB->fieldExists("glpi_plugin_processmaker_taskcategories", "is_subprocess" )) {
       $query = "ALTER TABLE `glpi_plugin_processmaker_taskcategories`
 	               ALTER `processes_id` DROP DEFAULT;";
       $DB->query($query) or die("error normalizing glpi_plugin_processmaker_taskcategories step 1" . $DB->error());
@@ -169,17 +168,16 @@ function update_3_2_9_to_3_3_0(){
       $DB->query($query) or die("error normalizing glpi_plugin_processmaker_taskcategories step 2" . $DB->error());
    }
 
-
-   if (arFieldExists("glpi_plugin_processmaker_users", "password" )) {
+   if ($DB->fieldExists("glpi_plugin_processmaker_users", "password" )) {
       $query = "ALTER TABLE `glpi_plugin_processmaker_users`
                 	DROP COLUMN `password`;
                ";
       $DB->query($query) or die("error deleting password col from glpi_plugin_processmaker_users" . $DB->error());
    }
 
-   if (!arFieldExists("glpi_plugin_processmaker_crontaskactions", "plugin_processmaker_cases_id" )) {
+   if (!$DB->fieldExists("glpi_plugin_processmaker_crontaskactions", "plugin_processmaker_cases_id" )) {
       $query = "ALTER TABLE `glpi_plugin_processmaker_crontaskactions`
-	               ADD COLUMN `plugin_processmaker_cases_id` INT(11) DEFAULT '0' AFTER `plugin_processmaker_caselinks_id`;" ;
+	               ADD COLUMN `plugin_processmaker_cases_id` INT(11) DEFAULT '0' AFTER `plugin_processmaker_caselinks_id`;";
       $DB->query($query) or die("error adding plugin_processmaker_cases_id col into glpi_plugin_processmaker_crontaskactions" . $DB->error());
 
       // data migration

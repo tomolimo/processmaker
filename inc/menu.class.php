@@ -13,7 +13,7 @@ class PluginProcessmakerMenu extends CommonGLPI {
       }
 
       $front_page = "/plugins/processmaker/front";
-      $menu = array();
+      $menu = [];
       $menu['title'] = self::getMenuName();
       $menu['page']  = "$front_page/process.php";
       $menu['links']['search'] = PluginProcessmakerProcess::getSearchURL(false);
@@ -32,13 +32,13 @@ class PluginProcessmakerMenu extends CommonGLPI {
          if (Session::haveRightsOr("config", [READ, UPDATE])) {
             $menu['options'][$option]['links']['config'] = PluginProcessmakerConfig::getFormURL(false);
          }
-         switch( $itemtype ) {
+         switch ($itemtype) {
             case 'PluginProcessmakerProcess':
 
                //if ($itemtype::canCreate()) {
                //   $menu['options'][$option]['links']['add'] = $itemtype::getFormURL(false);
                //}
-               break ;
+               break;
             case 'PluginProcessmakerCaselink':
                if (Session::haveRight("plugin_processmaker_config", UPDATE)) {
                   $menu['options'][$option]['links']['add'] = $itemtype::getFormURL(false);
@@ -47,7 +47,7 @@ class PluginProcessmakerMenu extends CommonGLPI {
 
             default :
                $menu['options'][$option]['page']            = PluginProcessmakerProcess::getSearchURL(false);
-               break ;
+               break;
          }
 
       }

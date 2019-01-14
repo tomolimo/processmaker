@@ -2,7 +2,9 @@
 
 include_once ("../../../inc/includes.php");
 
-Plugin::load('processmaker', true);
+Session::checkLoginUser();
+
+Plugin::load('processmaker', true); // ???
 
 if (!isset($_REQUEST["id"])) {
    $_REQUEST["id"] = "";
@@ -14,11 +16,11 @@ if (isset($_REQUEST["update"])) {
    $PluginCaselink->check($_REQUEST['id'], UPDATE);
    $PluginCaselink->update($_REQUEST);
    Html::back();
-} elseif (isset($_REQUEST['add'])) {
+} else if (isset($_REQUEST['add'])) {
    $PluginCaselink->check($_REQUEST['id'], UPDATE);
    $PluginCaselink->add($_REQUEST);
    Html::back();
-} elseif (isset($_REQUEST['purge'])) {
+} else if (isset($_REQUEST['purge'])) {
    $PluginCaselink->check($_REQUEST['id'], PURGE);
    $PluginCaselink->delete($_REQUEST, true);
    $PluginCaselink->redirectToList();

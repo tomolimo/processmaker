@@ -13,7 +13,7 @@ class PluginProcessmakerProcess_Profile extends CommonDBTM
 
    static $rightname = '';
 
-   function can($ID, $right, array &$input = NULL) {
+   function can($ID, $right, array &$input = null) {
       switch ($right) {
          case DELETE :
          case PURGE :
@@ -22,11 +22,11 @@ class PluginProcessmakerProcess_Profile extends CommonDBTM
       return Session::haveRight('plugin_processmaker_config', $right);
    }
 
-   function getTabNameForItem( CommonGLPI $item, $withtemplate=0) {
+   function getTabNameForItem(CommonGLPI $item, $withtemplate = 0) {
       return __('Authorizations', 'processmaker');
    }
 
-   static function displayTabContentForItem(CommonGLPI $item, $tabnum=1, $withtemplate=0) {
+   static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0) {
 
       global $DB;
 
@@ -46,9 +46,9 @@ class PluginProcessmakerProcess_Profile extends CommonDBTM
 
          echo "<tr class='tab_bg_2'><td class='center'>";
          echo "<input type='hidden' name='plugin_processmaker_processes_id' value='$ID'>";
-         Entity::Dropdown( array('entity' => $_SESSION['glpiactiveentities']));
+         Entity::Dropdown( ['entity' => $_SESSION['glpiactiveentities']]);
          echo "</td><td class='center'>".Profile::getTypeName(1)."</td><td>";
-         Profile::dropdownUnder(array('value' => Profile::getDefault()));
+         Profile::dropdownUnder(['value' => Profile::getDefault()]);
          echo "</td><td class='center'>".__('Recursive')."</td><td>";
          Dropdown::showYesNo("is_recursive", 0);
          echo "</td><td class='center'>";
@@ -80,8 +80,8 @@ class PluginProcessmakerProcess_Profile extends CommonDBTM
       Html::openMassiveActionsForm('mass'.__CLASS__.$rand);
 
       if ($canedit && $num) {
-         $massiveactionparams = array('num_displayed' => $num,
-                           'container'     => 'mass'.__CLASS__.$rand);
+         $massiveactionparams = ['num_displayed' => $num,
+                           'container'     => 'mass'.__CLASS__.$rand];
          Html::showMassiveActions($massiveactionparams);
       }
 

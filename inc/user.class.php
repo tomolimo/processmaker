@@ -25,8 +25,8 @@ class PluginProcessmakerUser extends CommonDBTM {
      *
      * @return mysql result set.
      **/
-   static function getSqlSearchResult ($taskId, $count=true, $right="all", $entity_restrict=-1, $value=0,
-                                        $used=array(), $search='', $limit='') {
+   static function getSqlSearchResult ($taskId, $count = true, $right = "all", $entity_restrict = -1, $value = 0,
+                                        $used = [], $search = '', $limit = '') {
       global $DB, $PM_DB, $CFG_GLPI;
 
       // first need to get all users from $taskId
@@ -37,7 +37,7 @@ class PluginProcessmakerUser extends CommonDBTM {
                   UNION
                   SELECT TASK_USER.USR_UID AS pm_user_id FROM TASK_USER
                      WHERE TAS_UID = '$taskId' AND TASK_USER.TU_RELATION = 1 AND TASK_USER.TU_TYPE=1 ; ";
-      $pmUsers = array( );
+      $pmUsers = [ ];
       foreach ($PM_DB->request( $pmQuery ) as $pmUser) {
          $pmUsers[ ] = $pmUser[ 'pm_user_id' ];
       }
@@ -162,7 +162,7 @@ class PluginProcessmakerUser extends CommonDBTM {
      *
      * @return int (print out an HTML select box)
      **/
-   static function dropdown($options=array()) {
+   static function dropdown($options = []) {
       global $CFG_GLPI;
 
       $options['url'] = $CFG_GLPI["root_doc"].'/plugins/processmaker/ajax/dropdownUsers.php';
@@ -176,7 +176,7 @@ class PluginProcessmakerUser extends CommonDBTM {
      * @param string $pmUserId
     * @return int GLPI user id, or 0 if not found
      */
-   public static function getGLPIUserId( $pmUserId ) {
+   public static function getGLPIUserId($pmUserId) {
       $obj = new self;
       if ($obj->getFromDBByQuery("WHERE `pm_users_id` = '$pmUserId'")) {
          return $obj->fields['id'];
@@ -190,7 +190,7 @@ class PluginProcessmakerUser extends CommonDBTM {
      * @param int $glpi_userId id of user from GLPI database
      * @return string which is the uid of user in Processmaker database, or false if not found
      */
-   public static function getPMUserId( $glpiUserId ) {
+   public static function getPMUserId($glpiUserId) {
       $obj = new self;
       if ($obj->getFromDB( Toolbox::cleanInteger($glpiUserId) )) {
          return $obj->fields['pm_users_id'];

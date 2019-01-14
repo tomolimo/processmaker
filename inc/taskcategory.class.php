@@ -17,12 +17,12 @@ if (!defined('GLPI_ROOT')) {
 class PluginProcessmakerTaskCategory extends CommonDBTM
 {
 
-   function getTabNameForItem( CommonGLPI $item, $withtemplate=0) {
+   function getTabNameForItem(CommonGLPI $item, $withtemplate = 0) {
       return __('Task List', 'processmaker');
    }
 
 
-   static function displayTabContentForItem(CommonGLPI $item, $tabnum=1, $withtemplate=0) {
+   static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0) {
       global $DB, $CFG_GLPI;
 
       self::title($item);
@@ -67,7 +67,7 @@ class PluginProcessmakerTaskCategory extends CommonDBTM
 
          echo "<td class='center'>";
          if ($taskCat['is_active']) {
-         echo "<img src='".$CFG_GLPI["root_doc"]."/pics/ok.png' width='14' height='14' alt=\"".
+            echo "<img src='".$CFG_GLPI["root_doc"]."/pics/ok.png' width='14' height='14' alt=\"".
             __('Active')."\">";
          }
          echo "</td>";
@@ -94,7 +94,7 @@ class PluginProcessmakerTaskCategory extends CommonDBTM
    static function title(CommonGLPI $item) {
       global $CFG_GLPI;
 
-      $buttons = array();
+      $buttons = [];
       $title = __('Synchronize Task List', 'processmaker');
 
       if (Session::haveRight('plugin_processmaker_config', UPDATE)) {

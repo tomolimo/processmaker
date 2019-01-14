@@ -18,16 +18,16 @@ function processMakerShowProcessList ($ID, $from_helpdesk) {
    $rand = rand();
    echo "<form name=   'processmaker_form$rand' id='processmaker_form$rand' method='post' action='".Toolbox::getItemTypeFormURL("PluginProcessmakerProcessmaker")."'>";
    echo "<div class='center'><table class='tab_cadre_fixehov'>";
-   echo "<tr><th colspan='2'>".__('Process - Case','processmaker')."</th></tr>";
+   echo "<tr><th colspan='2'>".__('Process - Case', 'processmaker')."</th></tr>";
 
    echo "<tr class='tab_bg_2'><td class='right'  colspan='1'>";
-   _e('Select the process you want to add', 'processmaker');
+   echo __('Select the process you want to add', 'processmaker');
    echo "<input type='hidden' name='action' value='newcase'>";
    echo "<input type='hidden' name='id' value='-1'>";
    echo "<input type='hidden' name='itemtype' value='Ticket'>";
    echo "<input type='hidden' name='itilcategories_id' value='".$_REQUEST['itilcategories_id']."'>";
    echo "<input type='hidden' name='type' value='".$_REQUEST['type']."'>";
-   PluginProcessmakerProcess::dropdown( array( 'value' => 0, 'entity' => $_SESSION['glpiactive_entity'], 'name' => 'plugin_processmaker_processes_id' ));
+   PluginProcessmakerProcess::dropdown( [ 'value' => 0, 'entity' => $_SESSION['glpiactive_entity'], 'name' => 'plugin_processmaker_processes_id' ]);
    echo "</td><td class='center'>";
    echo "<input type='submit' name='additem' value='Start' class='submit'>";
    echo "</td></tr>";
@@ -44,7 +44,7 @@ function processMakerShowProcessList ($ID, $from_helpdesk) {
  * @param mixed $ID
  * @param mixed $from_helpdesk
  */
-function processMakerShowCase( $ID, $from_helpdesk ) {
+function processMakerShowCase($ID, $from_helpdesk) {
    global $CFG_GLPI, $PM_SOAP;
 
    $caseInfo = $PM_SOAP->getCaseInfo( $_REQUEST['case_guid'] );
@@ -101,10 +101,10 @@ function processMakerShowCase( $ID, $from_helpdesk ) {
       $xpath = new DOMXPath($dom);
 
       // hide some fields
-      $list = [ 'name', 'type', 'locations_id', 'itilcategories_id', 'items_id', 'add' ] ;
+      $list = [ 'name', 'type', 'locations_id', 'itilcategories_id', 'items_id', 'add' ];
       $xpath_str = '//*[@name="'.implode( '"]/ancestor::tr[1] | //*[@name="', $list ).'"]/ancestor::tr[1]';
       $res = $xpath->query($xpath_str);
-      foreach($res as $elt) {
+      foreach ($res as $elt) {
          $elt->setAttribute( 'style', 'display:none;');
       }
 
@@ -123,12 +123,12 @@ function processMakerShowCase( $ID, $from_helpdesk ) {
 
       // special case for content textarea which is in the same tr than the file upload
       $res = $xpath->query('//*[@name="content"]/ancestor::div[1] | //*[@name="content"]/ancestor::tr[1]/td[1]');
-      foreach($res as $elt) {
+      foreach ($res as $elt) {
          $elt->setAttribute( 'style', 'display:none;');
       }
 
       $res = $xpath->query('//*[@name="content"]/ancestor::td[1]');
-      foreach($res as $elt) {
+      foreach ($res as $elt) {
          // there should be only one td
          $elt->setAttribute( 'colspan', '2');
       }
@@ -148,11 +148,11 @@ function processMakerShowCase( $ID, $from_helpdesk ) {
       $pmCaseUser = $caseInfo->currentUsers[0]; // by default
       $paramsURL = "DEL_INDEX={$pmCaseUser->delIndex}&action={$caseInfo->caseStatus}";
 
-      $iframe->setAttribute('id', 'caseiframe' ) ;
-      $iframe->setAttribute('onload', "onLoadFrame( event, '{$caseInfo->caseId}', {$pmCaseUser->delIndex}, {$caseInfo->caseNumber}, '{$caseInfo->processName}') ;" ) ;
-      $iframe->setAttribute('width', '100%' ) ;
-      $iframe->setAttribute('style', 'border:none;' ) ;
-      $iframe->setAttribute('src', "{$PM_SOAP->serverURL}/cases/cases_Open?sid={$PM_SOAP->getPMSessionID()}&APP_UID={$caseInfo->caseId}&{$paramsURL}&rand=$rand&glpi_domain={$PM_SOAP->config->fields['domain']}" ) ;
+      $iframe->setAttribute('id', 'caseiframe' );
+      $iframe->setAttribute('onload', "onLoadFrame( event, '{$caseInfo->caseId}', {$pmCaseUser->delIndex}, {$caseInfo->caseNumber}, '{$caseInfo->processName}') ;" );
+      $iframe->setAttribute('width', '100%' );
+      $iframe->setAttribute('style', 'border:none;' );
+      $iframe->setAttribute('src', "{$PM_SOAP->serverURL}/cases/cases_Open?sid={$PM_SOAP->getPMSessionID()}&APP_UID={$caseInfo->caseId}&{$paramsURL}&rand=$rand&glpi_domain={$PM_SOAP->config->fields['domain']}" );
 
       // set the width and the title of the  first table th
       $th = $xpath->query('//*[@name="add"]/ancestor::table[1]/*/th[1]');
@@ -226,8 +226,8 @@ if (!Session::haveRight('ticket', CREATE)
 
    if (Session::haveRight('followup', TicketFollowup::SEEPUBLIC)
         || Session::haveRight('task', TicketTask::SEEPUBLIC)
-    || Session::haveRightsOr('ticketvalidation', array(TicketValidation::VALIDATEREQUEST,
-                                                       TicketValidation::VALIDATEINCIDENT))) {
+    || Session::haveRightsOr('ticketvalidation', [TicketValidation::VALIDATEREQUEST,
+                                                       TicketValidation::VALIDATEINCIDENT])) {
       Html::redirect($CFG_GLPI['root_doc']."/front/ticket.php");
 
    } else if (Session::haveRight('reservation', ReservationItem::RESERVEANITEM)) {

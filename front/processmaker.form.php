@@ -40,10 +40,10 @@ switch ($_POST["action"]) {
          }
       } else { // the case is created before the ticket (used for post-only case creation before ticket creation)
          $resultCase = $PM_SOAP->newCase( $_POST['plugin_processmaker_processes_id'],
-                                                array( 'GLPI_ITEM_CAN_BE_SOLVED'    => 0,
+                                                [ 'GLPI_ITEM_CAN_BE_SOLVED'    => 0,
                                                        'GLPI_SELFSERVICE_CREATED'   => '1',
                                                        'GLPI_ITEM_TYPE'             => 'Ticket',
-                                                       'GLPI_URL'                   => $CFG_GLPI['url_base']) );
+                                                       'GLPI_URL'                   => $CFG_GLPI['url_base']] );
          if ($resultCase->status_code == 0) {
             // case is created
               // Must show it...
@@ -52,7 +52,7 @@ switch ($_POST["action"]) {
               Html::redirect($CFG_GLPI['root_doc']."/plugins/processmaker/front/processmaker.helpdesk.form.php?processes_id=".$_POST['plugin_processmaker_processes_id']."&case_guid=".$resultCase->caseId."&rand=$rand&itilcategories_id=".$_POST["itilcategories_id"]."&type=".$_REQUEST["type"]."&entities_id=".$_REQUEST['entities_id']);
 
          } else {
-            Session::addMessageAfterRedirect( PluginProcessmakerProcessmaker::getPMErrorMessage($resultCase->status_code)."<br>$resultCase->message ($resultCase->status_code)", true, ERROR); 
+            Session::addMessageAfterRedirect( PluginProcessmakerProcessmaker::getPMErrorMessage($resultCase->status_code)."<br>$resultCase->message ($resultCase->status_code)", true, ERROR);
             Html::redirect($CFG_GLPI["root_doc"]."/front/helpdesk.public.php?create_ticket=1");
          }
 
@@ -87,54 +87,54 @@ switch ($_POST["action"]) {
                Session::addMessageAfterRedirect(__('Error re-assigning task: ', 'processmaker').$pmResponse->message, true, ERROR);
             }
          } else {
-            Session::addMessageAfterRedirect(__('Task already assigned to this person!','processmaker'), true, ERROR); 
+            Session::addMessageAfterRedirect(__('Task already assigned to this person!', 'processmaker'), true, ERROR);
          }
-      //} else if (isset($_POST['delete'])) {
-      //   // delete case from case table, this will also delete the tasks
-      //   $locCase = new PluginProcessmakerCase;
-      //   if ($locCase->getFromDB($_POST['cases_id']) && $locCase->deleteCase()) {
-      //      // request delete from pm itself
-      //      $PM_SOAP->login(true);
+         //} else if (isset($_POST['delete'])) {
+         //   // delete case from case table, this will also delete the tasks
+         //   $locCase = new PluginProcessmakerCase;
+         //   if ($locCase->getFromDB($_POST['cases_id']) && $locCase->deleteCase()) {
+         //      // request delete from pm itself
+         //      $PM_SOAP->login(true);
 
-      //      $resultPM = $PM_SOAP->deleteCase($locCase->fields['case_guid']);
+         //      $resultPM = $PM_SOAP->deleteCase($locCase->fields['case_guid']);
 
-      //      if ($resultPM->status_code == 0) {
-      //         Session::addMessageAfterRedirect($LANG['processmaker']['item']['case']['deleted'], true, INFO);
-      //      } else {
-      //         Session::addMessageAfterRedirect($LANG['processmaker']['item']['case']['errordeleted'], true, ERROR);
-      //      }
-      //   } else {
-      //      Session::addMessageAfterRedirect($LANG['processmaker']['item']['case']['errordeleted'], true, ERROR);
-      //   }
-      //} else if (isset($_POST['cancel'])) {
-      //   // cancel case from PM
-      //   $locCase = new PluginProcessmakerCase;
-      //   $locCase->getFromDB($_POST['cases_id']);
-      //   $resultPM = $PM_SOAP->cancelCase($locCase->fields['case_guid']); //, $_POST['plugin_processmaker_del_index'], $_POST['plugin_processmaker_users_id'] ) ;
-      //   if ($resultPM->status_code === 0) {
-      //      //$locCase = new PluginProcessmakerCase;
-      //      //$locCase->getFromDB($_POST['cases_id']);
-      //      if ($locCase->cancelCase()) {
-      //         Session::addMessageAfterRedirect($LANG['processmaker']['item']['case']['cancelled'], true, INFO);
-      //      } else {
-      //         Session::addMessageAfterRedirect($LANG['processmaker']['item']['case']['errorcancelled'], true, ERROR);
-      //      }
-      //   } else {
-      //      if ($resultPM->status_code == 100 && $locCase->deleteCase()) { // case is draft then delete it
-      //         // request delete from pm itself
-      //         $PM_SOAP->login(true);
+         //      if ($resultPM->status_code == 0) {
+         //         Session::addMessageAfterRedirect($LANG['processmaker']['item']['case']['deleted'], true, INFO);
+         //      } else {
+         //         Session::addMessageAfterRedirect($LANG['processmaker']['item']['case']['errordeleted'], true, ERROR);
+         //      }
+         //   } else {
+         //      Session::addMessageAfterRedirect($LANG['processmaker']['item']['case']['errordeleted'], true, ERROR);
+         //   }
+         //} else if (isset($_POST['cancel'])) {
+         //   // cancel case from PM
+         //   $locCase = new PluginProcessmakerCase;
+         //   $locCase->getFromDB($_POST['cases_id']);
+         //   $resultPM = $PM_SOAP->cancelCase($locCase->fields['case_guid']); //, $_POST['plugin_processmaker_del_index'], $_POST['plugin_processmaker_users_id'] ) ;
+         //   if ($resultPM->status_code === 0) {
+         //      //$locCase = new PluginProcessmakerCase;
+         //      //$locCase->getFromDB($_POST['cases_id']);
+         //      if ($locCase->cancelCase()) {
+         //         Session::addMessageAfterRedirect($LANG['processmaker']['item']['case']['cancelled'], true, INFO);
+         //      } else {
+         //         Session::addMessageAfterRedirect($LANG['processmaker']['item']['case']['errorcancelled'], true, ERROR);
+         //      }
+         //   } else {
+         //      if ($resultPM->status_code == 100 && $locCase->deleteCase()) { // case is draft then delete it
+         //         // request delete from pm itself
+         //         $PM_SOAP->login(true);
 
-      //         $resultPM = $PM_SOAP->deleteCase($locCase->fields['case_guid']);
+         //         $resultPM = $PM_SOAP->deleteCase($locCase->fields['case_guid']);
 
-      //         if ($resultPM->status_code == 0) {
-      //            Session::addMessageAfterRedirect($LANG['processmaker']['item']['case']['deleted'], true, INFO);
-      //         } else {
-      //            Session::addMessageAfterRedirect($LANG['processmaker']['item']['case']['errordeleted'], true, ERROR);
-      //         }
-      //      } else {
-      //         Session::addMessageAfterRedirect($LANG['processmaker']['item']['case']['errorcancelled']. " " . $resultPM->message, true, ERROR);
-      //      }
-      //   }
+         //         if ($resultPM->status_code == 0) {
+         //            Session::addMessageAfterRedirect($LANG['processmaker']['item']['case']['deleted'], true, INFO);
+         //         } else {
+         //            Session::addMessageAfterRedirect($LANG['processmaker']['item']['case']['errordeleted'], true, ERROR);
+         //         }
+         //      } else {
+         //         Session::addMessageAfterRedirect($LANG['processmaker']['item']['case']['errorcancelled']. " " . $resultPM->message, true, ERROR);
+         //      }
+         //   }
       }
 
       break;
