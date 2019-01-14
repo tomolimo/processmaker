@@ -32,6 +32,10 @@ class PluginProcessmakerCase extends CommonDBTM {
    //   return Session::haveRightsOr('plugin_processmaker_case', [READ, UPDATE]);
    //}
 
+   //function canViewItem() {
+   //   return Session::haveRightsOr('plugin_processmaker_case', READ);
+   //}
+
    //static function canUpdate( ) {
    //   return Session::haveRight('plugin_processmaker_config', UPDATE);
    //}
@@ -342,7 +346,7 @@ class PluginProcessmakerCase extends CommonDBTM {
             } else {
                echo "<td class='tab_bg_2'>".$currentTask->userName."</td>";
             }
-            echo "<td class='tab_bg_2'>".$tasks[$currentTask->delIndex]."</td>";
+            echo "<td class='tab_bg_2'>".Html::convDateTime($tasks[$currentTask->delIndex])."</td>";
             echo "</tr>";
          }
       } else {
@@ -406,8 +410,8 @@ class PluginProcessmakerCase extends CommonDBTM {
       echo "<td class='tab_bg_2'>".self::getStatus($caseInfo->caseStatus)."</td>";
       echo "<td class='tab_bg_2'>".$caseInfo->caseId."</td>";
       echo "<td class='tab_bg_2'>".$caseInfo->caseCreatorUserName."</td>";
-      echo "<td class='tab_bg_2'>".$caseInfo->createDate."</td>";
-      echo "<td class='tab_bg_2'>".$caseInfo->updateDate."</td>";
+      echo "<td class='tab_bg_2'>".Html::convDateTime($caseInfo->createDate)."</td>";
+      echo "<td class='tab_bg_2'>".Html::convDateTime($caseInfo->updateDate)."</td>";
       //echo "<td class='tab_bg_2'>".$caseInfo->????."</td>";
       echo "</tr>";
 
@@ -903,36 +907,63 @@ class PluginProcessmakerCase extends CommonDBTM {
     * @return mixed
     */
    static function getSpecificValueToDisplay($field, $values, array $options=array()) {
+      global $PM_DB;
       if (!is_array($values)) {
          $values = array($field => $values);
       }
       switch ($field) {
          case 'id':
-            $locCase = new self;
-
-            //$ret = $locCase->add(['id' => 300, 'itemtype' => 'Ticket', 'items_id' => 252108, 'case_guid' => 'azertyuiop', 'case_num' => -12] );
-            $locCase->getFromDB($values['id']);
-            return $locCase->getLink();
-
-         case 'items_id':
-            switch ($field) {
-               case 8:
-               default:
-                  // show an item link
-                  $item = new $values['itemtype'];
-                  $item->getFromDB($values['items_id']);
-                  return $item->getLink(['forceid' => 1]);
-               case 9:
-                  // show item entity
-                  $item = new $values['itemtype'];
-                  $item->getFromDB($values['items_id']);
-                  $entity = new Entity;
-                  $entity->getFromDB($item->fields['entities_id']);
-                  return $entity->getLink(['complete' => 1]);
-
+            if (isset($options['searchopt']['processmaker_cases'])) {
+               switch($options['searchopt']['processmaker_cases']) {
+                  case 'creation_date':
+                     $res = $PM_DB->query('SELECT * FROM APPLICATION WHERE APP_NUMBER = '.$values['id']);
+                     if ($res->num_rows > 0) {
+                        $row = $PM_DB->fetch_assoc($res);
+                        return Html::convDateTime($row['APP_CREATE_DATE']);
+                     }
+                     //$locCase = new self;
+                     //$locCase->getFromDB($values['id']);
+                     //$caseInfo = $locCase->getCaseInfo();
+                     //return Html::convDateTime($caseInfo->createDate);
+                     break;
+                  case 'update_date':
+                     $res = $PM_DB->query('SELECT * FROM APPLICATION WHERE APP_NUMBER = '.$values['id']);
+                     if ($res->num_rows > 0) {
+                        $row = $PM_DB->fetch_assoc($res);
+                        return Html::convDateTime($row['APP_UPDATE_DATE']);
+                     }
+                     //$locCase = new self;
+                     //$locCase->getFromDB($values['id']);
+                     //$caseInfo = $locCase->getCaseInfo();
+                     //return Html::convDateTime($caseInfo->updateDate);
+                     break;
+               }
             }
+            return '-';
+         case 'items_id':
+            // show an item link
+            $item = new $values['itemtype'];
+            $item->getFromDB($values['items_id']);
+            return $item->getLink(['forceid' => 1]);
+
          case 'case_status':
             return self::getStatus($values['case_status']);
+
+         case 'itemtype':
+            return self::getItemtype($values['itemtype']);
+
+         case 'plugin_processmaker_processes_id':
+            $item = new PluginProcessmakerProcess;
+            $item->getFromDB($values['plugin_processmaker_processes_id']);
+            return $item->getLink();
+
+         case 'plugin_processmaker_cases_id':
+            if ($values['plugin_processmaker_cases_id'] != 0) {
+               $locSCase = new self;
+               $locSCase->getFromDB($values['plugin_processmaker_cases_id']);
+               return $locSCase->getLink(['forceid' => 1]);
+            }
+            return '-';
 
          default:
             return parent::getSpecificValueToDisplay($field, $values, $options);
@@ -952,6 +983,15 @@ class PluginProcessmakerCase extends CommonDBTM {
             $options['name']  = $name;
             $options['value'] = $values[$field];
             return self::dropdownStatus($options);
+         case 'itemtype':
+            $options['name']  = $name;
+            $options['value'] = $values[$field];
+            return self::dropdownItemtype($options);
+         case 'plugin_processmaker_processes_id':
+            $options['name']  = $name;
+            $options['value'] = $values[$field];
+            $options['specific_tags'] = ['process_restrict' => 0];
+            return PluginProcessmakerProcess::dropdown($options);
 
          default:
             return parent::getSpecificValueToSelect($field, $name, $values, $options);
@@ -1000,13 +1040,61 @@ class PluginProcessmakerCase extends CommonDBTM {
       return $tab;
    }
 
-
    static function getStatus($value) {
 
       $tab  = static::getAllStatusArray(true);
       // Return $value if not defined
       return (isset($tab[$value]) ? $tab[$value] : $value);
    }
+
+   static function dropdownItemtype(array $options=array()) {
+
+      $p['name']      = 'itemtype';
+      $p['value']     = 'Ticket';
+      $p['showtype']  = 'normal';
+      $p['display']   = true;
+
+      if (is_array($options) && count($options)) {
+         foreach ($options as $key => $val) {
+            $p[$key] = $val;
+         }
+      }
+
+      switch ($p['showtype']) {
+         //case 'allowed' :
+         //   $tab = static::getAllowedStatusArray($p['value']);
+         //   break;
+
+         case 'search' :
+            $tab = static::getAllItemtypeArray(true);
+            break;
+
+         default :
+            $tab = static::getAllItemtypeArray(false);
+            break;
+      }
+
+      return Dropdown::showFromArray($p['name'], $tab, $p);
+   }
+
+
+   static function getAllItemtypeArray($withmetaforsearch=false) {
+
+      $tab = ['Change'  => Change::getTypeName(1),
+              'Ticket'  => Ticket::getTypeName(1),
+              'Problem' => Problem::getTypeName(1)
+             ];
+
+      return $tab;
+   }
+
+
+   static function getItemtype($value) {
+      $tab  = static::getAllItemtypeArray(true);
+      // Return $value if not defined
+      return (isset($tab[$value]) ? $tab[$value] : $value);
+   }
+
 
    /**
     * Summary of getSearchOptions
@@ -1031,18 +1119,20 @@ class PluginProcessmakerCase extends CommonDBTM {
       $tab[2]['searchtype']    = 'contains';
       $tab[2]['massiveaction'] = false;
 
-      $tab[3]['table']         = PluginProcessmakerProcess::getTable();
-      $tab[3]['field']         = 'name';
+      $tab[3]['table']         = self::getTable();
+      $tab[3]['field']         = 'plugin_processmaker_processes_id';
       $tab[3]['name']          = __('Process', 'processmaker');
-      $tab[3]['datatype']      = 'itemlink';
+      $tab[3]['datatype']      = 'specific';
+      $tab[3]['searchtype']    = ['contains', 'equals', 'notequals'];
       $tab[3]['massiveaction'] = false;
 
 
-      //$tab[7]['table']         = self::getTable();
-      //$tab[7]['field']         = 'itemtype';
-      //$tab[7]['name']          = __('Item type', 'processmaker');
-      //$tab[7]['massiveaction'] = false;
-      //$tab[7]['datatype']      = 'text';
+      $tab[7]['table']         = self::getTable();
+      $tab[7]['field']         = 'itemtype';
+      $tab[7]['name']          = __('Item type', 'processmaker');
+      $tab[7]['massiveaction'] = false;
+      $tab[7]['datatype']      = 'specific';
+      $tab[7]['searchtype']    = ['contains', 'equals', 'notequals'];
 
       $tab[8]['table']         = self::getTable();
       $tab[8]['field']         = 'items_id';
@@ -1068,8 +1158,30 @@ class PluginProcessmakerCase extends CommonDBTM {
       $tab[14]['table']         = self::getTable();
       $tab[14]['field']         = 'plugin_processmaker_cases_id';
       $tab[14]['name']          = __('Sub-case of', 'processmaker');
-      $tab[14]['datatype']      = 'itemlink';
+      $tab[14]['datatype']      = 'specific';
+      //$tab[14]['searchtype']    = ['contains', 'equals', 'notequals'];
       $tab[14]['massiveaction'] = false;
+      $tab[14]['nosearch']      = true;
+
+
+      $tab[16]['table']              = self::getTable();
+      $tab[16]['field']              = 'id';
+      $tab[16]['name']               = __('Creation date', 'processmaker');
+      $tab[16]['datatype']           = 'specific';
+      //$tab[16]['searchtype']         = ['contains', 'equals', 'notequals'];
+      $tab[16]['massiveaction']      = false;
+      $tab[16]['nosearch']           = true;
+      $tab[16]['processmaker_cases'] = 'creation_date';
+
+      $tab[18]['table']         = self::getTable();
+      $tab[18]['field']         = 'id';
+      $tab[18]['name']          = __('Last update date', 'processmaker');
+      $tab[18]['datatype']      = 'specific';
+//      $tab[18]['searchtype']    = ['contains', 'equals', 'notequals'];
+      $tab[18]['massiveaction'] = false;
+      $tab[18]['nosearch']      = true;
+      $tab[18]['processmaker_cases'] = 'update_date';
+
 
       return $tab;
    }

@@ -72,6 +72,11 @@ class PluginProcessmakerCaselink extends CommonDBTM {
       echo "</td></tr>";
 
       echo "<tr class='tab_bg_1'>";
+      echo "<td >".__('Synchronous', 'processmaker')."</td><td>";
+      Dropdown::showYesNo("is_synchronous", $this->fields["is_synchronous"]);
+      echo "</td></tr>";
+
+      echo "<tr class='tab_bg_1'>";
       echo "<td >".__('External data', 'processmaker')."</td><td>";
       Dropdown::showYesNo("is_externaldata", $this->fields["is_externaldata"]);
       echo "</td></tr>";
@@ -120,6 +125,16 @@ class PluginProcessmakerCaselink extends CommonDBTM {
       echo "<tr class='tab_bg_1'>";
       echo "<td >".__('Claim target task', 'processmaker')."</td><td>";
       Dropdown::showYesNo("is_targettoclaim", $this->fields["is_targettoclaim"]);
+      echo "</td></tr>";
+
+      //echo "<tr class='tab_bg_1'>";
+      //echo "<td >".__('Reassign target task', 'processmaker')."</td><td>";
+      //Dropdown::showYesNo("is_targettoreassign", $this->fields["is_targettoreassign"]);
+      //echo "</td></tr>";
+
+      echo "<tr class='tab_bg_1'>";
+      echo "<td >".__('Impersonate target task user', 'processmaker')."</td><td>";
+      Dropdown::showYesNo("is_targettoimpersonate", $this->fields["is_targettoimpersonate"]);
       echo "</td></tr>";
 
       echo "<tr class='tab_bg_1'>";

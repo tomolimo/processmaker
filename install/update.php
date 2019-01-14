@@ -33,11 +33,18 @@ function processmaker_update(){
          // will upgrade 3.3.0 to 3.3.1
          include_once(GLPI_ROOT."/plugins/processmaker/install/update_3_3_0_to_3_3_1.php");
          $new_version = update_3_3_0_to_3_3_1();
+
+      case '3.3.1' :
+         // will upgrade 3.3.1 to 3.3.8
+         include_once(GLPI_ROOT."/plugins/processmaker/install/update_3_3_1_to_3_3_8.php");
+         $new_version = update_3_3_1_to_3_3_8();
    }
 
-   // end update by updating the db version number
-   $query = "UPDATE `glpi_plugin_processmaker_configs` SET `db_version` = '$new_version' WHERE `id` = 1;";
+   if (isset($new_version)) {
+      // end update by updating the db version number
+      $query = "UPDATE `glpi_plugin_processmaker_configs` SET `db_version` = '$new_version' WHERE `id` = 1;";
 
-   $DB->query($query) or die("error when updating db_version field in glpi_plugin_processmaker_configs" . $DB->error());
+      $DB->query($query) or die("error when updating db_version field in glpi_plugin_processmaker_configs" . $DB->error());
+   }
 
 }

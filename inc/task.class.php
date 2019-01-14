@@ -13,7 +13,7 @@ class PluginProcessmakerTask extends CommonITILTask
    private $itemtype;
    function __construct($itemtype='TicketTask') {
       parent::__construct();
-      $this->itemtype=$itemtype;
+      $this->itemtype = $itemtype;
    }
 
 
@@ -89,10 +89,10 @@ class PluginProcessmakerTask extends CommonITILTask
    }
 
    static function populatePlanning($params) {
-      global $CFG_GLPI;
+      //global $CFG_GLPI;
 
-      $ret = array();
       $events = array();
+
       if (isset($params['start'])) {
          $params['begin'] = '2000-01-01 00:00:00';
          if ($params['type'] == 'group') {
@@ -100,33 +100,42 @@ class PluginProcessmakerTask extends CommonITILTask
             $params['whogroup'] = $params['who'];
             $params['who'] = 0;
          }
-         $ret = CommonITILTask::genericPopulatePlanning( 'TicketTask', $params );
 
-         foreach ($ret as $key => $event) {
-            if ($event['state'] == 1 || ($params['display_done_events'] == 1 && $event['state'] == 2)) { // if todo or done but need to show them (=planning)
-               // check if task is one within a case
-               $pmTask = new self('TicketTask');
-               if ($pmTask->getFromDB( $event['tickettasks_id'] )) { // $pmTask->getFromDBByQuery( " WHERE itemtype = 'TicketTask' AND items_id = ". $event['tickettasks_id'] ) ) {
-                  $event['editable'] = false;
-                  //$event['url'] .= '&forcetab=PluginProcessmakerCase$processmakercases';
-                  $tmpCase = new PluginProcessmakerCase;
-                  $tmpCase->getFromDB($pmTask->fields['plugin_processmaker_cases_id']);
-                  $event['url'] = $tmpCase->getLinkURL().'&forcetab=PluginProcessmakerTask$'.$pmTask->fields['items_id'];
+         $objects = ['TicketTask', 'ChangeTask', 'ProblemTask'];
+         //foreach ($objects as $itemtype) {
+         foreach ($_SESSION['glpi_plannings']['filters'] as $tasktype => $iteminfo) {
+            if (!$iteminfo['display'] || !in_array($tasktype, $objects)) {
+               continue;
+            }
+            $ret = CommonITILTask::genericPopulatePlanning($tasktype, $params);
 
-                  $taskCat = new TaskCategory;
-                  $taskCat->getFromDB( $pmTask->fields['taskcategories_id'] );
-                  $taskComment = isset($taskCat->fields['comment']) ? $taskCat->fields['comment'] : '';
-                  if (Session::haveTranslations('TaskCategory', 'comment')) {
-                     $taskComment = DropdownTranslation::getTranslatedValue( $taskCat->getID(), 'TaskCategory', 'comment', $_SESSION['glpilanguage'], $taskComment );
+            foreach ($ret as $key => $event) {
+               // if todo or done but need to show them (=planning)
+               if ($event['state'] == Planning::TODO || $event['state'] == Planning::INFO || ($params['display_done_events'] == 1 && $event['state'] == Planning::DONE)) {
+                  // check if task is one within a case
+                  $pmTask = new PluginProcessmakerTask($tasktype);
+                  if ($pmTask->getFromDB($event[strtolower($tasktype).'s_id'])) { // $pmTask->getFromDBByQuery( " WHERE itemtype = 'TicketTask' AND items_id = ". $event['tickettasks_id'] ) ) {
+                     $event['editable'] = false;
+                     //$event['url'] .= '&forcetab=PluginProcessmakerCase$processmakercases';
+                     $tmpCase = new PluginProcessmakerCase;
+                     $tmpCase->getFromDB($pmTask->fields['plugin_processmaker_cases_id']);
+                     $event['url'] = $tmpCase->getLinkURL().'&forcetab=PluginProcessmakerTask$'.$pmTask->fields['items_id'];
+
+                     $taskCat = new TaskCategory;
+                     $taskCat->getFromDB( $pmTask->fields['taskcategories_id'] );
+                     $taskComment = isset($taskCat->fields['comment']) ? $taskCat->fields['comment'] : '';
+                     if (Session::haveTranslations('TaskCategory', 'comment')) {
+                        $taskComment = DropdownTranslation::getTranslatedValue( $taskCat->getID(), 'TaskCategory', 'comment', $_SESSION['glpilanguage'], $taskComment );
+                     }
+
+                     $event['content'] = str_replace( '##processmaker.taskcomment##', $taskComment, $event['content'] );
+                     $event['content'] = str_replace( ['\n##processmakercase.url##', '##processmakercase.url##'], "", $event['content'] ); //<a href=\"".$event['url']."\">"."Click to manage task"."</a>
+                     //if( $event['state'] == 1 && $event['end'] < $params['start'] ) { // if todo and late
+                     //   $event['name'] = $event['end'].' '.$event['name'] ; //$event['begin'].' to '.$event['end'].' '.$event['name'] ;
+                     //   $event['end'] = $params['start'].' 24:00:00'; //.$CFG_GLPI['planning_end'];
+                     //}
+                     $events[$key] = $event;
                   }
-
-                  $event['content'] = str_replace( '##processmaker.taskcomment##', $taskComment, $event['content'] );
-                  $event['content'] = str_replace( '##processmakercase.url##', "", $event['content'] ); //<a href=\"".$event['url']."\">"."Click to manage task"."</a>
-                  //if( $event['state'] == 1 && $event['end'] < $params['start'] ) { // if todo and late
-                  //   $event['name'] = $event['end'].' '.$event['name'] ; //$event['begin'].' to '.$event['end'].' '.$event['name'] ;
-                  //   $event['end'] = $params['start'].' 24:00:00'; //.$CFG_GLPI['planning_end'];
-                  //}
-                  $events[$key] = $event;
                }
             }
          }
@@ -340,19 +349,45 @@ class PluginProcessmakerTask extends CommonITILTask
 
       $csrf = Session::getNewCSRFToken();
 
-      echo "<iframe id='caseiframe-task-{$task[$tabnum]['del_index']}' onload=\"onTaskFrameLoad( event, {$task[$tabnum]['del_index']}, "
-         .($hide_claim_button?"true":"false")
-         .", '$csrf' );\" style='border:none;' class='tab_bg_2' width='100%' src='";
-      echo $PM_SOAP->serverURL
-         ."/cases/cases_Open?sid="
-         .$PM_SOAP->getPMSessionID()
-         ."&APP_UID="
-         .$case->fields['case_guid']
-         ."&DEL_INDEX="
-         .$task[$tabnum]['del_index']
-         ."&action=TO_DO";
-      echo "&rand=$rand&glpi_domain={$config->fields['domain']}'></iframe></div>";
+      $url = $PM_SOAP->serverURL
+         ."/cases/cases_Open?sid=".$PM_SOAP->getPMSessionID()
+         ."&APP_UID=".$case->fields['case_guid']
+         ."&DEL_INDEX=".$task[$tabnum]['del_index']
+         ."&action=TO_DO"
+         ."&rand=$rand"
+         ."&glpi_domain={$config->fields['domain']}";
 
+      $encoded_url = urlencode($url);
+
+      //echo "<iframe id='caseiframe-task-{$task[$tabnum]['del_index']}' onload=\"onTaskFrameLoad( event, {$task[$tabnum]['del_index']}, "
+      //.($hide_claim_button?"true":"false").", '$csrf', '$encoded_url' );\" style='border:none;' class='tab_bg_2' width='100%' src='$url'></iframe></div>";
+      echo "<iframe id='caseiframe-task-{$task[$tabnum]['del_index']}' onload=\"onTaskFrameLoad( event, {$task[$tabnum]['del_index']}, "
+      .($hide_claim_button?"true":"false").", '$csrf');\" style='border:none;' class='tab_bg_2' width='100%' src='$url'></iframe></div>";
+
+      echo Html::scriptBlock("
+         $('#tabspanel').next('div[id^=\"tabs\"]').on( 'tabsbeforeactivate', function(event, ui) {
+            function urldecode(url) {
+               return decodeURIComponent(url.replace(/\+/g, ' '));
+            }
+            var iframe_id = 'caseiframe-task-{$task[$tabnum]['del_index']}';
+            var iframe = ui.newPanel.children('iframe[id=\"' + iframe_id + '\"]');
+            if (iframe.length != 0) {
+               var str = urldecode('$encoded_url');
+               $.ajax( { url: str,
+                           xhrFields: { withCredentials: true },
+                           success: function (jqXHR) {
+                              //debugger;
+                              },
+                           error: function (jqXHR) {
+                                // debugger;
+                              },
+                           cache: false,
+                           crossDomain: true
+                           }
+                        );
+            }
+         });
+      ");
    }
 
 

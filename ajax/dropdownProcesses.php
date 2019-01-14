@@ -60,12 +60,14 @@ if (empty($_REQUEST['searchText'])) {
    }
 }
 
+$processall = (isset($_REQUEST['specific_tags']['process_restrict']) && !$_REQUEST['specific_tags']['process_restrict']);
+
 $result = PluginProcessmakerProcess::getSqlSearchResult(false, $search);
 
 if ($DB->numrows($result)) {
    while ($data = $DB->fetch_array($result)) {
       $process_entities = PluginProcessmakerProcess::getEntitiesForProfileByProcess($data["id"], $_SESSION['glpiactiveprofile']['id'], true);
-      if (in_array( $_REQUEST["entity_restrict"],  $process_entities)) {
+      if ($processall || in_array( $_REQUEST["entity_restrict"],  $process_entities)) {
          array_push( $processes, array( 'id'   => $data["id"],
                                         'text' => $data["name"] ));
          $count++;

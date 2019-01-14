@@ -29,9 +29,11 @@ class PluginProcessmakerProcess extends CommonDBTM {
       return Session::haveRightsOr('plugin_processmaker_config', [READ, UPDATE]);
    }
 
+
    static function canUpdate( ) {
       return Session::haveRight('plugin_processmaker_config', UPDATE);
    }
+
 
    function canUpdateItem() {
       return Session::haveRight('plugin_processmaker_config', UPDATE);
@@ -695,6 +697,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
    static function getSqlSearchResult ($count=true, $search='') {
       global $DB, $CFG_GLPI;
 
+      $where = '';
       $orderby = '';
 
       if (isset($_REQUEST['condition']) && isset($_SESSION['glpicondition'][$_REQUEST['condition']])) {
@@ -788,6 +791,10 @@ class PluginProcessmakerProcess extends CommonDBTM {
    */
    static function dropdown($options=array()) {
       global $CFG_GLPI;
+
+      if (!isset($options['specific_tags']['process_restrict'])) {
+         $options['specific_tags']['process_restrict'] = 1;
+      }
       $options['url'] = $CFG_GLPI["root_doc"].'/plugins/processmaker/ajax/dropdownProcesses.php';
       return Dropdown::show( __CLASS__, $options );
 

@@ -75,25 +75,31 @@ function plugin_init_processmaker() {
       $hooks[$obj] = ['PluginProcessmakerProcessmaker', 'plugin_item_add_processmaker'];
    }
    $PLUGIN_HOOKS['item_add']['processmaker'] = $hooks;
-   $PLUGIN_HOOKS['item_get_datas']['processmaker'] = array(
-      'NotificationTargetTicket' => array('PluginProcessmakerProcessmaker', 'plugin_item_get_datas_processmaker')
-   );
-
-   $PLUGIN_HOOKS['item_get_pdfdatas']['processmaker'] = array(
-      'PluginPdfTicketTask' => array('PluginProcessmakerProcessmaker', 'plugin_item_get_pdfdatas_processmaker')
-   );
 
    $hooks = [];
    foreach($objects as $obj){
-      $hooks[$obj.'_User'] = 'plugin_pre_item_purge_processmaker';
+      $hooks['NotificationTarget'.$obj] = ['PluginProcessmakerProcessmaker', 'plugin_item_get_data_processmaker'];
    }
-   $PLUGIN_HOOKS['pre_item_purge']['processmaker'] = $hooks;
+   $PLUGIN_HOOKS['item_get_datas']['processmaker'] = $hooks;
+
 
    $hooks = [];
    foreach($objects as $obj){
-      $hooks[$obj.'_User'] = 'plugin_item_purge_processmaker';
+      $hooks["PluginPdf'.$obj.'Task"] = ['PluginProcessmakerProcessmaker', 'plugin_item_get_pdfdata_processmaker'];
    }
-   $PLUGIN_HOOKS['item_purge']['processmaker'] = $hooks;
+   $PLUGIN_HOOKS['item_get_pdfdatas']['processmaker'] = $hooks;
+
+   //$hooks = [];
+   //foreach($objects as $obj){
+   //   $hooks[$obj.'_User'] = 'plugin_pre_item_purge_processmaker';
+   //}
+   //$PLUGIN_HOOKS['pre_item_purge']['processmaker'] = $hooks;
+
+   //$hooks = [];
+   //foreach($objects as $obj){
+   //   $hooks[$obj.'_User'] = 'plugin_item_purge_processmaker';
+   //}
+   //$PLUGIN_HOOKS['item_purge']['processmaker'] = $hooks;
 
    $plugin = new Plugin();
    if ($plugin->isActivated('processmaker')
@@ -105,6 +111,9 @@ function plugin_init_processmaker() {
          case "tracking.injector.php":
          case "helpdesk.public.php":
             $PLUGIN_HOOKS['add_javascript']['processmaker'][] = "js/helpdesk.public.js.php";
+            break;
+         case "planning.php":
+            $PLUGIN_HOOKS['add_javascript']['processmaker'][] = "js/planning.js";
             break;
       }
    }
@@ -124,16 +133,16 @@ function plugin_init_processmaker() {
 // Get the name and the version of the plugin - Needed
 function plugin_version_processmaker() {
    return array ('name'          => 'Process Maker',
-                'version'        => '3.3.1',
-                'author'         => 'Olivier Moron',
-                'homepage'       => 'https://github.com/tomolimo/processmaker',
-                'minGlpiVersion' => '9.1');
+                 'version'        => '3.3.8',
+                 'author'         => 'Olivier Moron',
+                 'homepage'       => 'https://github.com/tomolimo/processmaker',
+                 'minGlpiVersion' => '9.1');
 }
 
 // Optional : check prerequisites before install : may print errors or add to message after redirect
 function plugin_processmaker_check_prerequisites() {
-   if (version_compare(GLPI_VERSION, '9.1', 'lt') || version_compare(GLPI_VERSION, '9.3', 'ge')) {
-      echo "This plugin requires GLPI >= 9.1 and < 9.3";
+   if (version_compare(GLPI_VERSION, '9.1', 'lt') || version_compare(GLPI_VERSION, '9.2', 'ge')) {
+      echo "This plugin requires GLPI >= 9.1 and < 9.2";
       return false;
    }
 

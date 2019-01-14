@@ -18,6 +18,7 @@ if (!defined('GLPI_ROOT')) {
 
 Session::checkLoginUser();
 
+$PM_SOAP = new PluginProcessmakerProcessmaker; // not used in this context, just here to define the type of $PM_SOAP
 $PM_DB = new PluginProcessmakerDB;
 $rand = rand();
 

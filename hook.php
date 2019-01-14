@@ -218,6 +218,9 @@ function plugin_pre_item_update_processmaker(CommonITILObject $parm) {
             case 'itilcategories_id' :
                $locVar[ 'GLPI_ITEM_ITIL_CATEGORY_ID' ] = $val;
                break;
+            case 'date' :
+               $locVar[ 'GLPI_ITEM_OPENING_DATE' ] = $val;
+               break;
             case 'due_date' :
                $locVar[ 'GLPI_TICKET_DUE_DATE' ] = $val;
                $locVar[ 'GLPI_ITEM_DUE_DATE' ] = $val;
@@ -270,73 +273,73 @@ function plugin_item_update_processmaker_satisfaction($parm) {
    }
 }
 
-/**
- * Summary of plugin_pre_item_purge_processmaker
- * @param mixed $parm is the object
- */
-function plugin_pre_item_purge_processmaker ( $parm ) {
+///**
+// * Summary of plugin_pre_item_purge_processmaker
+// * @param mixed $parm is the object
+// */
+//function plugin_pre_item_purge_processmaker ( $parm ) {
 
-   if ($parm->getType() == 'Ticket_User' && is_array( $parm->fields ) && isset( $parm->fields['type'] )  && $parm->fields['type'] == 2) {
-      $itemId = $parm->fields['tickets_id'];
-      $itemType = 'Ticket';
-      $technicians = PluginProcessmakerProcessmaker::getItemUsers( $itemType, $itemId, 2 ); // 2 for technicians
+//   if ($parm->getType() == 'Ticket_User' && is_array( $parm->fields ) && isset( $parm->fields['type'] )  && $parm->fields['type'] == 2) {
+//      $itemId = $parm->fields['tickets_id'];
+//      $itemType = 'Ticket';
+//      $technicians = PluginProcessmakerProcessmaker::getItemUsers( $itemType, $itemId, 2 ); // 2 for technicians
 
-      if (PluginProcessmakerCase::getIDFromItem($itemType, $itemId) && count($technicians) == 1) {
-         $parm->input = null; // to cancel deletion of the last tech in the ticket
-      }
-   }
-}
+//      if (PluginProcessmakerCase::getIDFromItem($itemType, $itemId) && count($technicians) == 1) {
+//         $parm->input = null; // to cancel deletion of the last tech in the ticket
+//      }
+//   }
+//}
 
-/**
- * Summary of plugin_item_purge_processmaker
- * @param mixed $parm is the object
- */
-function plugin_item_purge_processmaker($parm) {
-   global $DB, $PM_SOAP;
+///**
+// * Summary of plugin_item_purge_processmaker
+// * @param mixed $parm is the object
+// */
+//function plugin_item_purge_processmaker($parm) {
+//   global $DB, $PM_SOAP;
 
-   //$objects = ['Ticket', 'Change', 'Problem'];
-   $object_users = ['Ticket_User', 'Change_User', 'Problem_User'];
+//   //$objects = ['Ticket', 'Change', 'Problem'];
+//   $object_users = ['Ticket_User', 'Change_User', 'Problem_User'];
 
-   if (in_array($parm->getType(), $object_users) && is_array( $parm->fields ) && isset( $parm->fields['type'] )  && $parm->fields['type'] == 2) {
+//   if (in_array($parm->getType(), $object_users) && is_array( $parm->fields ) && isset( $parm->fields['type'] )  && $parm->fields['type'] == 2) {
 
-      // We just deleted a tech from this ticket then we must if needed "de-assign" the tasks assigned to this tech
-      // and re-assign them to the first tech in the list !!!!
+//      // We just deleted a tech from this ticket then we must if needed "de-assign" the tasks assigned to this tech
+//      // and re-assign them to the first tech in the list !!!!
 
-      $itemType = strtolower(explode('_', $parm->getType())[0]); // $parm->getType() returns 'Ticket_User';
-      $itemId = $parm->fields[$itemType.'s_id'];
-      $cases = PluginProcessmakerCase::getIDsFromItem($itemType, $itemId);
-      foreach ($cases as $cases_id) {
-         // cases are existing for this item
-         $locCase = new PluginProcessmakerCase;
-         if ($locCase->getFromDB($cases_id)) {
-            $technicians = PluginProcessmakerProcessmaker::getItemUsers($itemType, $itemId, CommonITILActor::ASSIGN);
+//      $itemType = strtolower(explode('_', $parm->getType())[0]); // $parm->getType() returns 'Ticket_User';
+//      $itemId = $parm->fields[$itemType.'s_id'];
+//      $cases = PluginProcessmakerCase::getIDsFromItem($itemType, $itemId);
+//      foreach ($cases as $cases_id) {
+//         // cases are existing for this item
+//         $locCase = new PluginProcessmakerCase;
+//         if ($locCase->getFromDB($cases_id)) {
+//            $technicians = PluginProcessmakerProcessmaker::getItemUsers($itemType, $itemId, CommonITILActor::ASSIGN);
 
-            $locVars = array( 'GLPI_TICKET_TECHNICIAN_GLPI_ID' => $technicians[0]['glpi_id'],
-                              'GLPI_ITEM_TECHNICIAN_GLPI_ID'   => $technicians[0]['glpi_id'],
-                              'GLPI_TICKET_TECHNICIAN_PM_ID'   => $technicians[0]['pm_id'],
-                              'GLPI_ITEM_TECHNICIAN_PM_ID'     => $technicians[0]['pm_id']
-                            );
+//            $locVars = array( 'GLPI_TICKET_TECHNICIAN_GLPI_ID' => $technicians[0]['glpi_id'],
+//                              'GLPI_ITEM_TECHNICIAN_GLPI_ID'   => $technicians[0]['glpi_id'],
+//                              'GLPI_TICKET_TECHNICIAN_PM_ID'   => $technicians[0]['pm_id'],
+//                              'GLPI_ITEM_TECHNICIAN_PM_ID'     => $technicians[0]['pm_id']
+//                            );
 
-            // and we must find all tasks assigned to this former user and re-assigned them to new user (if any :))!
-            $caseInfo = $locCase->getCaseInfo( );
-            if ($caseInfo !== false) {
-               $locCase->sendVariables( $locVars);
-               // need to get info on the thread of the GLPI current user
-               // we must retreive currentGLPI user from this array
-               $GLPICurrentPMUserId = PluginProcessmakerUser::getPMUserId( $parm->fields['users_id'] );
-               if (property_exists($caseInfo, 'currentUsers') && is_array( $caseInfo->currentUsers )) {
-                  foreach ($caseInfo->currentUsers as $caseUser) {
-                     if ($caseUser->userId == $GLPICurrentPMUserId && in_array( $caseUser->delThreadStatus, array('DRAFT', 'OPEN', 'PAUSE' ) )) {
-                        $locCase->reassignCase($caseUser->delIndex, $caseUser->taskId, $caseUser->delThread, $parm->fields['users_id'], $technicians[0]['pm_id'] );
-                     }
-                  }
-               }
-            }
+//            // and we must find all tasks assigned to this former user and re-assigned them to new user (if any :))!
+//            $caseInfo = $locCase->getCaseInfo( );
+//            if ($caseInfo !== false) {
+//               $locCase->sendVariables( $locVars);
+//               // need to get info on the thread of the GLPI current user
+//               // we must retreive currentGLPI user from this array
+//               $GLPICurrentPMUserId = PluginProcessmakerUser::getPMUserId( $parm->fields['users_id'] );
+//               if (property_exists($caseInfo, 'currentUsers') && is_array( $caseInfo->currentUsers )) {
+//                  foreach ($caseInfo->currentUsers as $caseUser) {
+//                     if ($caseUser->userId == $GLPICurrentPMUserId && in_array( $caseUser->delThreadStatus, array('DRAFT', 'OPEN', 'PAUSE' ) )) {
+//                        $locCase->reassignCase($caseUser->delIndex, $caseUser->taskId, $caseUser->delThread, $parm->fields['users_id'], $technicians[0]['pm_id'] );
+//                     }
+//                  }
+//               }
+//            }
 
-         }
-      }
-   }
-}
+//         }
+//      }
+//   }
+//}
 
 function plugin_processmaker_post_init() {
    global $PM_DB, $PM_SOAP;
@@ -459,17 +462,6 @@ function plugin_item_update_processmaker_tasks($parm) {
             }
 
             if ($targetTask['is_self']) {
-               // MUST BE done on a add task hook, and not on an update task hook
-
-               //$query = "SELECT glpi_plugin_processmaker_cases.id, MAX(glpi_plugin_processmaker_tasks.del_index) AS del_index FROM glpi_tickettasks
-               //            JOIN glpi_plugin_processmaker_taskcategories ON glpi_plugin_processmaker_taskcategories.taskcategories_id=glpi_tickettasks.taskcategories_id
-               //            JOIN glpi_plugin_processmaker_cases ON glpi_plugin_processmaker_cases.processes_id=glpi_plugin_processmaker_taskcategories.processes_id
-               //            RIGHT JOIN glpi_plugin_processmaker_tasks ON glpi_plugin_processmaker_tasks.items_id=glpi_tickettasks.id AND glpi_plugin_processmaker_tasks.case_id=glpi_plugin_processmaker_cases.id
-               //            WHERE glpi_plugin_processmaker_taskcategories.pm_task_guid = '".$targetTask['targettask_guid']."' AND glpi_tickettasks.state = 1 AND glpi_tickettasks.tickets_id=".$parm->fields['tickets_id'] ;
-
-               //$res = $DB->query($query) ;
-               //if( $res && $DB->numrows($res) > 0 && $case=$DB->fetch_assoc($res) && isset($case['id']) && isset($case['del_index']) ) {
-               //foreach( $DB->request($query) as $case ) {
                $taskCase = $PM_SOAP->taskCase( $srccase_guid );
                foreach ($taskCase as $task) {
                   // search for target task guid
@@ -510,7 +502,7 @@ function plugin_item_update_processmaker_tasks($parm) {
 
                   curl_setopt($ch, CURLOPT_POST, 1);
                   curl_setopt($ch, CURLOPT_POSTFIELDS, $externalapplicationparams);
-                  curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json', 'Content-Length: ' . strlen($externalapplicationparams)));
+                  curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'Content-Length: ' . strlen($externalapplicationparams), 'Expect:']);
                   curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1 );
 
                    //curl_setopt($ch, CURLOPT_HTTPPROXYTUNNEL, 1 ) ;
@@ -553,6 +545,11 @@ function plugin_item_update_processmaker_tasks($parm) {
                      }
                   }
                }
+            }
+
+            if ($targetTask['is_synchronous']) {
+               // must call PluginProcessmakerProcessmaker::cronPMTaskActions()
+               PluginProcessmakerProcessmaker::cronPMTaskActions();
             }
          }
 

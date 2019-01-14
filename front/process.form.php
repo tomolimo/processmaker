@@ -2,6 +2,8 @@
 
 include_once ("../../../inc/includes.php");
 
+Session::checkLoginUser();
+
 Plugin::load('processmaker', true); // ???
 
 if (!isset($_REQUEST["id"])) {

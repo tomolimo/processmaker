@@ -158,9 +158,9 @@ class PluginProcessmakerConfig extends CommonDBTM {
          echo "<tr class='tab_bg_1'>";
          echo "<td >".__('Server URL (must be in same domain than GLPI)', 'processmaker')."</td><td >";
          echo "<input size='50' type='text' name='pm_server_URL' value='".$config->fields['pm_server_URL']."'>";
-         echo "</td></tr>\n";
+         echo "</td>";//</tr>\n";
 
-         echo "<tr class='tab_bg_1'>";
+         //echo "<tr class='tab_bg_1'>";
          echo "<td>".__('Common domain with GLPI', 'processmaker')."</td>";
          echo "<td><font color='red'><div name='domain'>".$config->fields['domain']."</div></font>";
 
@@ -197,6 +197,12 @@ class PluginProcessmakerConfig extends CommonDBTM {
             setCommonDomain() ;
         ");
          echo "</td></tr>\n";
+
+         echo "<tr class='tab_bg_1'>";
+         echo "<td >".__('Verify SSL certificate', 'processmaker')."</td><td >";
+         Dropdown::showYesNo("ssl_verify", $config->fields['ssl_verify']);
+         echo "</td></tr>";
+
 
          echo "<tr class='tab_bg_1'>";
          echo "<td >".__('Workspace Name', 'processmaker')."</td><td >";

@@ -2,6 +2,7 @@
 
 include_once ("../../../inc/includes.php");
 
+Session::checkLoginUser();
 
 $locCase = new PluginProcessmakerCase();
 
