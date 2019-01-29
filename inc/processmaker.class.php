@@ -2440,18 +2440,19 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       $data = http_formdata_flat_hierarchy( $request );
       // check if any files are in the $_FILES global array
       // and add them to the curl POST
-      if (isset($_FILES['form']['name'])) {
+      $fileForm = $_FILES['form']['name'];
+      if( !empty($fileForm[array_keys($fileForm)[0]][1][array_keys($fileForm[array_keys($fileForm)[0]][1])[0]]) ){
          foreach ($_FILES['form']['name'] as $key => $file) {
             if (is_array($file)) {
                // it's a grid which contains documents
                foreach ($file as $row => $col) {
-                  foreach ($col as $control => $filename) {
-                     $cfile = new CURLFile($_FILES['form']['tmp_name'][$key][$row][$control], $_FILES['form']['type'][$key][$row][$control], $_FILES['form']['name'][$key][$row][$control]);
+                  foreach($col as $control => $filename) {
+                     $cfile = new CURLFile($_FILES['form']['tmp_name'][$key][$row][$control], $_FILES['form']['type'][$key][$row][$control],$_FILES['form']['name'][$key][$row][$control]);
                      $data["form[$key][$row][$control]"] = $cfile;
                   }
                }
             } else {
-               $cfile = new CURLFile($_FILES['form']['tmp_name'][$key], $_FILES['form']['type'][$key], $_FILES['form']['name'][$key]);
+               $cfile = new CURLFile($_FILES['form']['tmp_name'][$key], $_FILES['form']['type'][$key],$_FILES['form']['name'][$key]);
                $data["form[$key]"] = $cfile;
             }
          }
