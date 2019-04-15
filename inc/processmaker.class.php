@@ -2440,18 +2440,19 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       $data = http_formdata_flat_hierarchy( $request );
       // check if any files are in the $_FILES global array
       // and add them to the curl POST
-      if (isset($_FILES['form']['name'])) {
+      $fileForm = $_FILES['form']['name'];
+      if( !empty($fileForm[array_keys($fileForm)[0]][1][array_keys($fileForm[array_keys($fileForm)[0]][1])[0]]) ){
          foreach ($_FILES['form']['name'] as $key => $file) {
             if (is_array($file)) {
                // it's a grid which contains documents
                foreach ($file as $row => $col) {
-                  foreach ($col as $control => $filename) {
-                     $cfile = new CURLFile($_FILES['form']['tmp_name'][$key][$row][$control], $_FILES['form']['type'][$key][$row][$control], $_FILES['form']['name'][$key][$row][$control]);
+                  foreach($col as $control => $filename) {
+                     $cfile = new CURLFile($_FILES['form']['tmp_name'][$key][$row][$control], $_FILES['form']['type'][$key][$row][$control],$_FILES['form']['name'][$key][$row][$control]);
                      $data["form[$key][$row][$control]"] = $cfile;
                   }
                }
             } else {
-               $cfile = new CURLFile($_FILES['form']['tmp_name'][$key], $_FILES['form']['type'][$key], $_FILES['form']['name'][$key]);
+               $cfile = new CURLFile($_FILES['form']['tmp_name'][$key], $_FILES['form']['type'][$key],$_FILES['form']['name'][$key]);
                $data["form[$key]"] = $cfile;
             }
          }
@@ -2697,6 +2698,8 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                                            'GLPI_ITEM_IMPACT'               => $locItem->fields['impact'],
                                            'GLPI_ITEM_PRIORITY'             => $locItem->fields['priority'],
                                            'GLPI_TICKET_GLOBAL_VALIDATION'  => $locItem->fields['global_validation'] ,
+                                           'GLPI_Ticket_TYPE'               => $locItem->fields['type'] ,
+                                           'GLPI_TICKET_STATUS'             => $locItem->fields['status'] ,
                                            'GLPI_TICKET_TECHNICIAN_GLPI_ID' => $users_id,
                                            'GLPI_ITEM_TECHNICIAN_GLPI_ID'   => $users_id,
                                            'GLPI_TICKET_TECHNICIAN_PM_ID'   => PluginProcessmakerUser::getPMUserId( $users_id ),
@@ -3019,6 +3022,8 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                                       'GLPI_ITEM_IMPACT'               => $item->fields['impact'],
                                       'GLPI_ITEM_PRIORITY'             => $item->fields['priority'],
                                       'GLPI_TICKET_GLOBAL_VALIDATION'  => $item->fields['global_validation'] ,
+                                      'GLPI_Ticket_TYPE'               => $locItem->fields['type'] ,
+                                      'GLPI_TICKET_STATUS'             => $locItem->fields['status'] ,
                                       'GLPI_TICKET_TECHNICIAN_GLPI_ID' => $users_id,
                                       'GLPI_ITEM_TECHNICIAN_GLPI_ID'   => $users_id,
                                       'GLPI_TICKET_TECHNICIAN_PM_ID'   => PluginProcessmakerUser::getPMUserId( $users_id ),
