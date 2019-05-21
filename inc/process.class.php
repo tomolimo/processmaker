@@ -44,6 +44,19 @@ class PluginProcessmakerProcess extends CommonDBTM {
       return false;
    }
 
+
+   /**
+    * Get default values to search engine to override
+    **/
+   static function getDefaultSearchRequest() {
+
+      $search = ['sort'     => 1,
+                 'order'    => 'ASC'];
+
+      return $search;
+   }
+
+
    /**
    * Summary of refreshTasks
    * will refresh (re-synch) all process task list
@@ -93,7 +106,9 @@ class PluginProcessmakerProcess extends CommonDBTM {
          }
 
          $pmtask = new PluginProcessmakerTaskCategory;
-         $currentasksinprocess = $dbu->getAllDataFromTable($pmtask->getTable(), '`is_active` = 1 AND `plugin_processmaker_processes_id` = '.$this->getID());
+         $restrict = ["is_active" => '1', 'plugin_processmaker_processes_id' => $this->getID()];
+         //$currentasksinprocess = $dbu->getAllDataFromTable($pmtask->getTable(), '`is_active` = 1 AND `plugin_processmaker_processes_id` = '.$this->getID());
+         $currentasksinprocess = $dbu->getAllDataFromTable($pmtask->getTable(), $restrict);
          $tasks=[];
          foreach ($currentasksinprocess as $task) {
             $tasks[$task['pm_task_guid']] = $task;
@@ -288,7 +303,9 @@ class PluginProcessmakerProcess extends CommonDBTM {
             $tmp->deleteByCriteria(['plugin_processmaker_processes_id' => $key]);
 
             // must delete any taskcategory and translations
-            $pmtaskcategories = $dbu->getAllDataFromTable( PluginProcessmakerTaskCategory::getTable(), "plugin_processmaker_processes_id = $key");
+            $restrict = ["plugin_processmaker_processes_id" => $key];
+            //$pmtaskcategories = $dbu->getAllDataFromTable( PluginProcessmakerTaskCategory::getTable(), "plugin_processmaker_processes_id = $key");
+            $pmtaskcategories = $dbu->getAllDataFromTable( PluginProcessmakerTaskCategory::getTable(), $restrict );
             foreach ($pmtaskcategories as $pmcat) {
                // delete taskcat
                $tmp = new TaskCategory;
@@ -387,104 +404,162 @@ class PluginProcessmakerProcess extends CommonDBTM {
 
 
    /**
-   * Summary of getSearchOptions
+     * Summary of rawSearchOptions
    * @return mixed
    */
-   function getSearchOptions() {
+   function rawSearchOptions() {
       $tab = [];
 
-      $tab['common'] = __('ProcessMaker', 'processmaker');
+      $tab[] = [
+              'id'                 => 'common',
+              'name'               => __('ProcessMaker', 'processmaker')
+           ];
 
-      $tab[1]['table']         = 'glpi_plugin_processmaker_processes';
-      $tab[1]['field']         = 'name';
-      $tab[1]['name']          = __('Name');
-      $tab[1]['datatype']      = 'itemlink';
-      $tab[1]['itemlink_type'] = $this->getType();
+      $tab[] = [
+         'id'                 => '1',
+         'table'              => $this->getTable(),
+         'field'              => 'name',
+         'name'               => __('Name'),
+         'datatype'           => 'itemlink',
+         'itemlink_type'      => 'PluginProcessmakerProcess',
+         'massiveaction'      => false
+      ];
 
-      //$tab[7]['table']         = 'glpi_plugin_processmaker_processes';
-      //$tab[7]['field']         = 'is_helpdeskvisible';
-      //$tab[7]['name']          = $LANG['tracking'][39];
-      //$tab[7]['massiveaction'] = true;
-      //$tab[7]['datatype']      = 'bool';
+      $tab[] = [
+         'id'                 => '8',
+         'table'              => $this->getTable(),
+         'field'              => 'is_active',
+         'name'               => __('Active'),
+         'massiveaction'      => true,
+         'datatype'           => 'bool'
+      ];
 
-      $tab[8]['table']         = 'glpi_plugin_processmaker_processes';
-      $tab[8]['field']         = 'is_active';
-      $tab[8]['name']          = __('Active');
-      $tab[8]['massiveaction'] = true;
-      $tab[8]['datatype']      = 'bool';
+      $tab[] = [
+         'id'                 => '4',
+         'table'              => $this->getTable(),
+         'field'              => 'comment',
+         'name'               => __('Comments'),
+         'massiveaction'      => true,
+         'datatype'           => 'text'
+      ];
 
-      $tab[4]['table']        = 'glpi_plugin_processmaker_processes';
-      $tab[4]['field']        =  'comment';
-      $tab[4]['name']         =  __('Comments');
-      $tab[4]['massiveaction'] = true;
-      $tab[4]['datatype']     =  'text';
+      $tab[] = [
+         'id'                 => '9',
+         'table'              => $this->getTable(),
+         'field'              => 'date_mod',
+         'name'               => __('Last update'),
+         'massiveaction'      => false,
+         'datatype'           => 'datetime'
+      ];
 
-      $tab[9]['table']         = 'glpi_plugin_processmaker_processes';
-      $tab[9]['field']         = 'date_mod';
-      $tab[9]['name']          = __('Last update');
-      $tab[9]['massiveaction'] = false;
-      $tab[9]['datatype']      = 'datetime';
+      $tab[] = [
+         'id'                 => '10',
+         'table'              => $this->getTable(),
+         'field'              => 'process_guid',
+         'name'               => __('Process GUID', 'processmaker'),
+         'massiveaction'      => false,
+         'datatype'           => 'text'
+      ];
 
-      $tab[10]['table']        = 'glpi_plugin_processmaker_processes';
-      $tab[10]['field']        =  'process_guid';
-      $tab[10]['name']         =  __('Process GUID', 'processmaker');
-      $tab[10]['massiveaction'] = false;
-      $tab[10]['datatype']     =  'text';
+      $tab[] = [
+         'id'                 => '11',
+         'table'              => $this->getTable(),
+         'field'              => 'project_type',
+         'name'               => __('Process type', 'processmaker'),
+         'massiveaction'      => false,
+         'datatype'           => 'specific'
+      ];
 
-      $tab[11]['table']        = 'glpi_plugin_processmaker_processes';
-      $tab[11]['field']        =  'project_type';
-      $tab[11]['name']         =  __('Process type', 'processmaker');
-      $tab[11]['massiveaction'] = false;
-      $tab[11]['datatype']     =  'specific';
+      $tab[] = [
+         'id'                 => '12',
+         'table'              => $this->getTable(),
+         'field'              => 'hide_case_num_title',
+         'name'               => __('Hide case num. & title', 'processmaker'),
+         'massiveaction'      => true,
+         'datatype'           => 'bool'
+      ];
 
-      $tab[12]['table']         = 'glpi_plugin_processmaker_processes';
-      $tab[12]['field']         = 'hide_case_num_title';
-      $tab[12]['name']          = __('Hide case num. & title', 'processmaker');
-      $tab[12]['massiveaction'] = true;
-      $tab[12]['datatype']      = 'bool';
+      $tab[] = [
+         'id'                 => '13',
+         'table'              => $this->getTable(),
+         'field'              => 'insert_task_comment',
+         'name'               => __('Insert Task Category', 'processmaker'),
+         'massiveaction'      => true,
+         'datatype'           => 'bool'
+      ];
 
-      $tab[13]['table']         = 'glpi_plugin_processmaker_processes';
-      $tab[13]['field']         = 'insert_task_comment';
-      $tab[13]['name']          = __('Insert Task Category', 'processmaker');
-      $tab[13]['massiveaction'] = true;
-      $tab[13]['datatype']      = 'bool';
+      $tab[] = [
+         'id'                 => '14',
+         'table'              => 'glpi_itilcategories',
+         'field'              => 'completename',
+         'name'               => __('Category'),
+         'datatype'           => 'dropdown',
+         'massiveaction'      => false
+      ];
 
-      $tab[14]['table']         = 'glpi_itilcategories';
-      $tab[14]['field']         = 'completename';
-      $tab[14]['name']          = __('Category');
-      $tab[14]['datatype']      = 'dropdown';
-      $tab[14]['massiveaction'] = false;
+      $tab[] = [
+         'id'                 => '15',
+         'table'              => $this->getTable(),
+         'field'              => 'type',
+         'name'               => __('Ticket type (self-service)', 'processmaker'),
+         'searchtype'         => 'equals',
+         'datatype'           => 'specific',
+         'massiveaction'      => false
+      ];
 
-      $tab[15]['table']         = 'glpi_plugin_processmaker_processes';
-      $tab[15]['field']         = 'type';
-      $tab[15]['name']          = __('Ticket type (self-service)', 'processmaker');
-      $tab[15]['searchtype']    = 'equals';
-      $tab[15]['datatype']      = 'specific';
-      $tab[15]['massiveaction'] = false;
+      $tab[] = [
+         'id'                 => '16',
+         'table'              => $this->getTable(),
+         'field'              => 'is_incident',
+         'name'               => __('Visible in Incident for Central interface', 'processmaker'),
+         'massiveaction'      => true,
+         'datatype'           => 'bool'
+      ];
 
-      $tab[16]['table']         = 'glpi_plugin_processmaker_processes';
-      $tab[16]['field']         = 'is_incident';
-      $tab[16]['name']          = __('Visible in Incident for Central interface', 'processmaker');
-      $tab[16]['massiveaction'] = true;
-      $tab[16]['datatype']      = 'bool';
+      $tab[] = [
+         'id'                 => '17',
+         'table'              => $this->getTable(),
+         'field'              => 'is_request',
+         'name'               => __('Visible in Request for Central interface', 'processmaker'),
+         'massiveaction'      => true,
+         'datatype'           => 'bool'
+      ];
 
-      $tab[17]['table']         = 'glpi_plugin_processmaker_processes';
-      $tab[17]['field']         = 'is_request';
-      $tab[17]['name']          = __('Visible in Request for Central interface', 'processmaker');
-      $tab[17]['massiveaction'] = true;
-      $tab[17]['datatype']      = 'bool';
+      $tab[] = [
+         'id'                 => '18',
+         'table'              => $this->getTable(),
+         'field'              => 'is_change',
+         'name'               => __('Visible in Change', 'processmaker'),
+         'massiveaction'      => true,
+         'datatype'           => 'bool'
+      ];
 
-      $tab[18]['table']         = 'glpi_plugin_processmaker_processes';
-      $tab[18]['field']         = 'is_change';
-      $tab[18]['name']          = __('Visible in Change', 'processmaker');
-      $tab[18]['massiveaction'] = true;
-      $tab[18]['datatype']      = 'bool';
+      $tab[] = [
+         'id'                 => '19',
+         'table'              => $this->getTable(),
+         'field'              => 'is_problem',
+         'name'               => __('Visible in Problem', 'processmaker'),
+         'massiveaction'      => true,
+         'datatype'           => 'bool'
+      ];
 
-      $tab[19]['table']         = 'glpi_plugin_processmaker_processes';
-      $tab[19]['field']         = 'is_problem';
-      $tab[19]['name']          = __('Visible in Problem', 'processmaker');
-      $tab[19]['massiveaction'] = true;
-      $tab[19]['datatype']      = 'bool';
+      $tab[] = [
+         'id'                 => '20',
+         'table'              => 'glpi_plugin_processmaker_processes',
+         'field'              => 'maintenance',
+         'name'               => __('Maintenance'),
+         'massiveaction'      => true,
+         'datatype'           => 'bool'
+      ];
+
+      $tab[] = [
+         'id'                 => '21',
+         'table'              => 'glpi_plugin_processmaker_processes',
+         'field'              => 'max_cases_per_item',
+         'name'               => __('Max cases per item (0=unlimited)', 'processmaker'),
+         'massiveaction'      => true,
+         'datatype'           => 'number'
+      ];
 
       return $tab;
    }
@@ -594,7 +669,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
       echo "</td></tr>";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td >".__("Active")."</td><td>";
+      echo "<td >".__('Active')."</td><td>";
       Dropdown::showYesNo("is_active", $this->fields["is_active"]);
       echo "</td></tr>";
 
@@ -607,6 +682,11 @@ class PluginProcessmakerProcess extends CommonDBTM {
       echo "<td >".__('Insert Task Category comments in Task Description', 'processmaker')."</td><td>";
       Dropdown::showYesNo("insert_task_comment", $this->fields["insert_task_comment"]);
       echo "</td></tr>";
+
+      echo "<tr class='tab_bg_1'>";
+      echo "<td >" . __('Max cases per item (0=unlimited)', 'processmaker') . "</td>";
+      echo "<td ><input type='text' name='max_cases_per_item' value='".$this->fields["max_cases_per_item"]."'>";
+      echo "</td></tr>\n";
 
       echo "<tr class='tab_bg_1'>";
       echo "<td >".__('Visible in Incident for Central interface', 'processmaker')."</td><td>";
@@ -678,6 +758,15 @@ class PluginProcessmakerProcess extends CommonDBTM {
       echo "<tr class='tab_bg_1'>";
       echo "<td >".__('Process type (to be changed only if not up-to-date)', 'processmaker')."</td><td>";
       Dropdown::showFromArray( 'project_type', self::getAllTypeArray(), [ 'value' => $this->fields["project_type"] ] );
+      echo "</td></tr>";
+
+      echo "<tr class='tab_bg_1'>";
+      echo "<td >".__('Maintenance mode')."</td><td>";
+      Dropdown::showYesNo("maintenance", $this->fields["maintenance"]);
+      if ($this->fields["maintenance"]) {
+         echo "</td><td>";
+         echo "<img src='/plugins/processmaker/pics/verysmall-under_maintenance.png' alt='Synchronize Task List' title='Synchronize Task List'>";
+      }
       echo "</td></tr>";
 
       $this->showFormButtons($options);
@@ -799,6 +888,25 @@ class PluginProcessmakerProcess extends CommonDBTM {
       $options['url'] = $CFG_GLPI["root_doc"].'/plugins/processmaker/ajax/dropdownProcesses.php';
       return Dropdown::show( __CLASS__, $options );
 
+   }
+
+
+   /**
+    * Summary of underMaintenance
+    * Shows a nice(?) under maintenance message
+    */
+   static function showUnderMaintenance($ptitle, $size = '') {
+      global $CFG_GLPI;
+      if ($size != '') {
+         $size .= '-';
+      }
+      echo "<div class='center'>";
+
+      echo Html::image($CFG_GLPI['root_doc']."/plugins/processmaker/pics/{$size}under_maintenance.png");
+      echo "<p style='font-weight: bold;'>";
+      echo sprintf(__('Process \'%s\' is under maintenance, please retry later, thank you.', 'processmaker'), $ptitle);
+      echo "</p>";
+      echo "</div>";
    }
 
 }

@@ -2,7 +2,7 @@
 
 // used for case cancellation
 define("CANCEL", 256);
-define('PROCESSMAKER_VERSION', '3.4.5');
+define('PROCESSMAKER_VERSION', '3.5.1');
 
 // Init the hooks of the plugins -Needed
 function plugin_init_processmaker() {
@@ -11,7 +11,6 @@ function plugin_init_processmaker() {
    $PLUGIN_HOOKS['csrf_compliant']['processmaker'] = true;
 
    $objects = ['Ticket', 'Change', 'Problem'];
-   //   $objects = ['Ticket'];
 
    Plugin::registerClass('PluginProcessmakerProcessmaker');
 
@@ -33,11 +32,6 @@ function plugin_init_processmaker() {
    $PLUGIN_HOOKS['pre_show_item']['processmaker']
       = ['PluginProcessmakerProcessmaker', 'pre_show_item_processmaker'];
 
-   //$PLUGIN_HOOKS['pre_item_form']['processmaker']
-   //   = array('PluginProcessmakerProcessmaker', 'pre_item_form_processmakerticket');
-   //$PLUGIN_HOOKS['post_item_form']['processmaker']
-   //   = array('PluginProcessmakerProcessmaker', 'post_item_form_processmakerticket');
-
    $PLUGIN_HOOKS['pre_show_tab']['processmaker']
       = ['PluginProcessmakerProcessmaker', 'pre_show_tab_processmaker'];
    $PLUGIN_HOOKS['post_show_tab']['processmaker']
@@ -45,8 +39,13 @@ function plugin_init_processmaker() {
 
    // Display a menu entry ?
    if (Session::haveRightsOr('plugin_processmaker_config', [READ, UPDATE])) {
-      // tools and helpdesk
-      $PLUGIN_HOOKS['menu_toadd']['processmaker'] = ['tools' => 'PluginProcessmakerMenu', 'helpdesk' => 'PluginProcessmakerCase'];
+      // tools
+      $PLUGIN_HOOKS['menu_toadd']['processmaker']['tools'] = 'PluginProcessmakerMenu';
+   }
+
+   if (Session::haveRightsOr('plugin_processmaker_case', [READ, UPDATE])) {
+      // helpdesk
+      $PLUGIN_HOOKS['menu_toadd']['processmaker']['helpdesk'] = 'PluginProcessmakerCase';
    }
 
    Plugin::registerClass('PluginProcessmakerProcess', [ 'massiveaction_nodelete_types' => true] );
@@ -83,43 +82,27 @@ function plugin_init_processmaker() {
 
    $hooks = [];
    foreach ($objects as $obj) {
-      $hooks["PluginPdf'.$obj.'Task"] = ['PluginProcessmakerProcessmaker', 'plugin_item_get_pdfdata_processmaker'];
+      $hooks["PluginPdf".$obj."Task"] = ['PluginProcessmakerProcessmaker', 'plugin_item_get_pdfdata_processmaker'];
    }
    $PLUGIN_HOOKS['item_get_pdfdatas']['processmaker'] = $hooks;
-
-   //$hooks = [];
-   //foreach($objects as $obj){
-   //   $hooks[$obj.'_User'] = 'plugin_pre_item_purge_processmaker';
-   //}
-   //$PLUGIN_HOOKS['pre_item_purge']['processmaker'] = $hooks;
-
-   //$hooks = [];
-   //foreach($objects as $obj){
-   //   $hooks[$obj.'_User'] = 'plugin_item_purge_processmaker';
-   //}
-   //$PLUGIN_HOOKS['item_purge']['processmaker'] = $hooks;
 
    $plugin = new Plugin();
    if ($plugin->isActivated('processmaker')
         && Session::getLoginUserID() ) {
-      
+
       $url      = explode("/", $_SERVER['PHP_SELF']);
       $pageName = explode("?", array_pop($url));
       switch ($pageName[0]) {
          case "tracking.injector.php":
          case "helpdesk.public.php":
-            $PLUGIN_HOOKS['add_javascript']['processmaker'][] = "js/helpdesk.public.js.php";
+            $PLUGIN_HOOKS['add_javascript']['processmaker'] = ["js/helpdesk.public.js.php"];
             break;
          case "planning.php":
-            $PLUGIN_HOOKS['add_javascript']['processmaker'][] = "js/planning.js";
+            $PLUGIN_HOOKS['add_javascript']['processmaker'] = ["js/planning.js"];
             break;
          case "central.php":
-             $PLUGIN_HOOKS['add_javascript']['processmaker'][] = "js/central.js";
-             break;
-         case "case.form.php":
-         case "processmaker.helpdesk.form.php" :
-             $PLUGIN_HOOKS['add_javascript']['processmaker'] = ["js/domain.js.php"];
-             break;
+            $PLUGIN_HOOKS['add_javascript']['processmaker'] = ["js/central.js"];
+            break;
       }
    }
 
@@ -145,17 +128,17 @@ function plugin_version_processmaker() {
       'homepage'       => 'https://github.com/tomolimo/processmaker',
       'requirements'   => [
          'glpi'   => [
-            'min' => '9.2',
-            'max' => '9.2.99'
+            'min' => '9.3',
+            'max' => '9.4'
          ],
-       ]
+      ]
    ];
 }
 
 // Optional : check prerequisites before install : may print errors or add to message after redirect
 function plugin_processmaker_check_prerequisites() {
-   if (version_compare(GLPI_VERSION, '9.2', 'lt') || version_compare(GLPI_VERSION, '9.3', 'ge')) {
-      echo "This plugin requires GLPI >= 9.2 and < 9.3";
+   if (version_compare(GLPI_VERSION, '9.3', 'lt') || version_compare(GLPI_VERSION, '9.4', 'ge')) {
+      echo "This plugin requires GLPI >= 9.3 and < 9.4";
       return false;
    }
 

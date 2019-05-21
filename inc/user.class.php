@@ -178,9 +178,14 @@ class PluginProcessmakerUser extends CommonDBTM {
      */
    public static function getGLPIUserId($pmUserId) {
       $obj = new self;
-      if ($obj->getFromDBByQuery("WHERE `pm_users_id` = '$pmUserId'")) {
+      if ($obj->getFromDBByRequest([
+                      'WHERE'  => [
+                      'pm_users_id'  => $pmUserId
+                      ],
+                  ])) {
          return $obj->fields['id'];
       }
+
       return 0;
    }
 

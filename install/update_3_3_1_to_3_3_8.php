@@ -1,6 +1,6 @@
 <?php
 
-function update_3_3_1_to_3_3_8(){
+function update_3_3_1_to_3_3_8() {
    global $DB;
 
    // Alter table glpi_plugin_processmaker_configs

@@ -57,8 +57,9 @@ if (!isset($_REQUEST['page'])) {
 if ($one_item < 0) {
    $start  = ($_REQUEST['page']-1)*$_REQUEST['page_limit'];
    $LIMIT = "LIMIT $start,".$_REQUEST['page_limit'];
+   $searchText = isset($_REQUEST['searchText']) ? $_REQUEST['searchText'] : "";
    $result = PluginProcessmakerUser::getSqlSearchResult( $_REQUEST['specific_tags']['taskGuid'], false, $_REQUEST['right'], $_REQUEST["entity_restrict"],
-                                   $_REQUEST['value'], $used, $_REQUEST['searchText'], $LIMIT);
+                                   $_REQUEST['value'], $used, $searchText, $LIMIT);
 } else {
    $query = "SELECT DISTINCT `glpi_users`.*
              FROM `glpi_users`

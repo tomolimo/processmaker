@@ -28,13 +28,13 @@ class PluginProcessmakerCase extends CommonDBTM {
    //}
 
 
-   //static function canView() {
-   //   return Session::haveRightsOr('plugin_processmaker_case', [READ, UPDATE]);
-   //}
+   static function canView() {
+      return Session::haveRightsOr('plugin_processmaker_case', [READ, UPDATE]);
+   }
 
-   //function canViewItem() {
-   //   return Session::haveRightsOr('plugin_processmaker_case', READ);
-   //}
+   function canViewItem() {
+      return Session::haveRight('plugin_processmaker_case', READ);
+   }
 
    //static function canUpdate( ) {
    //   return Session::haveRight('plugin_processmaker_config', UPDATE);
@@ -44,25 +44,31 @@ class PluginProcessmakerCase extends CommonDBTM {
    //   return Session::haveRight('plugin_processmaker_config', UPDATE);
    //}
 
+   //function canEdit($ID) {
+   //   return parent::canDelete();
+   //}
 
    function maybeDeleted() {
       return false;
    }
 
-   static function canDelete() {
-      return parent::canDelete();
-   }
+   //static function canDelete() {
+   //   return parent::canDelete();
+   //}
 
-   function canDeleteItem() {
-      return parent::canDeleteItem();
-   }
+   //function canDeleteItem() {
+   //   return parent::canDeleteItem();
+   //}
 
    static function canPurge() {
-      return self::canDelete();
+      return true; //self::canDelete();
    }
 
    function canPurgeItem() {
-      return $this->canDeleteItem();
+      return $_SESSION['glpiactiveprofile']['interface'] == 'central'
+         && $this->fields['plugin_processmaker_cases_id'] == 0
+         &&  $this->canDeleteItem()
+         && (self::canDelete() || $this->fields['case_status'] == PluginProcessmakerCase::DRAFT);
    }
 
    static function canCancel() {
@@ -83,7 +89,7 @@ class PluginProcessmakerCase extends CommonDBTM {
             // case is a sub-case
             $tabname = __('Sub-case', 'processmaker');
          }
-         return [ __CLASS__ => $tabname."<sup class='tab_nb'> ".self::getStatus($item->fields['case_status'])."</sup>"];
+         return [ 'main' => $tabname."<sup class='tab_nb'> ".self::getStatus($item->fields['case_status'])."</sup>"];
       } else {
          $items_id = $item->getID();
          $itemtype = $item->getType();
@@ -114,13 +120,13 @@ class PluginProcessmakerCase extends CommonDBTM {
     * @param integer $items_id   is the item id
     * @return integer cases_id
     */
-   static function getIDFromItem($itemtype, $items_id) {
-      $tmp = New self;
-      if ($tmp->getFromDBByQuery(" WHERE items_id=$items_id and itemtype='$itemtype'")) {
-         return $tmp->getID();
-      }
-      return false;
-   }
+   //static function getIDFromItem($itemtype, $items_id) {
+   //   $tmp = New self;
+   //   if ($tmp->getFromDBByQuery(" WHERE items_id=$items_id and itemtype='$itemtype'")) {
+   //      return $tmp->getID();
+   //   }
+   //   return false;
+   //}
 
 
    /**
@@ -133,7 +139,12 @@ class PluginProcessmakerCase extends CommonDBTM {
    static function getIDsFromItem($itemtype, $items_id) {
       $ret = [];
       $dbu = new DbUtils;
-      foreach ($dbu->getAllDataFromTable( self::getTable(), "items_id=$items_id AND itemtype='$itemtype'") as $case) {
+      $restrict = [
+          "items_id" => $items_id,
+          "itemtype" => $itemtype,];
+
+      //foreach ($dbu->getAllDataFromTable( self::getTable(), "items_id=$items_id AND itemtype='$itemtype'") as $case)
+      foreach ($dbu->getAllDataFromTable( self::getTable(), $restrict) as $case) {
          $ret[] = $case['id'];
       }
       return $ret;
@@ -156,7 +167,12 @@ class PluginProcessmakerCase extends CommonDBTM {
     * @return boolean
     */
    function getFromGUID($case_guid) {
-      return $this->getFromDBByQuery(" WHERE case_guid='$case_guid'");
+       $restrict=[
+                              'WHERE'  => [
+                              'case_guid'  => $case_guid,
+                              ],
+                    ];
+       return $this->getFromDBByRequest($restrict);
    }
 
 
@@ -477,9 +493,6 @@ class PluginProcessmakerCase extends CommonDBTM {
     */
    static function showCaseInfoTab(CommonGLPI $case, $tabnum = 1, $withtemplate = 0) {
       // echo 'The idea is to show here the GLPI ITIL item to which it is linked, and to give a resume of the current case status, and to give possibility to delete or cancel the case.';
-
-      echo "<table style='margin-bottom: 0px' class='tab_cadre_fixe'>";
-
       $itemtype = $case->fields['itemtype'];
 
       $maintitle = __('Case is linked to a %1s', 'processmaker');
@@ -487,7 +500,7 @@ class PluginProcessmakerCase extends CommonDBTM {
          $maintitle = __('Sub-case is linked to a %1s', 'processmaker');
       }
 
-      echo "<tr><th colspan=12>".sprintf($maintitle, $itemtype::getTypeName(1))."</th></tr>";
+      echo "<tr><th colspan=12 >".sprintf($maintitle, $itemtype::getTypeName(1))."</th></tr>";
 
       Ticket::commonListHeader(Search::HTML_OUTPUT);
 
@@ -502,12 +515,8 @@ class PluginProcessmakerCase extends CommonDBTM {
 
          // it's a main case, not a sub-case
          // and we have the rights to cancel cases
-         // show a form to be able to cancel the case
-         $rand = rand();
 
          echo "<p></p>";
-         echo "<form style='margin-bottom: 0px' name='processmaker_case_cancelform$rand' id='processmaker_case_cancelform$rand' method='post' action='".Toolbox::getItemTypeFormURL("PluginProcessmakerCase")."'>";
-         echo "<div class='center'>";
          echo "<table style='margin-bottom: 0px' class='tab_cadre_fixe'>";
          echo "<tr><th colspan='2'>".__('Case cancellation', 'processmaker')."</th></tr>";
          echo "<tr><td class='tab_bg_2' style='width: 10%'>".__('Cancel case', 'processmaker')."</td>";
@@ -517,33 +526,27 @@ class PluginProcessmakerCase extends CommonDBTM {
          echo "<input onclick='return confirm(\"".__('Confirm cancellation?', 'processmaker')."\");'  type='submit' name='cancel' value='".__('Cancel', 'processmaker')."' class='submit' >";
          echo "</td></tr></table>";
 
-         Html::closeForm();
-
       }
 
       // will not show delete button if case is a sub-process
       // and will show it only if it is a draft or if current glpi user has the right to delete cases and session is central
-      if ($case->fields['plugin_processmaker_cases_id'] == 0
-         && ($case->fields['case_status'] == self::DRAFT
-            || (plugin_processmaker_haveRight("case", DELETE)
-               && $_SESSION['glpiactiveprofile']['interface'] == 'central'))) {
+      if ($case->canPurgeItem($case->getID())) {
 
          // then propose a button to delete case
-         $rand = rand();
+         // the button will be effectively shown by the showFormButtons()
 
          echo "<p></p>";
-         echo "<form style='margin-bottom: 0px' name='processmaker_case_deleteform$rand' id='processmaker_case_deleteform$rand' method='post' action='".Toolbox::getItemTypeFormURL("PluginProcessmakerCase")."'>";
-         echo "<div class='center'>";
          echo "<table style='margin-bottom: 0px' class='tab_cadre_fixe'>";
-         echo "<th colspan='2'>".__('Case deletion', 'processmaker')."</th>";
-         echo "<tr><td class='tab_bg_2' style='width: 10%'>".__('Delete case', 'processmaker')."</td>";
-         echo "<td class='tab_bg_2' >";
-         echo "<input type='hidden' name='action' value='delete'>";
-         echo "<input type='hidden' name='cases_id' value='".$case->getID()."'>";
-         echo "<input onclick='return confirm(\"".__('Confirm expunge?')."\");'  type='submit' name='delete' value='".__('Delete permanently')."' class='submit' >";
-         echo "</td></tr></table>";
+         echo "<tr><th colspan='12'>".__('Case deletion', 'processmaker')."</th></tr>";
+         //   echo "<tr><td class='tab_bg_2' style='width: 10%'>".__('Delete case', 'processmaker')."</td>";
+         //   echo "<td class='tab_bg_2' >";
+         //   echo "<input type='hidden' name='action' value='delete'>";
+         //   echo "<input type='hidden' name='cases_id' value='".$case->getID()."'>";
+         //   echo "<input onclick='return confirm(\"".__('Confirm expunge?')."\");'  type='submit' name='delete' value='".__('Delete permanently')."' class='submit' >";
+         //   echo "</td></tr>";
+         echo "</table>";
+         echo "<p></p>";
 
-         Html::closeForm();
       }
 
       return;
@@ -556,7 +559,7 @@ class PluginProcessmakerCase extends CommonDBTM {
     * @param CommonITILObject $item
     */
    static function showForItem(CommonITILObject $item) {
-      global $DB, $CFG_GLPI;
+      global $DB, $CFG_GLPI, $PM_SOAP;
 
       $items_id = $item->getField('id');
       $itemtype = $item->getType();
@@ -570,7 +573,7 @@ class PluginProcessmakerCase extends CommonDBTM {
 
       $rand = mt_rand();
 
-      $query = "SELECT gppc.`id` AS assocID, gppc.`id` as id, gppp.name as pname, gppc.`case_status`, gppc.`plugin_processmaker_cases_id`
+      $query = "SELECT gppc.`id` AS assocID, gppc.`id` as id, gppp.id as pid, gppp.name as pname, gppc.`case_status`, gppc.`plugin_processmaker_cases_id`
                 FROM `glpi_plugin_processmaker_cases` as gppc
                 LEFT JOIN `glpi_plugin_processmaker_processes` AS gppp ON gppp.`id`=gppc.`plugin_processmaker_processes_id`
                 WHERE gppc.`itemtype` = '$itemtype'
@@ -579,25 +582,33 @@ class PluginProcessmakerCase extends CommonDBTM {
       $result = $DB->query($query);
 
       $cases = [];
-      $used     = [];
+      $used  = [];
+      $pid   = [];
       if ($numrows = $DB->numrows($result)) {
          while ($data = $DB->fetch_assoc($result)) {
             $cases[$data['id']] = $data;
-            $used[$data['id']]     = $data['id'];
+            $used[$data['id']]  = $data['id'];
+            if (isset($pid[$data['pid']])) {
+               $pid[$data['pid']] += 1;
+            } else {
+               $pid[$data['pid']] = 1;
+            }
          }
       }
 
       $columns = ['pname'  => __('Process', 'processmaker'),
-                       'name'   => __('Title', 'processmaker'),
-                       'status' => __('Status', 'processmaker'),
-                       'sub'    => __('Sub-case of', 'processmaker')
+                  'name'   => __('Title', 'processmaker'),
+                  'status' => __('Status', 'processmaker'),
+                  'sub'    => __('Sub-case of', 'processmaker')
            ];
 
       // check if item is not solved nor closed
       if ($canupdate
             && $item->fields['status'] != CommonITILObject::SOLVED
             && $item->fields['status'] != CommonITILObject::CLOSED
-            && $_SESSION['glpiactiveprofile']['interface'] != 'helpdesk') {
+            && $_SESSION['glpiactiveprofile']['interface'] != 'helpdesk'
+            && ($numrows < $PM_SOAP->config->fields['max_cases_per_item']
+               || $PM_SOAP->config->fields['max_cases_per_item'] == 0)) {
          echo "<div class='firstbloc'>";
          echo "<form style='margin-bottom: 0px' name='processmaker_form$rand' id='processmaker_form$rand' method='post' action='".Toolbox::getItemTypeFormURL("PluginProcessmakerProcessmaker")."'>";
          echo "<input type='hidden' name='action' value='newcase'>";
@@ -621,7 +632,8 @@ class PluginProcessmakerCase extends CommonDBTM {
          PluginProcessmakerProcess::dropdown(['value' => 0,
                                               'entity' => $item->fields['entities_id'],
                                               'name' => 'plugin_processmaker_processes_id',
-                                              'condition' => "is_active=1 $is_itemtype"
+                                              'condition' => "is_active=1 $is_itemtype",
+                                              'specific_tags' => ['count_cases_per_item' => $pid]
                                               ]);
          echo "</td><td class='tab_bg_2'>";
          echo "<input type='submit' name='additem' value='"._sx('button', 'Add')."' class='submit'>";
@@ -728,7 +740,7 @@ class PluginProcessmakerCase extends CommonDBTM {
       if ($item->getType() == __CLASS__) {
          // we are in a case viewing the main tab
          // the 'Case infos' tab
-         self::showCaseInfoTab($item, $tabnum, $withtemplate);
+         //self::showCaseInfoTab($item, $tabnum, $withtemplate);
 
       } else {
 
@@ -1099,168 +1111,172 @@ class PluginProcessmakerCase extends CommonDBTM {
 
 
    /**
-    * Summary of getSearchOptions
+    * Get default values to search engine to override
+    **/
+   static function getDefaultSearchRequest() {
+
+      $search = ['sort'     => 1,
+                 'order'    => 'DESC'];
+
+      return $search;
+   }
+
+
+   /**
+    * Summary of rawSearchOptions
     * @return mixed
     */
-   function getSearchOptions() {
+   function rawSearchOptions() {
       $tab = [];
 
-      $tab['common'] = __('Process cases', 'processmaker');
+      $tab[] = [
+             'id'                 => 'common',
+             'name'               => __('Process cases', 'processmaker')
+          ];
 
-      $tab[1]['table']         = self::getTable();
-      $tab[1]['field']         = 'id';
-      $tab[1]['name']          = __('ID', 'processmaker');
-      $tab[1]['datatype']      = 'number';
-      $tab[1]['searchtype']    = 'contains';
-      $tab[1]['massiveaction'] = false;
+      $tab[] = [
+         'id'                 => '1',
+         'table'              => $this->getTable(),
+         'field'              => 'id',
+         'name'               => __('ID'),
+         'datatype'           => 'number',
+         'searchtype'         => 'contains',
+         'massiveaction'      => false
+      ];
 
-      $tab[2]['table']         = self::getTable();
-      $tab[2]['field']         = 'name';
-      $tab[2]['name']          = __('Title', 'processmaker');
-      $tab[2]['datatype']      = 'itemlink';
-      $tab[2]['searchtype']    = 'contains';
-      $tab[2]['massiveaction'] = false;
+      $tab[] = [
+         'id'                 => '2',
+         'table'              => $this->getTable(),
+         'field'              => 'name',
+         'name'               => __('Title'),
+         'datatype'           => 'itemlink',
+         'searchtype'         => 'contains',
+         'massiveaction'      => false
+      ];
 
-      $tab[3]['table']         = self::getTable();
-      $tab[3]['field']         = 'plugin_processmaker_processes_id';
-      $tab[3]['name']          = __('Process', 'processmaker');
-      $tab[3]['datatype']      = 'specific';
-      $tab[3]['searchtype']    = ['contains', 'equals', 'notequals'];
-      $tab[3]['massiveaction'] = false;
+      $tab[] = [
+         'id'                 => '3',
+         'table'              => $this->getTable(),
+         'field'              => 'plugin_processmaker_processes_id',
+         'name'               => __('Process', 'processmaker'),
+         'datatype'           => 'specific',
+         'searchtype'         => [
+            '0'                  => 'contains',
+            '1'                  => 'equals',
+            '2'                  => 'notequals'
+         ],
+         'massiveaction'      => false
+      ];
 
-      $tab[7]['table']         = self::getTable();
-      $tab[7]['field']         = 'itemtype';
-      $tab[7]['name']          = __('Item type', 'processmaker');
-      $tab[7]['massiveaction'] = false;
-      $tab[7]['datatype']      = 'specific';
-      $tab[7]['searchtype']    = ['contains', 'equals', 'notequals'];
+      $tab[] = [
+         'id'                 => '7',
+         'table'              => $this->getTable(),
+         'field'              => 'itemtype',
+         'name'               => __('Item type'),
+         'massiveaction'      => false,
+         'datatype'           => 'specific',
+         'searchtype'         => [
+            '0'                  => 'contains',
+            '1'                  => 'equals',
+            '2'                  => 'notequals'
+         ]
+      ];
 
-      $tab[8]['table']         = self::getTable();
-      $tab[8]['field']         = 'items_id';
-      $tab[8]['name']          = __('Item', 'processmaker');
-      $tab[8]['massiveaction'] = false;
-      $tab[8]['datatype']      = 'specific';
-      $tab[8]['additionalfields'] = ['itemtype'];
+      $tab[] = [
+         'id'                 => '8',
+         'table'              => $this->getTable(),
+         'field'              => 'items_id',
+         'name'               => __('Item'),
+         'massiveaction'      => false,
+         'datatype'           => 'specific',
+         'additionalfields'   => [
+            '0'                  => 'itemtype'
+         ]
+      ];
 
-      $tab[9]['table']         = Entity::getTable();
-      $tab[9]['field']         = 'name';
-      $tab[9]['name']          = __('Item entity', 'processmaker');
-      $tab[9]['massiveaction'] = false;
-      $tab[9]['datatype']      = 'itemlink';
+      $tab[] = [
+         'id'                 => '9',
+         'table'              => 'glpi_entities',
+         'field'              => 'name',
+         'name'               => __('Item entity', 'processmaker'),
+         'massiveaction'      => false,
+         'datatype'           => 'itemlink'
+      ];
 
-      $tab[10]['table']         = self::getTable();
-      $tab[10]['field']         = 'case_status';
-      $tab[10]['name']          = __('Status', 'processmaker');
-      $tab[10]['datatype']      = 'specific';
-      $tab[10]['searchtype']    = ['contains', 'equals', 'notequals'];
-      $tab[10]['massiveaction'] = false;
+      $tab[] = [
+         'id'                 => '10',
+         'table'              => $this->getTable(),
+         'field'              => 'case_status',
+         'name'               => __('Status'),
+         'datatype'           => 'specific',
+         'searchtype'         => [
+            '0'                  => 'contains',
+            '1'                  => 'equals',
+            '2'                  => 'notequals'
+         ],
+         'massiveaction'      => false
+      ];
 
-      $tab[14]['table']         = self::getTable();
-      $tab[14]['field']         = 'plugin_processmaker_cases_id';
-      $tab[14]['name']          = __('Sub-case of', 'processmaker');
-      $tab[14]['datatype']      = 'specific';
-      //$tab[14]['searchtype']    = ['contains', 'equals', 'notequals'];
-      $tab[14]['massiveaction'] = false;
-      $tab[14]['nosearch']      = true;
+      $tab[] = [
+         'id'                 => '14',
+         'table'              => $this->getTable(),
+         'field'              => 'plugin_processmaker_cases_id',
+         'name'               => __('Sub-case of', 'processmaker'),
+         'datatype'           => 'specific',
+         'massiveaction'      => false,
+         'nosearch'           => true
+      ];
 
-      $tab[16]['table']              = self::getTable();
-      $tab[16]['field']              = 'id';
-      $tab[16]['name']               = __('Creation date', 'processmaker');
-      $tab[16]['datatype']           = 'specific';
-      //$tab[16]['searchtype']         = ['contains', 'equals', 'notequals'];
-      $tab[16]['massiveaction']      = false;
-      $tab[16]['nosearch']           = true;
-      $tab[16]['processmaker_cases'] = 'creation_date';
+      $tab[] = [
+         'id'                 => '16',
+         'table'              => $this->getTable(),
+         'field'              => 'id',
+         'name'               => __('Creation date'),
+         'datatype'           => 'specific',
+         'massiveaction'      => false,
+         'nosearch'           => true,
+         'processmaker_cases' => 'creation_date'
+      ];
 
-      $tab[18]['table']         = self::getTable();
-      $tab[18]['field']         = 'id';
-      $tab[18]['name']          = __('Last update date', 'processmaker');
-      $tab[18]['datatype']      = 'specific';
-      //      $tab[18]['searchtype']    = ['contains', 'equals', 'notequals'];
-      $tab[18]['massiveaction'] = false;
-      $tab[18]['nosearch']      = true;
-      $tab[18]['processmaker_cases'] = 'update_date';
+      $tab[] = [
+         'id'                 => '18',
+         'table'              => $this->getTable(),
+         'field'              => 'id',
+         'name'               => __('Last update'),
+         'datatype'           => 'specific',
+         'massiveaction'      => false,
+         'nosearch'           => true,
+         'processmaker_cases' => 'update_date'
+      ];
 
       return $tab;
    }
 
 
    function showForm ($ID, $options = ['candel'=>false]) {
-      //global $DB, $CFG_GLPI, $LANG;
+      $options['colspan'] = 6;
+      $options['formtitle'] = sprintf( __('Case status is \'%s\'', 'processmaker'), self::getStatus($this->fields['case_status']));
 
-      $options['candel'] = true;
-
-      $this->initForm($ID, $options);
       $this->showFormHeader($options);
 
-      //echo "<tr class='tab_bg_1'>";
-      //echo "<td>".__("Name")."</td><td>";
-      //echo "<input size='100' type='text' name='name' value='".Html::cleanInputText($this->fields["name"])."'>";
-      //echo "</td></tr>";
+      $process = new PluginProcessmakerProcess;
+      $process->getFromDB($this->fields['plugin_processmaker_processes_id']);
 
-      //echo "<tr class='tab_bg_1'>";
-      //echo "<td >".__("Active")."</td><td>";
-      //Dropdown::showYesNo("is_active", $this->fields["is_active"]);
-      //echo "</td></tr>";
+      if ($process->fields['maintenance']) {
+         PluginProcessmakerProcess::showUnderMaintenance($process->fields['name'], 'small');
+      }
+      self::showCaseInfoTab($this);
 
-      //echo "<tr class='tab_bg_1'>";
-      //echo "<td >".__("External data")."</td><td>";
-      //Dropdown::showYesNo("is_externaldata", $this->fields["is_externaldata"]);
-      //echo "</td></tr>";
+      //echo '</div>' ;
 
-      //echo "<tr class='tab_bg_1'>";
-      //echo "<td >".__("Self")."</td><td>";
-      //Dropdown::showYesNo("is_self", $this->fields["is_self"]);
-      //echo "</td></tr>";
+      Html::closeForm();
+      $options['candel'] = true;
+      $this->showFormButtons($options);
 
-      //echo "<tr class='tab_bg_1'>";
-      //echo "<td >".__("Source task GUID")."</td><td>";
-      ////PluginProcessmakerTaskCategory::dropdown(array('name'                => 'plugin_processmaker_taskcategories_id_source',
-      ////                                               'display_emptychoice' => false,
-      ////                                               'value'               => $this->fields['plugin_processmaker_taskcategories_id_source']));
-      //echo "<input size='100' type='text' name='sourcetask_guid' value='".$this->fields["sourcetask_guid"]."'>";
-      //echo "</td></tr>";
-
-      //echo "<tr class='tab_bg_1'>";
-      //echo "<td >".__("Target task GUID")."</td><td>";
-      ////PluginProcessmakerTaskCategory::dropdown(array('name'                => 'plugin_processmaker_taskcategories_id_target',
-      ////                                               'display_emptychoice' => false,
-      ////                                               'value'               => $this->fields['plugin_processmaker_taskcategories_id_target']));
-      //echo "<input size='100' type='text' name='targettask_guid' value='".$this->fields["targettask_guid"]."'>";
-      //echo "</td></tr>";
-
-      //echo "<tr class='tab_bg_1'>";
-      //echo "<td >".__("Target process GUID")."</td><td>";
-      ////Dropdown::show( 'PluginProcessmakerProcess', array('name'                => 'plugin_processmaker_processes_id',
-      ////                                          'display_emptychoice' => true,
-      ////                                          'value'               => $this->fields['plugin_processmaker_processes_id'],
-      ////                                          'condition' => 'is_active = 1'));
-      //echo "<input size='100' type='text' name='targetprocess_guid' value='".$this->fields["targetprocess_guid"]."'>";
-      //echo "</td></tr>";
-
-      //echo "<tr class='tab_bg_1'>";
-      //echo "<td>".__("Target dynaform GUID")."</td><td>";
-      //echo "<input size='100' type='text' name='targetdynaform_guid' value='".$this->fields["targetdynaform_guid"]."'>";
-      //echo "</td></tr>";
-
-      //echo "<tr class='tab_bg_1'>";
-      //echo "<td>".__("Source condition")."</td><td>";
-      ////echo "<input size='100' type='text' name='sourcecondition' value='".$this->fields["sourcecondition"]."'>";
-      //echo "<textarea cols='100' rows='3' name='sourcecondition' >".$this->fields["sourcecondition"]."</textarea>";
-      //echo "</td></tr>";
-
-      //echo "<tr class='tab_bg_1'>";
-      //echo "<td >".__("Claim target task")."</td><td>";
-      //Dropdown::showYesNo("is_targettoclaim", $this->fields["is_targettoclaim"]);
-      //echo "</td></tr>";
-
-      //echo "<tr class='tab_bg_1'>";
-      //echo "<td>".__("External application JSON config")."</td><td>";
-      //echo "<textarea cols='100' rows='6' name='externalapplication' >".$this->fields["externalapplication"]."</textarea>";
-      //echo "</td></tr>";
-
-      $this->showFormButtons($options );
-
+      echo Html::scriptBlock("
+         $('#tabsbody th').css('text-align', 'center');
+         $('#tabsbody td').css('text-align', 'center');
+         ");
    }
 
 
@@ -1271,21 +1287,31 @@ class PluginProcessmakerCase extends CommonDBTM {
     */
    function defineTabs($options = []) {
 
-      //        $ong = array('empty' => $this->getTypeName(1));
+      $process = new PluginProcessmakerProcess;
+      $process->getFromDB($this->fields['plugin_processmaker_processes_id']);
+
       $ong = [];
-      //$this->addDefaultFormTab($ong);
+      if (self::isLayoutWithMain()) {
+         $this->addDefaultFormTab($ong);
+      }
 
-      $this->addStandardTab('PluginProcessmakerTask', $ong, $options);
+      if (!$process->fields['maintenance']) {
+         $this->addStandardTab('PluginProcessmakerTask', $ong, $options);
+      }
 
-      $this->addStandardTab(__CLASS__, $ong, $options);
+      if (!self::isLayoutWithMain()) {
+         $this->addStandardTab(__CLASS__, $ong, $options);
+      }
 
-      $this->addStandardTab('PluginProcessmakerCasemap', $ong, $options);
+      if (!$process->fields['maintenance']) {
+         $this->addStandardTab('PluginProcessmakerCasemap', $ong, $options);
 
-      $this->addStandardTab('PluginProcessmakerCasehistory', $ong, $options);
+         $this->addStandardTab('PluginProcessmakerCasehistory', $ong, $options);
 
-      $this->addStandardTab('PluginProcessmakerCasechangelog', $ong, $options);
+         $this->addStandardTab('PluginProcessmakerCasechangelog', $ong, $options);
 
-      $this->addStandardTab('PluginProcessmakerCasedynaform', $ong, $options);
+         $this->addStandardTab('PluginProcessmakerCasedynaform', $ong, $options);
+      }
 
       return $ong;
    }
@@ -1311,7 +1337,9 @@ class PluginProcessmakerCase extends CommonDBTM {
          $ret = true;
          $dbu = new DbUtils;
          // then must delete any sub-processes (sub-cases)
-         foreach ($dbu->getAllDataFromTable(self::getTable(), "`plugin_processmaker_cases_id` = ".$this->getID()) as $row) {
+         $restrict = ["plugin_processmaker_cases_id" => $this->getID()];
+         //foreach ($dbu->getAllDataFromTable(self::getTable(), "`plugin_processmaker_cases_id` = ".$this->getID()) as $row) {
+         foreach ($dbu->getAllDataFromTable(self::getTable(), $restrict) as $row) {
             $tmp = new self;
             $tmp->fields = $row;
             $ret &= $tmp->delete(['id' => $row['id']]);
@@ -1332,4 +1360,5 @@ class PluginProcessmakerCase extends CommonDBTM {
 
       return $DB->query($query);
    }
+
 }

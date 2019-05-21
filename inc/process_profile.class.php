@@ -170,9 +170,14 @@ class PluginProcessmakerProcess_Profile extends CommonDBTM
     */
    function prepareInputForAdd($input) {
       $tmp = new self;
-      if ($tmp->getFromDBByQuery(" WHERE `plugin_processmaker_processes_id` = ".$input['plugin_processmaker_processes_id']."
-                                 AND `entities_id` = ".$input['entities_id']."
-                                 AND `profiles_id` = ".$input['profiles_id'])) {
+      $restrict=[
+                             'WHERE'  => [
+                             'plugin_processmaker_processes_id'  => $input['plugin_processmaker_processes_id'],
+                             'entities_id'  => $input['entities_id'],
+                             'profiles_id' => $input['profiles_id']
+                             ],
+                   ];
+      if ($tmp->getFromDBByRequest($restrict)) {
          //// then update existing
          //$tmp->update(['id' => $tmp->getID(),
          //              'is_recursive' => $input['is_recursive']]);

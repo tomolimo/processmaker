@@ -71,7 +71,7 @@ function update_to_3_2_8() {
       }
    }
 
-   if (!$DB->fieldExists('glpi_plugin_processmaker_users', 'password')) {
+   if (!$DB->fieldExists('glpi_plugin_processmaker_users', 'password') && !$DB->fieldExists('glpi_plugin_processmaker_users', 'id')) {
       $query = "ALTER TABLE `glpi_plugin_processmaker_users`
 	            ADD COLUMN `id` INT NOT NULL AUTO_INCREMENT FIRST,
                ADD COLUMN `password` VARCHAR(32) NULL DEFAULT NULL AFTER `pm_users_id`,

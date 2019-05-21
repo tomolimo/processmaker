@@ -148,136 +148,127 @@ class PluginProcessmakerCaselink extends CommonDBTM {
 
 
    /**
-    * Summary of getSearchOptions
+     * Summary of rawSearchOptions
     * @return mixed
     */
-   function getSearchOptions() {
+   function rawSearchOptions() {
       $tab = [];
 
-      $tab['common'] = __('ProcessMaker', 'processmaker');
+      $tab[] = [
+              'id'                 => 'common',
+              'name'               => __('ProcessMaker', 'processmaker')
+           ];
 
-      $tab[1]['table']         = $this->getTable();
-      $tab[1]['field']         = 'name';
-      $tab[1]['name']          = __('Name');
-      $tab[1]['datatype']      = 'itemlink';
-      $tab[1]['itemlink_type'] = $this->getType();
+      $tab[] = [
+          'id'                 => '1',
+          'table'              => $this->getTable(),
+          'field'              => 'name',
+          'name'               => __('Name'),
+          'datatype'           => 'itemlink',
+          'itemlink_type'      => 'PluginProcessmakerCaselink',
+          'massiveaction'      => false
+       ];
 
-      $tab[8]['table']         = $this->getTable();
-      $tab[8]['field']         = 'is_active';
-      $tab[8]['name']          = __('Active');
-      $tab[8]['massiveaction'] = true;
-      $tab[8]['datatype']      = 'bool';
+      $tab[] = [
+         'id'                 => '8',
+         'table'              => $this->getTable(),
+         'field'              => 'is_active',
+         'name'               => __('Active'),
+         'massiveaction'      => true,
+         'datatype'           => 'bool'
+      ];
 
-      $tab[9]['table']         = $this->getTable();
-      $tab[9]['field']         = 'date_mod';
-      $tab[9]['name']          = __('Last update');
-      $tab[9]['massiveaction'] = false;
-      $tab[9]['datatype']      = 'datetime';
+      $tab[] = [
+         'id'                 => '9',
+         'table'              => $this->getTable(),
+         'field'              => 'date_mod',
+         'name'               => __('Last update'),
+         'massiveaction'      => false,
+         'datatype'           => 'datetime'
+      ];
 
-      $tab[10]['table']         = $this->getTable();
-      $tab[10]['field']         = 'is_externaldata';
-      $tab[10]['name']          = __('External data', 'processmaker');
-      $tab[10]['massiveaction'] = false;
-      $tab[10]['datatype']      = 'bool';
+      $tab[] = [
+         'id'                 => '10',
+         'table'              => $this->getTable(),
+         'field'              => 'is_externaldata',
+         'name'               => __('External data', 'processmaker'),
+         'massiveaction'      => false,
+         'datatype'           => 'bool'
+      ];
 
-      $tab[11]['table']         = $this->getTable();
-      $tab[11]['field']         = 'is_self';
-      $tab[11]['name']          = __('Self', 'processmaker');
-      $tab[11]['massiveaction'] = false;
-      $tab[11]['datatype']      = 'bool';
+      $tab[] = [
+         'id'                 => '11',
+         'table'              => $this->getTable(),
+         'field'              => 'is_self',
+         'name'               => __('Self', 'processmaker'),
+         'massiveaction'      => false,
+         'datatype'           => 'bool'
+      ];
 
-      $tab[12]['table']         = $this->getTable();
-      $tab[12]['field']         = 'is_targettoclaim';
-      $tab[12]['name']          = __('Claim target task', 'processmaker');
-      $tab[12]['massiveaction'] = false;
-      $tab[12]['datatype']      = 'bool';
+      $tab[] = [
+         'id'                 => '12',
+         'table'              => $this->getTable(),
+         'field'              => 'is_targettoclaim',
+         'name'               => __('Claim target task', 'processmaker'),
+         'massiveaction'      => false,
+         'datatype'           => 'bool'
+      ];
 
-      $tab[13]['table']         = $this->getTable();
-      $tab[13]['field']         = 'externalapplication';
-      $tab[13]['name']          = __('External application JSON config', 'processmaker');
-      $tab[13]['massiveaction'] = false;
-      $tab[13]['datatype']      = 'text';
+      $tab[] = [
+         'id'                 => '13',
+         'table'              => $this->getTable(),
+         'field'              => 'externalapplication',
+         'name'               => __('External application JSON config', 'processmaker'),
+         'massiveaction'      => false,
+         'datatype'           => 'text'
+      ];
 
-      $tab[14]['table']         = $this->getTable();
-      $tab[14]['field']         = 'sourcetask_guid';
-      $tab[14]['name']          = __('Source task GUID', 'processmaker');
-      $tab[14]['massiveaction'] = false;
-      $tab[14]['datatype']      = 'text';
+      $tab[] = [
+         'id'                 => '14',
+         'table'              => $this->getTable(),
+         'field'              => 'sourcetask_guid',
+         'name'               => __('Source task GUID', 'processmaker'),
+         'massiveaction'      => false,
+         'datatype'           => 'text'
+      ];
 
-      $tab[15]['table']         = $this->getTable();
-      $tab[15]['field']         = 'targettask_guid';
-      $tab[15]['name']          = __('Target task GUID', 'processmaker');
-      $tab[15]['massiveaction'] = false;
-      $tab[15]['datatype']      = 'text';
+      $tab[] = [
+         'id'                 => '15',
+         'table'              => $this->getTable(),
+         'field'              => 'targettask_guid',
+         'name'               => __('Target task GUID', 'processmaker'),
+         'massiveaction'      => false,
+         'datatype'           => 'text'
+      ];
 
-      $tab[16]['table']         = $this->getTable();
-      $tab[16]['field']         = 'targetdynaform_guid';
-      $tab[16]['name']          = __('Target dynaform GUID', 'processmaker');
-      $tab[16]['massiveaction'] = false;
-      $tab[16]['datatype']      = 'text';
+      $tab[] = [
+         'id'                 => '16',
+         'table'              => $this->getTable(),
+         'field'              => 'targetdynaform_guid',
+         'name'               => __('Target dynaform GUID', 'processmaker'),
+         'massiveaction'      => false,
+         'datatype'           => 'text'
+      ];
 
-      $tab[17]['table']         = $this->getTable();
-      $tab[17]['field']         = 'targetprocess_guid';
-      $tab[17]['name']          = __('Target process GUID', 'processmaker');
-      $tab[17]['massiveaction'] = false;
-      $tab[17]['datatype']      = 'text';
+      $tab[] = [
+         'id'                 => '17',
+         'table'              => $this->getTable(),
+         'field'              => 'targetprocess_guid',
+         'name'               => __('Target process GUID', 'processmaker'),
+         'massiveaction'      => false,
+         'datatype'           => 'text'
+      ];
 
-      $tab[18]['table']         = $this->getTable();
-      $tab[18]['field']         = 'sourcecondition';
-      $tab[18]['name']          = __('Source condition', 'processmaker');
-      $tab[18]['massiveaction'] = false;
-      $tab[18]['datatype']      = 'text';
-
-      //$tab[14]['table']         = 'glpi_taskcategories';
-      //$tab[14]['field']         = 'completename'; //'plugin_processmaker_taskcategories_id_source';
-      //$tab[14]['name']          = __('Source task');
-      //$tab[14]['massiveaction'] = false;
-      //$tab[14]['datatype']      = 'dropdown';
-      //$tab[14]['forcegroupby']  = true;
-      //$tab[14]['joinparams']    =
-      //   [
-      //      'beforejoin' => [
-      //         'table' => 'glpi_plugin_processmaker_taskcategories',
-      //         'joinparams' => [
-      //            'beforejoin' => [
-      //               'table' => 'glpi_plugin_processmaker_caselinks'
-      //            ]
-      //         ]
-      //      ]
-      //   ];
+      $tab[] = [
+         'id'                 => '18',
+         'table'              => $this->getTable(),
+         'field'              => 'sourcecondition',
+         'name'               => __('Source condition', 'processmaker'),
+         'massiveaction'      => false,
+         'datatype'           => 'text'
+      ];
 
       return $tab;
    }
 
-   //static function getMenuContent() {
-
-   //   if (!Session::haveRight('entity', READ)) {
-   //      return;
-   //   }
-
-   //   $front_page = "/plugins/processmaker/front";
-   //   $menu = array();
-   //   //$menu['title'] = self::getMenuName();
-   //   //$menu['page']  = "$front_page/caselink.php";
-
-   //   $itemtypes = array('PluginProcessmakerCaselink' => 'processmakercaselinks');
-
-   //   foreach ($itemtypes as $itemtype => $option) {
-   //      $menu['options'][$option]['title']           = $itemtype::getTypeName(Session::getPluralNumber());
-   //      switch( $itemtype ) {
-   //         case 'PluginProcessmakerCaselink':
-   //            $menu['options'][$option]['page']            = $itemtype::getSearchURL(false);
-   //            $menu['options'][$option]['links']['search'] = $itemtype::getSearchURL(false);
-   //            if ($itemtype::canCreate()) {
-   //               $menu['options'][$option]['links']['add'] = $itemtype::getFormURL(false);
-   //            }
-   //            break ;
-   //         default :
-   //            $menu['options'][$option]['page']            = PluginProcessmakerCaselink::getSearchURL(false);
-   //            break ;
-   //      }
-
-   //   }
-   //   return $menu;
-   //}
 }

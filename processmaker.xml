@@ -6,15 +6,15 @@
    <logo>https://raw.githubusercontent.com/tomolimo/processmaker/master/processmaker.png</logo>
    <description>
       <short>
-		   <fr>Ce plugin fournit la possibilité d'intégrer un processus (workflow) aux objets ITIL (Tickets, Changements et Problèmes).</fr>
+         <fr>Ce plugin fournit la possibilité d'intégrer un processus (workflow) aux objets ITIL (Tickets, Changements et Problèmes).</fr>
          <en>This plugin provides a process (workflow) management linked to ITIL objects (Tickets, Changes and Problems).</en>
-			<cs>Tento zásuvný modul poskytuje správu procesů (pracovní postup) napojený na požadavky.</cs>
-		</short>
+         <cs>Tento zásuvný modul poskytuje správu procesů (pracovní postup) napojený na požadavky.</cs>
+      </short>
       <long>
          <en>This plugin is dedicated to provide process (workflows) management linked to ITIL objects (Tickets, Changes and Problems). This goal is achieved using a customized ProcessMaker server (URL: https://github.com/tomolimo/processmaker-server). ProcessMaker provides BPMN Process design and execution. This plugin is the glue between GLPI and ProcessMaker.</en>
-		   <fr>Ce plugin est dédié à la gestion de processus (workflows) liés aux objets ITIL (Tickets, Changements et Problèmes). Ce but est atteint par l'utilisation d'un serveur ProcessMaker customisé (URL: https://github.com/tomolimo/processmaker-server). ProcessMaker fournit un outil graphique de création de processus BPMN et permet l'exécution de ceux-ci. Ce plugin sert de glue entre GLPI et ProcessMaker.</fr>
-			<cs>Tento zásuvný modul je věnován poskytnutí správy procesu (pracovní postup), napojeného na požadavky. Tohoto cíle je dosaženo použitím ProcessMaker (URL: https://github.com/tomolimo/processmaker-server). ProcessMaker poskytne návrh procesu a vykonání pracovního postupu. Tento zásuvný modul je můstkem mezi GLPI a ProcessMaker.</cs>
-		</long>
+         <fr>Ce plugin est dédié à la gestion de processus (workflows) liés aux objets ITIL (Tickets, Changements et Problèmes). Ce but est atteint par l'utilisation d'un serveur ProcessMaker customisé (URL: https://github.com/tomolimo/processmaker-server). ProcessMaker fournit un outil graphique de création de processus BPMN et permet l'exécution de ceux-ci. Ce plugin sert de glue entre GLPI et ProcessMaker.</fr>
+         <cs>Tento zásuvný modul je věnován poskytnutí správy procesu (pracovní postup), napojeného na požadavky. Tohoto cíle je dosaženo použitím ProcessMaker (URL: https://github.com/tomolimo/processmaker-server). ProcessMaker poskytne návrh procesu a vykonání pracovního postupu. Tento zásuvný modul je můstkem mezi GLPI a ProcessMaker.</cs>
+      </long>
    </description>
    <homepage>https://github.com/tomolimo/processmaker</homepage>
    <download>https://github.com/tomolimo/processmaker/releases</download>
@@ -28,10 +28,14 @@
        <num>3.3.8</num>
        <compatibility>9.1</compatibility>
      </version>
-     <version>
-       <num>3.4.5</num>
-       <compatibility>9.2</compatibility>
-     </version>
+      <version>
+         <num>3.4.9</num>
+         <compatibility>9.2</compatibility>
+      </version>
+      <version>
+         <num>3.5.1</num>
+         <compatibility>9.3</compatibility>
+      </version>
    </versions>
    <langs>
       <lang>en_gb</lang>
@@ -44,22 +48,15 @@
          <tag>Processus</tag>
          <tag>BPMN 2.0</tag>
          <tag>Workflow</tag>
-		   <tag>Helpdesk</tag>
-		   <tag>Ticket</tag>
+         <tag>Helpdesk</tag>
+         <tag>Ticket</tag>
       </fr>
       <en>
          <tag>Processes</tag>
          <tag>BPMN 2.0</tag>
          <tag>Helpdesk</tag>
-		   <tag>Workflows</tag>
-		   <tag>Ticket</tag>
+         <tag>Workflows</tag>
+         <tag>Ticket</tag>
       </en>
-		<cs>
-         <tag>Procesy</tag>
-         <tag>BPMN 2.0</tag>
-         <tag>Službapodpory</tag>
-			<tag>Pracovnípostupy</tag>
-			<tag>Požadavek</tag>
-      </cs>
-	</tags>
+   </tags>
 </root>

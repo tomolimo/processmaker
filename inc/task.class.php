@@ -41,7 +41,13 @@ class PluginProcessmakerTask extends CommonITILTask
    function getFromDB($items_id) {
       global $DB;
 
-      if ($this->getFromDBByQuery(" WHERE itemtype='".$this->itemtype."' AND items_id=$items_id;" )) {
+      //if ($this->getFromDBByQuery(" WHERE itemtype='".$this->itemtype."' AND items_id=$items_id;" )) {
+      if ($this->getFromDBByRequest([
+                     'WHERE'  => [
+                        'itemtype'  => $this->itemtype,
+                        'items_id'  => $items_id
+                     ],
+                 ])) {
          $task = new $this->itemtype;
          if ($task->getFromDB( $items_id )) {
             // then we should add our own fields
@@ -306,7 +312,11 @@ class PluginProcessmakerTask extends CommonITILTask
       $rand = rand();
 
       // get infos for the current task
-      $task = $dbu->getAllDataFromTable('glpi_plugin_processmaker_tasks', "id = $tabnum");
+      $restrict = [
+          "id" => $tabnum
+          ];
+      //$task = $dbu->getAllDataFromTable('glpi_plugin_processmaker_tasks', "id = $tabnum");
+      $task = $dbu->getAllDataFromTable('glpi_plugin_processmaker_tasks', $restrict);
 
       // shows the re-assign form
       $caseInfo = $case->getCaseInfo();
@@ -347,6 +357,7 @@ class PluginProcessmakerTask extends CommonITILTask
          }
       }
 
+      $PM_SOAP->echoDomain();
       echo "<script type='text/javascript' src='".$CFG_GLPI["root_doc"]."/plugins/processmaker/js/cases.js'></script>";
 
       $csrf = Session::getNewCSRFToken();

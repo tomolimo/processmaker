@@ -86,11 +86,11 @@ class PluginProcessmakerTaskCategory extends CommonDBTM
       return true;
    }
 
-    /**
-     * Print a good title for task categories tab
-     * add button for re-synchro of taskcategory list (only if rigths are w)
-     * @return nothing (display)
-     **/
+   /**
+   * Print a good title for task categories tab
+   * add button for re-synchro of taskcategory list (only if rigths are w)
+   * @return nothing (display)
+   **/
    static function title(CommonGLPI $item) {
       global $CFG_GLPI;
 
@@ -99,26 +99,22 @@ class PluginProcessmakerTaskCategory extends CommonDBTM
 
       if (Session::haveRight('plugin_processmaker_config', UPDATE)) {
          $buttons["process.form.php?refreshtask=1&id=".$item->getID()] = $title;
-         Html::displayTitle($CFG_GLPI["root_doc"] . "/plugins/processmaker/pics/gears.png", $title, "",
-                            $buttons);
+         $pic = $CFG_GLPI["root_doc"] . "/plugins/processmaker/pics/gears.png";
+         if ($item->fields['maintenance']) {
+            $pic = $CFG_GLPI["root_doc"] . "/plugins/processmaker/pics/verysmall-under_maintenance.png";
+         }
+         Html::displayTitle($pic, $title, "", $buttons);
       }
    }
 
-    //function getLinkItemFromExternalID($extId) {
-    //    if( $this->getFromDBbyExternalID( $extId ) ) {
-    //        $taskcat = new TaskCategory ;
-    //        return $taskcat->getFromDB( $this->fields['items_id'] ) ;
-    //    }
-    //}
 
-
-    /**
-     * Retrieve a TaskCat from the database using its external id (unique index): pm_task_guid
-     *
-     * @param $task_guid string externalid
-     *
-     * @return true if succeed else false
-     **/
+   /**
+   * Retrieve a TaskCat from the database using its external id (unique index): pm_task_guid
+   *
+   * @param $task_guid string externalid
+   *
+   * @return true if succeed else false
+   **/
    function getFromGUID($task_guid) {
       global $DB;
 

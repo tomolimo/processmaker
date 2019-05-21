@@ -158,8 +158,9 @@ class PluginProcessmakerConfig extends CommonDBTM {
          echo "<tr class='tab_bg_1'>";
          echo "<td >".__('Server URL (must be in same domain than GLPI)', 'processmaker')."</td><td >";
          echo "<input size='50' type='text' name='pm_server_URL' value='".$config->fields['pm_server_URL']."'>";
-         echo "</td>";
+         echo "</td></tr>\n";
 
+         echo "<tr class='tab_bg_1'>";
          echo "<td>".__('Common domain with GLPI', 'processmaker')."</td>";
          echo "<td><font color='red'><div name='domain'>".$config->fields['domain']."</div></font>";
 
@@ -315,24 +316,29 @@ class PluginProcessmakerConfig extends CommonDBTM {
          } else {
             echo "<font color='red'>".__('Not connected');
          }
-
          echo "</td></tr>\n";
+
+         echo "<tr class='tab_bg_1'>";
+         echo "<td >" . __('Max cases per item (0=unlimited)', 'processmaker') . "</td>";
+         echo "<td ><input type='text' name='max_cases_per_item' value='".$config->fields["max_cases_per_item"]."'>";
+         echo "</td></tr>\n";
+
       } else {
          echo "<tr><td  colspan='4' class='center b'>";
          PluginProcessmakerProcessmaker::showUnderMaintenance();
          echo "</td></tr>";
       }
 
-       echo "<tr><td  colspan='4' class='center b'>".__('Maintenance')."</td></tr>";
+      echo "<tr><td  colspan='4' class='center b'>".__('Maintenance')."</td></tr>";
 
-       echo "<tr class='tab_bg_1'>";
-       echo "<td >".__('Maintenance mode')."</td><td >";
-       Dropdown::showYesNo("maintenance", $config->fields['maintenance']);
-       echo "</td></tr>";
+      echo "<tr class='tab_bg_1'>";
+      echo "<td >".__('Maintenance mode')."</td><td >";
+      Dropdown::showYesNo("maintenance", $config->fields['maintenance']);
+      echo "</td></tr>";
 
-       echo "<tr><td colspan='4'></td></tr>";
+      echo "<tr><td colspan='4'></td></tr>";
 
-       echo "<tr><th  colspan='4'>".__('Processmaker system information', 'processmaker')."</th></tr>";
+      echo "<tr><th  colspan='4'>".__('Processmaker system information', 'processmaker')."</th></tr>";
       if ($setup_ok) {
          $info = $PM_SOAP->systemInformation( );
          echo '<tr><td>'.__('Version', 'processmaker').'</td><td>'.$info->version.'</td></tr>';
@@ -347,7 +353,7 @@ class PluginProcessmakerConfig extends CommonDBTM {
       } else {
          echo '<tr><td>'.__('Version', 'processmaker').'</td><td>'.__('Not yet!', 'processmaker').'</td></tr>';
       }
-      $config->showFormButtons(['candel'=>false]);
+      $config->showFormButtons(['candel' => false]);
 
       return false;
    }

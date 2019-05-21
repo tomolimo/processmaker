@@ -19,6 +19,7 @@ class PluginProcessmakerCasedynaform extends CommonDBTM {
       $proj = new PluginProcessmakerProcess;
       $proj->getFromDB($case->fields['plugin_processmaker_processes_id']);
 
+      $PM_SOAP->echoDomain();
       echo "<script type='text/javascript' src='".$CFG_GLPI["root_doc"]."/plugins/processmaker/js/cases.js'></script>"; //?rand=$rand'
 
       echo "<script type='text/javascript'>
@@ -37,7 +38,7 @@ class PluginProcessmakerCasedynaform extends CommonDBTM {
                      $.ajax( { url: '".$PM_SOAP->serverURL."/cases/cases_Open?sid=".$PM_SOAP->getPMSessionID()."&APP_UID={$case->fields['case_guid']}&DEL_INDEX=1&action=TO_DO&glpi_init_case=1&glpi_domain={$config->fields['domain']}',
                             xhrFields: { withCredentials: true },
                             cache: false,
-                            crossDomain: true,  
+                            crossDomain: true,
                             success: function(jqXHR) {
                                     //debugger;
                                     loctabs.append( '<div id=\'' + name + '\'>' + html + '</div>');
