@@ -61,15 +61,22 @@ if (empty($_REQUEST['searchText'])) {
 }
 
 $processall = (isset($_REQUEST['specific_tags']['process_restrict']) && !$_REQUEST['specific_tags']['process_restrict']);
+$count_cases_per_item = isset($_REQUEST['specific_tags']['count_cases_per_item']) ? $_REQUEST['specific_tags']['count_cases_per_item'] : [];
 
 $result = PluginProcessmakerProcess::getSqlSearchResult(false, $search);
 
 if ($DB->numrows($result)) {
    while ($data = $DB->fetch_array($result)) {
       $process_entities = PluginProcessmakerProcess::getEntitiesForProfileByProcess($data["id"], $_SESSION['glpiactiveprofile']['id'], true);
-      if ($processall || in_array( $_REQUEST["entity_restrict"], $process_entities)) {
-         array_push( $processes, [ 'id'   => $data["id"],
-                                        'text' => $data["name"] ]);
+      $can_add = $data['max_cases_per_item'] == 0 || !isset($count_cases_per_item[$data["id"]]) || $count_cases_per_item[$data["id"]] < $data['max_cases_per_item'];
+      if ($processall 
+          || ($data['maintenance'] != 1
+              && in_array( $_REQUEST["entity_restrict"], $process_entities) 
+              && $can_add) ) {
+
+         array_push( $processes, ['id'   => $data["id"],
+                                  'text' => $data["name"]
+                                 ]);
          $count++;
       }
    }

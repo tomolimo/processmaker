@@ -3,12 +3,9 @@ include_once ("../../../inc/includes.php");
 
 switch ($_POST["action"]) {
    case 'newcase':
-      if (isset($_POST['items_id']) && $_POST['items_id'] > 0) { // then this case will be bound to an item
-         // TODO: we must check if a case is not already existing
-         // to manage the problem of F5 (Refresh)
+      if (isset($_POST['items_id']) && $_POST['items_id'] > 0) {
 
-         //$hasCase = PluginProcessmakerCase::getIDFromItem($_POST['itemtype'], $_POST['items_id']);
-         //if ($hasCase === false && $_POST['plugin_processmaker_processes_id'] > 0) {
+         // then this case will be bound to an item
          if ($_POST['plugin_processmaker_processes_id'] > 0) {
 
             $resultCase = $PM_SOAP->startNewCase($_POST['plugin_processmaker_processes_id'], $_POST['itemtype'], $_POST['items_id'], Session::getLoginUserID());
@@ -39,11 +36,18 @@ switch ($_POST["action"]) {
             Html::back();
          }
       } else { // the case is created before the ticket (used for post-only case creation before ticket creation)
+         $pm_user_guid = PluginProcessmakerUser::getPMUserId( Session::getLoginUserID() );
          $resultCase = $PM_SOAP->newCase( $_POST['plugin_processmaker_processes_id'],
-                                                [ 'GLPI_ITEM_CAN_BE_SOLVED'    => 0,
-                                                       'GLPI_SELFSERVICE_CREATED'   => '1',
-                                                       'GLPI_ITEM_TYPE'             => 'Ticket',
-                                                       'GLPI_URL'                   => $CFG_GLPI['url_base']] );
+                                          ['GLPI_ITEM_CAN_BE_SOLVED'     => 0,
+                                           'GLPI_SELFSERVICE_CREATED'    => '1',
+                                           'GLPI_ITEM_TYPE'              => 'Ticket',
+                                           'GLPI_URL'                    => $CFG_GLPI['url_base'],
+                                           // Specific to Tickets
+                                           // GLPI_TICKET_TYPE will contains 1 (= incident) or 2 (= request)
+                                           'GLPI_TICKET_TYPE'            => $_POST['type'],
+                                           'GLPI_ITEM_REQUESTER_GLPI_ID' => Session::getLoginUserID(),
+                                           'GLPI_ITEM_REQUESTER_PM_ID'   => $pm_user_guid
+                                          ] );
          if ($resultCase->status_code == 0) {
             // case is created
               // Must show it...

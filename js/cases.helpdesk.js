@@ -21,7 +21,7 @@ function onClickContinue(obj) {
    // hide the iFrame
    caseIFrame.style.visibility = 'hidden';
 
-   // trigger a click on the 'add' button of the ticket 
+   // trigger a click on the 'add' button of the ticket
    submitButton.click();
 }
 
@@ -59,17 +59,17 @@ function onLoadFrame( evt, caseId, delIndex, caseNumber, processName ) {
       if (caseIFrame != undefined && contentDocument) {
          var buttonContinue = contentDocument.getElementById('form[btnGLPISendRequest]');
          var linkList = contentDocument.getElementsByTagName('a');
-         
+
          if (!bButtonContinue && buttonContinue != undefined && linkList != undefined && linkList.length > 0) {
             bButtonContinue = true; //window.clearInterval(caseTimer); // to be sure that it will be done only one time
             // change action for the attached form and add some parameters
             //debugger;
 
             bGLPIHideElement(linkList, 'href', 'cases_Step?TYPE=ASSIGN_TASK&UID=-1&POSITION=10000&ACTION=ASSIGN');
-            
+
             oldHandler = buttonContinue.onclick;
             buttonContinue.onclick = onClickContinue;
-            
+
             submitButton = $("input[name='add'][type=submit]")[0];
             submitButton.insertAdjacentHTML('beforebegin', "<input type='hidden' name='processmaker_action' value='routecase'/>");
             submitButton.insertAdjacentHTML('beforebegin', "<input type='hidden' name='processmaker_caseguid' value='" + caseId + "'/>");

@@ -12,6 +12,6 @@ if (isset($_POST["add"])) {
    if ($right->add($_POST)) {
    }
    Html::back();
-} 
+}
 
 Html::displayErrorAndDie("lost");

@@ -44,6 +44,19 @@ class PluginProcessmakerProcess extends CommonDBTM {
       return false;
    }
 
+
+   /**
+    * Get default values to search engine to override
+    **/
+   static function getDefaultSearchRequest() {
+
+      $search = ['sort'     => 1,
+                 'order'    => 'ASC'];
+
+      return $search;
+   }
+
+
    /**
    * Summary of refreshTasks
    * will refresh (re-synch) all process task list
@@ -486,6 +499,18 @@ class PluginProcessmakerProcess extends CommonDBTM {
       $tab[19]['massiveaction'] = true;
       $tab[19]['datatype']      = 'bool';
 
+      $tab[20]['table']         = 'glpi_plugin_processmaker_processes';
+      $tab[20]['field']         = 'maintenance';
+      $tab[20]['name']          = __('Maintenance', 'processmaker');
+      $tab[20]['massiveaction'] = true;
+      $tab[20]['datatype']      = 'bool';
+
+      $tab[21]['table']         = 'glpi_plugin_processmaker_processes';
+      $tab[21]['field']         = 'max_cases_per_item';
+      $tab[21]['name']          = __('Max cases per item (0=unlimited)', 'processmaker');
+      $tab[21]['massiveaction'] = true;
+      $tab[21]['datatype']      = 'number';
+
       return $tab;
    }
 
@@ -594,7 +619,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
       echo "</td></tr>";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td >".__("Active")."</td><td>";
+      echo "<td >".__('Active')."</td><td>";
       Dropdown::showYesNo("is_active", $this->fields["is_active"]);
       echo "</td></tr>";
 
@@ -607,6 +632,11 @@ class PluginProcessmakerProcess extends CommonDBTM {
       echo "<td >".__('Insert Task Category comments in Task Description', 'processmaker')."</td><td>";
       Dropdown::showYesNo("insert_task_comment", $this->fields["insert_task_comment"]);
       echo "</td></tr>";
+
+      echo "<tr class='tab_bg_1'>";
+      echo "<td >" . __('Max cases per item (0=unlimited)', 'processmaker') . "</td>";
+      echo "<td ><input type='text' name='max_cases_per_item' value='".$this->fields["max_cases_per_item"]."'>";
+      echo "</td></tr>\n";
 
       echo "<tr class='tab_bg_1'>";
       echo "<td >".__('Visible in Incident for Central interface', 'processmaker')."</td><td>";
@@ -678,6 +708,15 @@ class PluginProcessmakerProcess extends CommonDBTM {
       echo "<tr class='tab_bg_1'>";
       echo "<td >".__('Process type (to be changed only if not up-to-date)', 'processmaker')."</td><td>";
       Dropdown::showFromArray( 'project_type', self::getAllTypeArray(), [ 'value' => $this->fields["project_type"] ] );
+      echo "</td></tr>";
+
+      echo "<tr class='tab_bg_1'>";
+      echo "<td >".__('Maintenance mode')."</td><td>";
+      Dropdown::showYesNo("maintenance", $this->fields["maintenance"]);
+      if ($this->fields["maintenance"]) {
+         echo "</td><td>";
+         echo "<img src='/plugins/processmaker/pics/verysmall-under_maintenance.png' alt='Synchronize Task List' title='Synchronize Task List'>";
+      }
       echo "</td></tr>";
 
       $this->showFormButtons($options);
@@ -801,5 +840,23 @@ class PluginProcessmakerProcess extends CommonDBTM {
 
    }
 
+
+   /**
+    * Summary of underMaintenance
+    * Shows a nice(?) under maintenance message
+    */
+   static function showUnderMaintenance($ptitle, $size = '') {
+      global $CFG_GLPI;
+      if ($size != '') {
+         $size .= '-';
+      }
+      echo "<div class='center'>";
+
+      echo Html::image($CFG_GLPI['root_doc']."/plugins/processmaker/pics/{$size}under_maintenance.png");
+      echo "<p style='font-weight: bold;'>";
+      echo sprintf(__('Process \'%s\' is under maintenance, please retry later, thank you.', 'processmaker'), $ptitle);
+      echo "</p>";
+      echo "</div>";
+   }
 }
 

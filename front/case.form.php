@@ -22,16 +22,13 @@ function glpi_processmaker_case_reload_page() {
 if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'route' && isset( $_REQUEST['UID'] ) && isset( $_REQUEST['APP_UID'] ) && isset( $_REQUEST['__DynaformName__'] )) {
    // then get item id from DB
    if ($locCase->getFromGUID($_REQUEST['APP_UID'])) {
-
-      if (isset( $_REQUEST['form'] )) {
-         $PM_SOAP->derivateCase($locCase, $_REQUEST);
-      }
+      $PM_SOAP->derivateCase($locCase, $_REQUEST);
    }
    glpi_processmaker_case_reload_page();
 
-} else if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'delete') {
+} else if (isset($_REQUEST['purge'])) {
    // delete case from case table, this will also delete the tasks
-   if ($locCase->getFromDB($_POST['cases_id']) && $locCase->deleteCase()) {
+   if ($locCase->getFromDB($_REQUEST['id']) && $locCase->deleteCase()) {
       Session::addMessageAfterRedirect(__('Case has been deleted!', 'processmaker'), true, INFO);
    } else {
       Session::addMessageAfterRedirect(__('Unable to delete case!', 'processmaker'), true, ERROR);

@@ -28,7 +28,10 @@ CREATE TABLE IF NOT EXISTS `glpi_plugin_processmaker_caselinks` (
   `targetdynaform_guid` varchar(32) DEFAULT NULL,
   `sourcecondition` text,
   `is_targettoclaim` tinyint(1) NOT NULL DEFAULT '0',
-  `externalapplication` text,
+  `is_targettoreassign` TINYINT(1) NOT NULL DEFAULT '0',
+  `is_targettoimpersonate` TINYINT(1) NOT NULL DEFAULT '0',
+  `externalapplication` TEXT NULL,
+  `is_synchronous` TINYINT(1) NOT NULL DEFAULT '0',
   `date_mod` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `is_active` (`is_active`),
@@ -61,7 +64,7 @@ CREATE TABLE IF NOT EXISTS `glpi_plugin_processmaker_cases` (
 CREATE TABLE IF NOT EXISTS `glpi_plugin_processmaker_configs` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(50) NOT NULL DEFAULT 'ProcessMaker',
-  `pm_server_URL` varchar(250) NOT NULL DEFAULT 'http://localhost/',
+  `pm_server_URL` varchar(250) NOT NULL DEFAULT 'http://itsm-pm.acme.com/',
   `pm_workspace` varchar(50) NOT NULL DEFAULT 'workflow',
   `pm_admin_user` varchar(255) DEFAULT NULL,
   `pm_admin_passwd` varchar(255) DEFAULT NULL,
@@ -77,7 +80,9 @@ CREATE TABLE IF NOT EXISTS `glpi_plugin_processmaker_configs` (
   `pm_dbserver_passwd` varchar(255) DEFAULT NULL,
   `domain` varchar(50) DEFAULT '',
   `maintenance` tinyint(1) NOT NULL DEFAULT '0',
-  `db_version` varchar(10) NOT NULL DEFAULT '3.3.0',
+  `ssl_verify` tinyint(1) NOT NULL DEFAULT '0',
+  `db_version` varchar(10) NOT NULL DEFAULT '3.4.9',
+  `max_cases_per_item` int(11) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -108,9 +113,15 @@ CREATE TABLE IF NOT EXISTS `glpi_plugin_processmaker_processes` (
   `comment` text,
   `taskcategories_id` int(11) DEFAULT NULL,
   `itilcategories_id` int(11) NOT NULL DEFAULT '0',
-  `type` int(11) NOT NULL DEFAULT '1' COMMENT 'Only used for Tickets',
+  `type` int(11) NOT NULL DEFAULT '1' COMMENT 'Only used for self-service Tickets',
   `date_mod` timestamp NULL DEFAULT NULL,
   `project_type` varchar(50) NOT NULL DEFAULT 'classic',
+	`is_change` tinyint(1) NOT NULL DEFAULT '0',
+	`is_problem` tinyint(1) NOT NULL DEFAULT '0',
+	`is_incident` tinyint(1) NOT NULL DEFAULT '0',
+	`is_request` tinyint(1) NOT NULL DEFAULT '0',
+	`maintenance` TINYINT(1) NOT NULL DEFAULT '0',
+   `max_cases_per_item` int(11) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `process_guid` (`process_guid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;

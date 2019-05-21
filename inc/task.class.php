@@ -347,6 +347,7 @@ class PluginProcessmakerTask extends CommonITILTask
          }
       }
 
+      $PM_SOAP->echoDomain();
       echo "<script type='text/javascript' src='".$CFG_GLPI["root_doc"]."/plugins/processmaker/js/cases.js'></script>";
 
       $csrf = Session::getNewCSRFToken();

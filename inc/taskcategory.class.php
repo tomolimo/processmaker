@@ -94,14 +94,16 @@ class PluginProcessmakerTaskCategory extends CommonDBTM
    static function title(CommonGLPI $item) {
       global $CFG_GLPI;
 
-      $buttons = [];
-      $title = __('Synchronize Task List', 'processmaker');
-
       if (Session::haveRight('plugin_processmaker_config', UPDATE)) {
-         $buttons["process.form.php?refreshtask=1&id=".$item->getID()] = $title;
-         Html::displayTitle($CFG_GLPI["root_doc"] . "/plugins/processmaker/pics/gears.png", $title, "",
-                            $buttons);
+         $title = __('Synchronize Task List', 'processmaker');
+         $buttons = ["process.form.php?refreshtask=1&id=".$item->getID() => $title];
+         $pic = $CFG_GLPI["root_doc"] . "/plugins/processmaker/pics/gears.png";
+         if ($item->fields['maintenance']) {
+            $pic = $CFG_GLPI["root_doc"] . "/plugins/processmaker/pics/verysmall-under_maintenance.png";
+         }
+         Html::displayTitle($pic, $title, "", $buttons);
       }
+
    }
 
     //function getLinkItemFromExternalID($extId) {

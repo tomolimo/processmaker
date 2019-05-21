@@ -14,7 +14,7 @@ if (!defined('GLPI_ROOT')) {
 
 $config = PluginProcessmakerConfig::getInstance();
 if (!$config->fields['maintenance']) {
-   echo "$(function () {      
+   echo "$(function () {
          // look if name='helpdeskform' is present. If yes replace the form.location
          var ahrefTI = '".$CFG_GLPI["root_doc"]."/plugins/processmaker/front/tracking.injector.php';
          var formLink = $(\"form[name='helpdeskform']\")[0];

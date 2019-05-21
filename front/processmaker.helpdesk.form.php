@@ -54,6 +54,7 @@ function processMakerShowCase($ID, $from_helpdesk) {
 
       $rand = rand();
 
+      $PM_SOAP->echoDomain();
       echo "<script type='text/javascript' src='".$CFG_GLPI["root_doc"]."/plugins/processmaker/js/cases.helpdesk.js?rand=$rand'></script>";
 
       $tkt = new Ticket;

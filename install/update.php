@@ -11,6 +11,7 @@ function processmaker_update() {
       include_once(GLPI_ROOT."/plugins/processmaker/inc/config.class.php");
       $config = PluginProcessmakerConfig::getInstance();
       $current_version = $config->fields['db_version'];
+      if (empty($current_version)) $current_version = '2.4.1';
    }
 
    switch ($current_version) {
@@ -37,6 +38,10 @@ function processmaker_update() {
          // will upgrade 3.3.1 to 3.3.8
          include_once(GLPI_ROOT."/plugins/processmaker/install/update_3_3_1_to_3_3_8.php");
          $new_version = update_3_3_1_to_3_3_8();
+      case '3.3.8' :
+         // will upgrade 3.3.8 to 3.4.9
+         include_once(GLPI_ROOT."/plugins/processmaker/install/update_3_3_8_to_3_4_9.php");
+         $new_version = update_3_3_8_to_3_4_9();
    }
 
    if (isset($new_version)) {

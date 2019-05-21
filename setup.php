@@ -2,7 +2,7 @@
 
 // used for case cancellation
 define("CANCEL", 256);
-define('PROCESSMAKER_VERSION', '3.4.5');
+define('PROCESSMAKER_VERSION', '3.4.9');
 
 // Init the hooks of the plugins -Needed
 function plugin_init_processmaker() {
@@ -45,8 +45,13 @@ function plugin_init_processmaker() {
 
    // Display a menu entry ?
    if (Session::haveRightsOr('plugin_processmaker_config', [READ, UPDATE])) {
-      // tools and helpdesk
-      $PLUGIN_HOOKS['menu_toadd']['processmaker'] = ['tools' => 'PluginProcessmakerMenu', 'helpdesk' => 'PluginProcessmakerCase'];
+      // tools
+      $PLUGIN_HOOKS['menu_toadd']['processmaker']['tools'] = 'PluginProcessmakerMenu';
+   }
+
+   if (Session::haveRightsOr('plugin_processmaker_case', [READ, UPDATE])) {
+      // helpdesk
+      $PLUGIN_HOOKS['menu_toadd']['processmaker']['helpdesk'] = 'PluginProcessmakerCase';
    }
 
    Plugin::registerClass('PluginProcessmakerProcess', [ 'massiveaction_nodelete_types' => true] );
@@ -83,7 +88,7 @@ function plugin_init_processmaker() {
 
    $hooks = [];
    foreach ($objects as $obj) {
-      $hooks["PluginPdf'.$obj.'Task"] = ['PluginProcessmakerProcessmaker', 'plugin_item_get_pdfdata_processmaker'];
+      $hooks["PluginPdf".$obj."Task"] = ['PluginProcessmakerProcessmaker', 'plugin_item_get_pdfdata_processmaker'];
    }
    $PLUGIN_HOOKS['item_get_pdfdatas']['processmaker'] = $hooks;
 
@@ -102,24 +107,24 @@ function plugin_init_processmaker() {
    $plugin = new Plugin();
    if ($plugin->isActivated('processmaker')
         && Session::getLoginUserID() ) {
-      
+
       $url      = explode("/", $_SERVER['PHP_SELF']);
       $pageName = explode("?", array_pop($url));
       switch ($pageName[0]) {
          case "tracking.injector.php":
          case "helpdesk.public.php":
-            $PLUGIN_HOOKS['add_javascript']['processmaker'][] = "js/helpdesk.public.js.php";
+            $PLUGIN_HOOKS['add_javascript']['processmaker'] = "js/helpdesk.public.js.php";
             break;
          case "planning.php":
-            $PLUGIN_HOOKS['add_javascript']['processmaker'][] = "js/planning.js";
+            $PLUGIN_HOOKS['add_javascript']['processmaker'] = "js/planning.js";
             break;
          case "central.php":
-             $PLUGIN_HOOKS['add_javascript']['processmaker'][] = "js/central.js";
+             $PLUGIN_HOOKS['add_javascript']['processmaker'] = "js/central.js";
              break;
          case "case.form.php":
          case "processmaker.helpdesk.form.php" :
-             $PLUGIN_HOOKS['add_javascript']['processmaker'] = ["js/domain.js.php"];
-             break;
+            //$PLUGIN_HOOKS['add_javascript']['processmaker'] = "js/domain.js.php";
+            break;
       }
    }
 
