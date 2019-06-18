@@ -2420,8 +2420,8 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       $data = http_formdata_flat_hierarchy( $request );
       // check if any files are in the $_FILES global array
       // and add them to the curl POST
-      $fileForm = $_FILES['form']['name'];
-      if (!empty($fileForm[array_keys($fileForm)[0]][1][array_keys($fileForm[array_keys($fileForm)[0]][1])[0]])) {
+      $fileForm = isset($_FILES['form']['name']) ? $_FILES['form']['name'] : null;
+      if (isset($fileForm) && !empty($fileForm[array_keys($fileForm)[0]][1][array_keys($fileForm[array_keys($fileForm)[0]][1])[0]])) {
          foreach ($_FILES['form']['name'] as $key => $file) {
             if (is_array($file)) {
                // it's a grid which contains documents

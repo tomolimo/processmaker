@@ -2,7 +2,7 @@
 
 // used for case cancellation
 define("CANCEL", 256);
-define('PROCESSMAKER_VERSION', '3.4.9');
+define('PROCESSMAKER_VERSION', '3.4.10');
 
 // Init the hooks of the plugins -Needed
 function plugin_init_processmaker() {
