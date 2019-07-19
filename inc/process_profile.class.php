@@ -59,23 +59,50 @@ class PluginProcessmakerProcess_Profile extends CommonDBTM
          Html::closeForm();
          echo "</div>";
       }
-
-      $query = "SELECT DISTINCT gpp.`id` AS linkID,
-                       `glpi_profiles`.`id`,
-                       `glpi_profiles`.`name`,
-                       `gpp`.`is_recursive`,
-                       `glpi_entities`.`completename`,
-                       `gpp`.`entities_id`
-                FROM `". self::getTable() ."` as gpp
-                LEFT JOIN `glpi_profiles`
-                     ON (`gpp`.`profiles_id` = `glpi_profiles`.`id`)
-                LEFT JOIN `glpi_entities`
-                     ON (`gpp`.`entities_id` = `glpi_entities`.`id`)
-                WHERE `gpp`.`plugin_processmaker_processes_id` = '$ID'
-                ORDER BY `glpi_profiles`.`name`, `glpi_entities`.`completename`";
-      $result = $DB->query($query);
-      $num = $DB->numrows($result);
-
+      $res = $DB->request([
+                     'SELECT DISTINCT' => 'gpp.id AS linkID',
+                     'FIELDS' => [
+                        'gpp.id AS linkID',
+                        'glpi_profiles.id',
+                        'glpi_profiles.name',
+                        'gpp.is_recursive',
+                        'glpi_entities.completename',
+                        'gpp.entities_id'
+                        ],
+                     'FROM'   => self::getTable() .' AS gpp',
+                     'LEFT JOIN' => [
+                        'glpi_profiles' => [
+                           'FKEY' => [
+                              'glpi_profiles' => 'id',
+                              'gpp'           => 'profiles_id'
+                           ]
+                        ],
+                        'glpi_entities' => [
+                           'FKEY' => [
+                              'glpi_entities' => 'id',
+                              'gpp'           => 'entities_id'
+                           ]
+                        ]
+                     ],
+                     'WHERE'  => [ 'gpp.plugin_processmaker_processes_id' => $ID ],
+                     'ORDER'  => [ 'glpi_profiles.name', 'glpi_entities.completename' ]
+         ]);
+      //$query = "SELECT DISTINCT gpp.`id` AS linkID,
+      //                 `glpi_profiles`.`id`,
+      //                 `glpi_profiles`.`name`,
+      //                 `gpp`.`is_recursive`,
+      //                 `glpi_entities`.`completename`,
+      //                 `gpp`.`entities_id`
+      //          FROM `". self::getTable() ."` as gpp
+      //          LEFT JOIN `glpi_profiles`
+      //               ON (`gpp`.`profiles_id` = `glpi_profiles`.`id`)
+      //          LEFT JOIN `glpi_entities`
+      //               ON (`gpp`.`entities_id` = `glpi_entities`.`id`)
+      //          WHERE `gpp`.`plugin_processmaker_processes_id` = '$ID'
+      //          ORDER BY `glpi_profiles`.`name`, `glpi_entities`.`completename`";
+      //$result = $DB->query($query);
+      //$num = $DB->numrows($result);
+      $num = $res->numrows();
       echo "<div class='spaced'>";
       Html::openMassiveActionsForm('mass'.__CLASS__.$rand);
 
@@ -103,7 +130,8 @@ class PluginProcessmakerProcess_Profile extends CommonDBTM
          $header_end .= "</th></tr>";
          echo $header_begin.$header_top.$header_end;
 
-         while ($data = $DB->fetch_assoc($result)) {
+         //while ($data = $DB->fetch_assoc($result)) {
+         foreach ($res as $data) {
             echo "<tr class='tab_bg_1'>";
             if ($canedit) {
                echo "<td width='10'>";
@@ -171,12 +199,12 @@ class PluginProcessmakerProcess_Profile extends CommonDBTM
    function prepareInputForAdd($input) {
       $tmp = new self;
       $restrict=[
-                             'WHERE'  => [
-                             'plugin_processmaker_processes_id'  => $input['plugin_processmaker_processes_id'],
-                             'entities_id'  => $input['entities_id'],
-                             'profiles_id' => $input['profiles_id']
-                             ],
-                   ];
+            'WHERE'  => [
+            'plugin_processmaker_processes_id'  => $input['plugin_processmaker_processes_id'],
+            'entities_id'  => $input['entities_id'],
+            'profiles_id' => $input['profiles_id']
+            ],
+      ];
       if ($tmp->getFromDBByRequest($restrict)) {
          //// then update existing
          //$tmp->update(['id' => $tmp->getID(),

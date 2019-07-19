@@ -38,11 +38,36 @@ class PluginProcessmakerTaskCategory extends CommonDBTM
       "<th>".__('Sub-process', 'processmaker')."</th>" .
       "</tr>";
 
+      $res = $DB->request([
+                     'SELECT'    => [
+                        'pm.pm_task_guid',
+                        'pm.taskcategories_id',
+                        'pm.is_start',
+                        'gl.name',
+                        'gl.completename',
+                        'gl.comment',
+                        'pm.is_active',
+                        'pm.is_subprocess'
+                     ],
+                     'FROM'      => 'glpi_plugin_processmaker_taskcategories AS pm',
+                     'LEFT JOIN' => [
+                        'glpi_taskcategories AS gl' => [
+                           'FKEY' => [
+                              'gl' => 'id',
+                              'pm' => 'taskcategories_id'
+                           ]
+                        ]
+                     ],
+                     'WHERE'     => [
+                        'pm.plugin_processmaker_processes_id' => $item->getId()
+                     ]
+         ]);
       $query = "SELECT pm.pm_task_guid, pm.taskcategories_id, pm.`is_start`, gl.name, gl.completename, gl.`comment`, pm.is_active, pm.is_subprocess FROM glpi_plugin_processmaker_taskcategories AS pm
                     LEFT JOIN glpi_taskcategories AS gl ON pm.taskcategories_id=gl.id
                     WHERE pm.plugin_processmaker_processes_id=".$item->getID().";";
 
-      foreach ($DB->request($query) as $taskCat) {
+      //foreach ($DB->request($query) as $taskCat) {
+      foreach ($res as $taskCat) {
          echo "<tr class='tab_bg_1'>";
 
          echo "<td class='b'><a href='".
@@ -118,19 +143,35 @@ class PluginProcessmakerTaskCategory extends CommonDBTM
    function getFromGUID($task_guid) {
       global $DB;
 
-      $query = "SELECT *
-                FROM `".$this->getTable()."`
-                WHERE `pm_task_guid` = '$task_guid'";
-
-      if ($result = $DB->query($query)) {
-         if ($DB->numrows($result) != 1) {
+      $res = $DB->request(
+                     $this->getTable(),
+                     [
+                     'pm_task_guid' => $task_guid
+                     ]
+      );
+      if ($res) {
+         if ($res->numrows() != 1) {
             return false;
          }
-         $this->fields = $DB->fetch_assoc($result);
+         $this->fields = $res->next();
          if (is_array($this->fields) && count($this->fields)) {
             return true;
          }
       }
+
+      //$query = "SELECT *
+      //          FROM `".$this->getTable()."`
+      //          WHERE `pm_task_guid` = '$task_guid'";
+
+      //if ($result = $DB->query($query)) {
+      //   if ($DB->numrows($result) != 1) {
+      //      return false;
+      //   }
+      //   $this->fields = $DB->fetch_assoc($result);
+      //   if (is_array($this->fields) && count($this->fields)) {
+      //      return true;
+      //   }
+      //}
       return false;
    }
 
@@ -144,19 +185,33 @@ class PluginProcessmakerTaskCategory extends CommonDBTM
    function getFromDBbyCategory($catid) {
       global $DB;
 
-      $query = "SELECT *
-                FROM `".$this->getTable()."`
-                WHERE `taskcategories_id` = $catid";
-
-      if ($result = $DB->query($query)) {
-         if ($DB->numrows($result) != 1) {
+      $res = $DB->request(
+                     $this->getTable(),
+                     [
+                        'taskcategories_id' => $catid
+                     ]
+         );
+      //$query = "SELECT *
+      //          FROM `".$this->getTable()."`
+      //          WHERE `taskcategories_id` = $catid";
+      if ($res) {
+         if ($res->numrows() != 1) {
             return false;
          }
-         $this->fields = $DB->fetch_assoc($result);
+         $this->fields = $res->next();
          if (is_array($this->fields) && count($this->fields)) {
             return true;
          }
       }
+      //if ($result = $DB->query($query)) {
+      //   if ($DB->numrows($result) != 1) {
+      //      return false;
+      //   }
+      //   $this->fields = $DB->fetch_assoc($result);
+      //   if (is_array($this->fields) && count($this->fields)) {
+      //      return true;
+      //   }
+      //}
       return false;
    }
 

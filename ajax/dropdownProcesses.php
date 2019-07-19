@@ -45,7 +45,7 @@ if (!isset($_REQUEST['emptylabel']) || ($_REQUEST['emptylabel'] == '')) {
 
 $search="";
 if (!empty($_REQUEST['searchText'])) {
-   $search = Search::makeTextSearch($_REQUEST['searchText']);
+   $search = ['LIKE', Search::makeTextSearchValue($_REQUEST['searchText'])];
 }
 
 $processes = [];
@@ -65,8 +65,10 @@ $count_cases_per_item = isset($_REQUEST['specific_tags']['count_cases_per_item']
 
 $result = PluginProcessmakerProcess::getSqlSearchResult(false, $search);
 
-if ($DB->numrows($result)) {
-   while ($data = $DB->fetch_array($result)) {
+//if ($DB->numrows($result)) {
+//   while ($data = $DB->fetch_array($result)) {
+if ($result->numrows()) {
+   foreach ($result as $data) {
       $process_entities = PluginProcessmakerProcess::getEntitiesForProfileByProcess($data["id"], $_SESSION['glpiactiveprofile']['id'], true);
       $can_add = $data['max_cases_per_item'] == 0 || !isset($count_cases_per_item[$data["id"]]) || $count_cases_per_item[$data["id"]] < $data['max_cases_per_item'];
       if ($processall

@@ -28,107 +28,207 @@ class PluginProcessmakerUser extends CommonDBTM {
    static function getSqlSearchResult ($taskId, $count = true, $right = "all", $entity_restrict = -1, $value = 0,
                                         $used = [], $search = '', $limit = '') {
       global $DB, $PM_DB, $CFG_GLPI;
-
+      $res1 = new QuerySubQuery([
+                        'SELECT'       => ['GROUP_USER.USR_UID AS pm_user_id'],
+                        'FROM'         => 'TASK_USER',
+                        'INNER JOIN'   => [
+                           'GROUP_USER' => [
+                              'FKEY' => [
+                                 'GROUP_USER' => 'GRP_UID',
+                                 'TASK_USER' => 'USR_UID',
+                                 ['AND' => [
+                                    'TASk_USER.TU_RELATION' => 2,
+                                    'TASk_USER.TU_TYPE' => 1
+                                    ]
+                                 ]
+                              ]
+                           ]
+                        ]
+         ]);
+      $res2 = new QuerySubQuery([
+                        'SELECT' => 'TASK_USER.USR_UID AS pm_user_id',
+                        'FROM'   => 'TASK_USER',
+                        'WHERE'  => [
+                           'AND' => [
+                              'TAS_UID'               => $taskId,
+                              'TASK_USER.TU_RELATION' => 1,
+                              'TASk_USER.TU_TYPE'     => 1
+                           ]
+                        ]
+         ]);
+      $union = new QueryUnion([$res1, $res2]);
+      $res = $PM_DB->request([
+                        'FROM' => $union
+                     ]);
       // first need to get all users from $taskId
       //$db_pm = PluginProcessmakerConfig::getInstance()->getProcessMakerDB();
-      $pmQuery = "SELECT GROUP_USER.USR_UID AS pm_user_id FROM TASK_USER
-                    JOIN GROUP_USER ON GROUP_USER.GRP_UID=TASK_USER.USR_UID AND TASK_USER.TU_RELATION = 2 AND TASK_USER.TU_TYPE=1
-                    WHERE TAS_UID = '$taskId'
-                  UNION
-                  SELECT TASK_USER.USR_UID AS pm_user_id FROM TASK_USER
-                     WHERE TAS_UID = '$taskId' AND TASK_USER.TU_RELATION = 1 AND TASK_USER.TU_TYPE=1 ; ";
+      //$pmQuery = "SELECT GROUP_USER.USR_UID AS pm_user_id FROM TASK_USER
+      //              JOIN GROUP_USER ON GROUP_USER.GRP_UID=TASK_USER.USR_UID AND TASK_USER.TU_RELATION = 2 AND TASK_USER.TU_TYPE=1
+      //              WHERE TAS_UID = '$taskId'
+      //            UNION
+      //            SELECT TASK_USER.USR_UID AS pm_user_id FROM TASK_USER
+      //               WHERE TAS_UID = '$taskId' AND TASK_USER.TU_RELATION = 1 AND TASK_USER.TU_TYPE=1 ; ";
       $pmUsers = [ ];
-      foreach ($PM_DB->request( $pmQuery ) as $pmUser) {
+      //foreach ($PM_DB->request( $pmQuery ) as $pmUser) {
+      foreach ($res as $pmUser) {
          $pmUsers[ ] = $pmUser[ 'pm_user_id' ];
       }
 
-      $where = '';
+      //$where = '';
       $joinprofile = false;
+
       switch ($right) {
          case "id" :
-            $where = " `glpi_users`.`id` = '".Session::getLoginUserID()."' ";
+            $used[] = Session::getLoginUserID();
+            //$where = " `glpi_users`.`id` = '".Session::getLoginUserID()."' ";
+            $query2['WHERE']['AND']['glpi_users.id'] = Session::getLoginUserID();
              break;
 
          case "all" :
-            $where = " `glpi_users`.`id` > '1' ";
+            //$where = " `glpi_users`.`id` > '1' ";
+            $query2['WHERE']['AND']['glpi_users.id'] = ['>', 1];
              break;
       }
 
-      $where .= " AND glpi_plugin_processmaker_users.pm_users_id IN ('".join("', '", $pmUsers)."') ";
+      //$where .= " AND glpi_plugin_processmaker_users.pm_users_id IN ('".join("', '", $pmUsers)."') ";
 
-      $where .= " AND `glpi_users`.`is_deleted` = '0'
-                  AND `glpi_users`.`is_active` = '1' ";
+      //$where .= " AND `glpi_users`.`is_deleted` = '0'
+      //            AND `glpi_users`.`is_active` = '1' ";
+
+      $query2['WHERE']['AND']['glpi_plugin_processmaker_users.pm_users_id'] = $pmUsers;
+      $query2['WHERE']['AND']['glpi_users.is_deleted'] = 0;
+      $query2['WHERE']['AND']['glpi_users.is_active']  = 1;
 
       if ((is_numeric($value) && $value)
           || count($used)) {
 
-         $where .= " AND `glpi_users`.`id` NOT IN (";
+         //$where .= " AND `glpi_users`.`id` NOT IN (";
          if (is_numeric($value)) {
             $first = false;
-            $where .= $value;
+            //$where .= $value;
+            $used[] = $value;
+            //$query2['WHERE']['AND']['NOT']['glpi_users.id'] = $value;
          } else {
             $first = true;
          }
-         foreach ($used as $val) {
-            if ($first) {
-               $first = false;
-            } else {
-               $where .= ",";
-            }
-            $where .= $val;
-         }
-         $where .= ")";
+         //$query2['WHERE']['AND']['NOT']['glpi_users.id'] = $used;
+         //foreach ($used as $val) {
+         //   if ($first) {
+         //      $first = false;
+         //  } else {
+         //      $where .= ",";
+         //   }
+         //   $where .= $val;
+         //}
+         //$where .= ")";
       }
 
       if ($count) {
-         $query = "SELECT COUNT(DISTINCT glpi_users.id ) AS cpt ";
+         //$query = "SELECT COUNT(DISTINCT glpi_users.id ) AS cpt ";
+         $query2['SELECT'] = ['COUNT DISTINCT' => 'glpi_users.id AS cpt'];
+
       } else {
-         $query = "SELECT DISTINCT glpi_users.id , `glpi_users`.`realname`, `glpi_users`.`firstname`, `glpi_users`.`name`, `glpi_useremails`.`email` ";
+         //$query = "SELECT DISTINCT glpi_users.id , `glpi_users`.`realname`, `glpi_users`.`firstname`, `glpi_users`.`name`, `glpi_useremails`.`email` ";
+         $query2['SELECT DISTINCT'] = 'glpi_users.id';
+         $query2['FIELDS']          = ['glpi_users.realname', 'glpi_users.firstname', 'glpi_users.name', 'glpi_useremails.email'];
       }
+      $query2['FROM'] = 'glpi_plugin_processmaker_users';
+      //$query .= "FROM glpi_plugin_processmaker_users
+      //              JOIN glpi_users ON glpi_users.id=glpi_plugin_processmaker_users.id ";
+      $query2['FROM'] = 'glpi_plugin_processmaker_users';
+      $query2['INNER JOIN'] = [
+                                 'glpi_users' => [
+                                 'FKEY' => [
+                                    'glpi_users' => 'id',
+                                    'glpi_plugin_processmaker_users' => 'id'
+                                    ]
+                                 ]
+                              ];
 
-      $query .= "FROM glpi_plugin_processmaker_users
-                    JOIN glpi_users ON glpi_users.id=glpi_plugin_processmaker_users.id ";
-
-      $query .= " LEFT JOIN `glpi_useremails`
-                     ON (`glpi_users`.`id` = `glpi_useremails`.`users_id` AND `glpi_useremails`.is_default = 1)";
-      $query .= " LEFT JOIN `glpi_profiles_users`
-                     ON (`glpi_users`.`id` = `glpi_profiles_users`.`users_id`)";
+      //$query .= " LEFT JOIN `glpi_useremails`
+      //               ON (`glpi_users`.`id` = `glpi_useremails`.`users_id` AND `glpi_useremails`.is_default = 1)";
+      $query2['LEFT JOIN'] = [
+                              'glpi_useremails' => [
+                                 'FKEY' => [
+                                    'glpi_users'      => 'id',
+                                    'glpi_useremails' => 'users_id', [
+                                       'AND' => [
+                                          'glpi_useremails.is_default' => 1
+                                       ]
+                                    ]
+                                 ]
+                              ],
+                              'glpi_profiles_users' => [
+                                 'FKEY' => [
+                                    'glpi_users'          => 'id',
+                                    'glpi_profiles_users' => 'users_id'
+                                 ]
+                              ]
+                              ];
+      //$query .= " LEFT JOIN `glpi_profiles_users`
+      //               ON (`glpi_users`.`id` = `glpi_profiles_users`.`users_id`)";
 
       if ($joinprofile) {
-         $query .= " LEFT JOIN `glpi_profiles`
-                        ON (`glpi_profiles`.`id` = `glpi_profiles_users`.`profiles_id`) ";
+         $query2['LEFT JOIN'] = [
+                                'glpi_profiles' => [
+                                    'FKEY' => [
+                                       'glpi_profiles'      => 'id',
+                                       'glpi_profiles_user' => 'profiles_id'
+                                    ]
+                                 ]
+                              ];
+         //$query .= " LEFT JOIN `glpi_profiles`
+         //               ON (`glpi_profiles`.`id` = `glpi_profiles_users`.`profiles_id`) ";
       }
 
       if ($count) {
-         $query .= " WHERE $where ";
+         $query2['WHERE']['AND']['NOT']['glpi_users.id'] = $used;
+         //$query .= " WHERE $where ";
       } else {
          if (strlen($search)>0 && $search!=$CFG_GLPI["ajax_wildcard"]) {
-            $where .= " AND (`glpi_users`.`name` ".Search::makeTextSearch($search)."
-                             OR `glpi_users`.`realname` ".Search::makeTextSearch($search)."
-                             OR `glpi_users`.`firstname` ".Search::makeTextSearch($search)."
-                             OR `glpi_users`.`phone` ".Search::makeTextSearch($search)."
-                             OR `glpi_useremails`.`email` ".Search::makeTextSearch($search)."
-                             OR CONCAT(`glpi_users`.`realname`,' ',`glpi_users`.`firstname`) ".
-                                      Search::makeTextSearch($search).")";
+            $query2['WHERE']['AND'] = [
+                                          'glpi_users.name' => ['LIKE',Search::makeTextSearchValue($search)],
+                                          'OR' => [
+                                             'glpi_users.realname'   => ['LIKE',Search::makeTextSearchValue($search)],
+                                             'glpi_users.firstname'  => ['LIKE',Search::makeTextSearchValue($search)],
+                                             'glpi_users.phone'      => ['LIKE',Search::makeTextSearchValue($search)],
+                                             'glpi_useremails.email' => ['LIKE',Search::makeTextSearchValue($search)],
+                                             'RAW' => [
+                                                "CONCAT(`glpi_users`.`realname`,' ',`glpi_users`.`firstname`)".Search::makeTextSearch($search)
+                                             ]
+                                          ]
+                                       ];
+            //$where .= " AND (`glpi_users`.`name` ".Search::makeTextSearch($search)."
+            //                 OR `glpi_users`.`realname` ".Search::makeTextSearch($search)."
+            //                 OR `glpi_users`.`firstname` ".Search::makeTextSearch($search)."
+            //                 OR `glpi_users`.`phone` ".Search::makeTextSearch($search)."
+            //                 OR `glpi_useremails`.`email` ".Search::makeTextSearch($search)."
+            //                 OR CONCAT(`glpi_users`.`realname`,' ',`glpi_users`.`firstname`) ".
+            //                          Search::makeTextSearch($search).")";
          }
-         $query .= " WHERE $where ";
+         $query2['WHERE']['AND']['NOT']['glpi_users.id'] = $used;
+         //$query .= " WHERE $where ";
 
          if ($_SESSION["glpinames_format"] == User::FIRSTNAME_BEFORE) {
-            $query.=" ORDER BY `glpi_users`.`firstname`,
-                               `glpi_users`.`realname`,
-                               `glpi_users`.`name` ";
+            //$query.=" ORDER BY `glpi_users`.`firstname`,
+            //                   `glpi_users`.`realname`,
+            //                   `glpi_users`.`name` ";
+            $query2['ORDER'] = ['glpi_users.firstname', 'glpi_users.realname', 'glpi_users.name'];
          } else {
-            $query.=" ORDER BY `glpi_users`.`realname`,
-                               `glpi_users`.`firstname`,
-                               `glpi_users`.`name` ";
+            //$query.=" ORDER BY `glpi_users`.`realname`,
+            //                   `glpi_users`.`firstname`,
+            //                   `glpi_users`.`name` ";
+            $query2['ORDER'] = ['glpi_users.realname', 'glpi_users.firstname', 'glpi_users.name'];
          }
 
          if ($search != $CFG_GLPI["ajax_wildcard"]) {
-            $query .= " $limit";
+            //$query .= " $limit";
+            $query2['LIMIT'] = 200;
          }
       }
 
-      return $DB->query($query);
+      return $DB->request($query2);
+      //return $DB->query($query);
    }
 
 

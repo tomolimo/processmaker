@@ -225,7 +225,7 @@ if (!Session::haveRight('ticket', CREATE)
     && !Session::haveRight('reminder_public', READ)
     && !Session::haveRight("rssfeed_public", READ)) {
 
-   if (Session::haveRight('followup', TicketFollowup::SEEPUBLIC)
+   if (Session::haveRight('followup', ITILFollowup::SEEPUBLIC) //TicketFollowup::SEEPUBLIC
         || Session::haveRight('task', TicketTask::SEEPUBLIC)
     || Session::haveRightsOr('ticketvalidation', [TicketValidation::VALIDATEREQUEST,
                                                        TicketValidation::VALIDATEINCIDENT])) {
@@ -245,9 +245,14 @@ Html::helpHeader(__('New ticket'), $_SERVER['PHP_SELF'], $_SESSION["glpiname"]);
 
 
 if (isset($_REQUEST['case_guid'])) {
+   $res = $DB->request(
+                  'glpi_plugin_processmaker_cases', [
+                  ' case_guid'=>$_REQUEST['case_guid']
+                  ]);
    $query = "SELECT * FROM glpi_plugin_processmaker_cases WHERE case_guid='".$_REQUEST['case_guid']."'";
-   $res = $DB->query( $query );
-   if ($DB->numrows( $res )) { // a ticket already exists for this case, then show new cases
+   //$res = $DB->query( $query );
+   //if ($DB->numrows( $res )) { // a ticket already exists for this case, then show new cases
+   if ($res->numrows()) { // a ticket already exists for this case, then show new cases
       processMakerShowProcessList(Session::getLoginUserID(), 1);
    } else {
       // before showing the case, we must check the rights for this user to view it, if entity has been changed in the meanwhile

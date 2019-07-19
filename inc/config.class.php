@@ -307,11 +307,28 @@ class PluginProcessmakerConfig extends CommonDBTM {
          echo "<td >".__('Group in ProcessMaker which will contain all GLPI users', 'processmaker')."</td><td >";
 
          $pmGroups = [ 0 => Dropdown::EMPTY_VALUE ];
-         $query = "SELECT DISTINCT CON_ID, CON_VALUE FROM CONTENT WHERE CON_CATEGORY='GRP_TITLE' ORDER BY CON_VALUE;";
+         //$res = $PM_DB->request([
+         //         'SELECT DISTINCT' => 'CON_ID',
+         //         'FIELDS'           => 'CON_VALUE',
+         //         'FROM'            => 'CONTENT',
+         //         'WHERE'           => ['CON_CATEGORY' => 'GRP_TITLE'],
+         //         'ORDER'           => 'CON_VALUE'
+         //      ]);
+         //$query = "SELECT DISTINCT CON_ID, CON_VALUE FROM CONTENT WHERE CON_CATEGORY='GRP_TITLE' ORDER BY CON_VALUE;";
          if ($PM_DB->connected) {
-            foreach ($PM_DB->request( $query ) as $row) {
+            $res = $PM_DB->request([
+                  'SELECT DISTINCT' => 'CON_ID',
+                  'FIELDS'           => 'CON_VALUE',
+                  'FROM'            => 'CONTENT',
+                  'WHERE'           => ['CON_CATEGORY' => 'GRP_TITLE'],
+                  'ORDER'           => 'CON_VALUE'
+               ]);
+            foreach ($res as $row) {
                $pmGroups[ $row['CON_ID'] ] = $row['CON_VALUE'];
             }
+            //foreach ($PM_DB->request( $query ) as $row) {
+            //   $pmGroups[ $row['CON_ID'] ] = $row['CON_VALUE'];
+            //}
             Dropdown::showFromArray( 'pm_group_guid', $pmGroups, ['value' => $config->fields['pm_group_guid']] );
          } else {
             echo "<font color='red'>".__('Not connected');

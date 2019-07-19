@@ -135,28 +135,28 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
 
    /**
-   * Summary of addTicketFollowup
+   * Summary of addItemFollowup
    * @param mixed   $itemId
    * @param mixed   $txtForFollowup
    * @param integer $users_id       optional, if null will uses logged-in user
    */
-   public function addTicketFollowup($itemId, $txtForFollowup, $users_id = null) {
+   public function addItemFollowup($itemtype, $itemId, $txtForFollowup, $users_id = null) {
       global $DB;
-      $fu = new TicketFollowup();
+      $fu = new ITILFollowup();//new TicketFollowup();
       $fu->getEmpty(); // to get default values
       $input = $fu->fields;
-      if (isset( $txtForFollowup['GLPI_TICKET_FOLLOWUP_CONTENT'] )) {
-         $input['content'] = $DB->escape($txtForFollowup['GLPI_TICKET_FOLLOWUP_CONTENT']);
+      if (isset( $txtForFollowup['GLPI_ITEM_FOLLOWUP_CONTENT'] )) {
+         $input['content'] = $DB->escape($txtForFollowup['GLPI_ITEM_FOLLOWUP_CONTENT']);
       }
-      if (isset( $txtForFollowup['GLPI_TICKET_FOLLOWUP_IS_PRIVATE'] )) {
-         $input['is_private'] = $txtForFollowup['GLPI_TICKET_FOLLOWUP_IS_PRIVATE'];
+      if (isset( $txtForFollowup['GLPI_ITEM_FOLLOWUP_IS_PRIVATE'] )) {
+         $input['is_private'] = $txtForFollowup['GLPI_ITEM_FOLLOWUP_IS_PRIVATE'];
       }
-      if (isset( $txtForFollowup['GLPI_TICKET_FOLLOWUP_REQUESTTYPES_ID'] )) {
-         $input['requesttypes_id'] = $txtForFollowup['GLPI_TICKET_FOLLOWUP_REQUESTTYPES_ID'];
+      if (isset( $txtForFollowup['GLPI_ITEM_FOLLOWUP_REQUESTTYPES_ID'] )) {
+         $input['requesttypes_id'] = $txtForFollowup['GLPI_ITEM_FOLLOWUP_REQUESTTYPES_ID'];
       }
-      $input['tickets_id'] = $itemId;
+      $input['items_id'] = $itemId;//$input['tickets_id'] = $itemId;
       $input['users_id'] = (isset($users_id) ? $users_id : Session::getLoginUserID( true )); // $this->taskWriter;
-
+      $input['itemtype'] = $itemtype;
       $fu->add( $input );
    }
 
@@ -266,8 +266,10 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                      $pass = md5(Toolbox::encrypt( $gusr->getID().$gusr->getName().time(), GLPIKEY) );
                      //$pmusr->update( array('id' => $pmusr->getID(), 'password' => $pass) );
                      // and must be updated also in PM db
-                     $PM_DB->query("UPDATE RBAC_USERS SET USR_PASSWORD='".$pass."' WHERE USR_UID='".$pmusr->fields['pm_users_id']."' ");
-                     $PM_DB->query("UPDATE USERS SET USR_PASSWORD='".$pass."' WHERE USR_UID='".$pmusr->fields['pm_users_id']."' ");
+                     $PM_DB->update('RBAC_USERS', ['USR_PASSWORD' => $pass], ['USR_UID' => $pmusr->fields['pm_users_id']]);
+                     //$PM_DB->query("UPDATE RBAC_USERS SET USR_PASSWORD='".$pass."' WHERE USR_UID='".$pmusr->fields['pm_users_id']."' ");
+                     $PM_DB->update('USERS', ['USR_PASSWORD' => $pass], ['USR_UID' => $pmusr->fields['pm_users_id']]);
+                     //$PM_DB->query("UPDATE USERS SET USR_PASSWORD='".$pass."' WHERE USR_UID='".$pmusr->fields['pm_users_id']."' ");
                      //}
                      //$locSession = $this->pmSoapClient->login( array( 'userid' => $gusr->fields['name'], 'password' => 'md5:'.$pmusr->fields['password']) );
                      $locSession = $this->pmSoapClient->login( ['userid' => $gusr->fields['name'], 'password' => 'md5:'.$pass] );
@@ -868,8 +870,9 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    */
    function updateGroup($group_id, $groupStatus) {
       global $PM_DB;
-      $query = "UPDATE GROUPWF SET GRP_STATUS='$groupStatus' WHERE GRP_UID='$group_id';";
-      $PM_DB->query( $query );
+      $PM_DB->update('GROUPWF', ['GRP_STATUS' => $groupStatus], ['GRP_UID' => $group_id]);
+      //$query = "UPDATE GROUPWF SET GRP_STATUS='$groupStatus' WHERE GRP_UID='$group_id';";
+      //$PM_DB->query( $query );
       if ($PM_DB->affected_rows != 1) {
           return false;
       } else {
@@ -1049,7 +1052,8 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       $formerusers_id = 0;
       // get the list of taskactions to be done
       $locCase = new PluginProcessmakerCase;
-      foreach ($DB->request( $dbu->getTableForItemType('PluginProcessmakerCrontaskaction'), ' `state` = '.PluginProcessmakerCrontaskaction::DATA_READY ) as $taskaction) {
+      //foreach ($DB->request( $dbu->getTableForItemType('PluginProcessmakerCrontaskaction'), ' `state` = '.PluginProcessmakerCrontaskaction::DATA_READY ) as $taskaction) {
+      foreach ($DB->request( $dbu->getTableForItemType('PluginProcessmakerCrontaskaction'), ['state' => PluginProcessmakerCrontaskaction::DATA_READY] ) as $taskaction) {
          if ($locCase->getFromDB($taskaction['plugin_processmaker_cases_id'])) {
             // there is an existing case for this crontaskaction.
             try {
@@ -1188,7 +1192,8 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       // get list of case assigned to GLPI items
       $draftCases = [0];
       $query = "SELECT id FROM glpi_plugin_processmaker_cases WHERE case_status = 'DRAFT';";
-      foreach ($DB->request( $query ) as $row) {
+      //foreach ($DB->request( $query ) as $row) {
+      foreach ($DB->request(['SELECT' => 'id', 'FROM' => 'glpi_plugin_processmaker_cases'], ['case_status' => 'DRAFT']) as $row) {
          $draftCases[] = $row['id'];
       }
 
@@ -1205,7 +1210,14 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                      AND DATEDIFF( NOW(), APP_UPDATE_DATE) > ".$task->fields['param']."
                      AND APP_NUMBER NOT IN (".implode(',', $draftCases).");
                 ";
-         foreach ($PM_DB->request( $query ) as $row) {
+         $res = $PM_DB->request('APPLICATION', ['AND' => [
+                                             'APP_DATA' => ['LIKE', '%s:24:\"GLPI_SELFSERVICE_CREATED\";s:1:\"1\"%'],
+                                             'APP_STATUS' => 'DRAFT',
+                                             'RAW' => ['DATEDIFF(NOW(), APP_UPDATE_DATE)' => ['>', $task->fields['param']]],
+                                             'NOT' => ['APP_NUMBER' => $draftCases]
+                                             ]]);
+         //foreach ($PM_DB->request( $query ) as $row) {
+         foreach ($res as $row) {
             $ret = $PM_SOAP->deleteCase( $row['APP_UID'] );
             $task->addVolume(1);
             if ($ret !== false) {
@@ -1254,8 +1266,13 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       }
 
       $pmGroupList = $PM_SOAP->groupList( );
-      foreach ($pmGroupList as $pmGroup) {
-         if ($pmGroup->guid == $PM_SOAP->pm_group_guid) {
+      $pmGroup = null;
+      //if($pmgrp_key = array_search($PM_SOAP->pm_group_guid, array_column($pmGroupList, 'guid'))) {
+      //   $pmgroup = $pmGroupList[$pmgrp_key];
+      //}
+      foreach ($pmGroupList as $pmGroupL) {
+         if ($pmGroupL->guid == $PM_SOAP->pm_group_guid) {
+            $pmGroup = $pmGroupL;
             break; // to get the name :)
          }
       }
@@ -1267,10 +1284,16 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
       // get the complete user list from GLPI DB
       $glpiUserList = [];
-      foreach ($DB->request("SELECT glpi_users.id, glpi_users.name, glpi_users.realname, glpi_users.firstname, glpi_users.is_active, glpi_users.is_deleted, glpi_plugin_processmaker_users.pm_users_id as pmUserId
-                              FROM glpi_users
-                              LEFT JOIN glpi_plugin_processmaker_users on glpi_plugin_processmaker_users.id = glpi_users.id
-                              WHERE name not like '*%'") as $dbgroup) {
+      $res = $DB->request(['SELECT'     => ['glpi_users.id', 'glpi_users.name', 'glpi_users.realname', 'glpi_users.firstname', 'glpi_users.is_active', 'glpi_users.is_deleted', 'glpi_plugin_processmaker_users.pm_users_id as pmUserId'],
+                    'FROM'       => 'glpi_users',
+                    'LEFT JOIN'  => ['glpi_plugin_processmaker_users' => ['FKEY' => ['glpi_plugin_processmaker_users' => 'id', 'glpi_users' => 'id']]],
+                    'WHERE'      => ['name' => ['NOT LIKE', '*%']]
+                  ]);
+      //foreach ($DB->request("SELECT glpi_users.id, glpi_users.name, glpi_users.realname, glpi_users.firstname, glpi_users.is_active, glpi_users.is_deleted, glpi_plugin_processmaker_users.pm_users_id as pmUserId
+      //                        FROM glpi_users
+      //                        LEFT JOIN glpi_plugin_processmaker_users on glpi_plugin_processmaker_users.id = glpi_users.id
+      //                        WHERE name not like '*%'") as $dbgroup) {
+      foreach ($res as $dbgroup) {
          $glpiUserList[ strtolower($dbgroup['name'])] = $dbgroup;
       }
 
@@ -1286,13 +1309,14 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                $task->log( "Added user: '".$user['name']."'" );
 
                // then assign user to group
-               $pmResult2 = $PM_SOAP->assignUserToGroup( $pmResult->userUID, $pmGroup->guid );
-               if ($pmResult2->status_code == 0) {
-                   $task->log( "Added user: '".$user['name']."' to '".$pmGroup->name."' group" );
-               } else {
-                  $task->log( "Error PM: '".$pmResult2->message."'" );
+               if($pmGroup) {
+                  $pmResult2 = $PM_SOAP->assignUserToGroup( $pmResult->userUID, $pmGroup->guid );
+                  if ($pmResult2->status_code == 0) {
+                      $task->log( "Added user: '".$user['name']."' to '".$pmGroup->name."' group" );
+                  } else {
+                     $task->log( "Error PM: '".$pmResult2->message."'" );
+                  }
                }
-
                // insert into DB the link between glpi users and pm user
                $pmuser = new PluginProcessmakerUser;
                if ($pmuser->getFromDB( $user['id'] )) {
@@ -1379,7 +1403,12 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
       // so now treat GLPI groups
       $glpiGroupList = [];
-      foreach ($DB->request("SELECT id, name, is_task, is_usergroup FROM glpi_groups WHERE is_task=1 AND is_usergroup=1") as $dbgroup) {
+      $res = $DB->request(['SELECT' => ['id', 'name', 'is_task', 'is_usergroup'],
+                           'FROM'   => 'glpi_groups',
+                           'WHERE'  => ['AND' => ['is_task' => 1, 'is_usergroup' => 1]]
+                        ]);
+      //foreach ($DB->request("SELECT id, name, is_task, is_usergroup FROM glpi_groups WHERE is_task=1 AND is_usergroup=1") as $dbgroup) {
+      foreach ($res as $dbgroup) {
          $glpiGroupList[$dbgroup['name']] = $dbgroup;
       }
 
@@ -1408,25 +1437,44 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
          // for each group will delete users and re-create them
          // not really optimized, but this way we are sure that groups are synchronized
          // must be redesigned
-         $query = "DELETE FROM GROUP_USER WHERE GROUP_USER.GRP_UID='".$pmGroupList[$group['name']]['CON_ID']."';";
-         $PM_DB->query( $query );
+         $PM_DB->delete('GROUP_USER', ['GROUP_USER.GRP_UID' => $pmGroupList[$group['name']]['CON_ID']]);
+         //$query = "DELETE FROM GROUP_USER WHERE GROUP_USER.GRP_UID='".$pmGroupList[$group['name']]['CON_ID']."';";
+         //$PM_DB->query( $query );
          // and insert all users from real GLPI group
-         foreach ($DB->request("SELECT glpi_groups_users.users_id, glpi_plugin_processmaker_users.pm_users_id
-                                   FROM glpi_groups
-                                   JOIN glpi_groups_users ON glpi_groups_users.groups_id=glpi_groups.id
-                                   JOIN glpi_plugin_processmaker_users ON glpi_plugin_processmaker_users.id=glpi_groups_users.users_id
-                                   WHERE glpi_groups.name='".$group['name']."'") as $user ) {
-            $query = "INSERT INTO GROUP_USER (`GRP_UID`, `USR_UID`) VALUES ( '".$pmGroupList[$group['name']]['CON_ID']."', '".$user['pm_users_id']."' )";
-            $PM_DB->query( $query );
+         $res = $DB->request(['SELECT'      => ['glpi_groups_users.users_id', 'glpi_plugin_processmaker_users.pm_users_id'],
+                              'FROM'        => 'glpi_groups',
+                              'INNER JOIN'  => ['glpi_groups_users' => ['FKEY' => ['glpi_groups_users' => 'groups_id', 'glpi_groups' => 'id']],
+                                                'glpi_plugin_processmaker_users' => ['FKEY' => ['glpi_plugin_processmaker_users' => 'id', 'glpi_groups_users' => 'users_id']]],
+                              'WHERE'       => ['glpi_groups.name' => $group['name']]]);
+
+         //foreach ($DB->request("SELECT glpi_groups_users.users_id, glpi_plugin_processmaker_users.pm_users_id
+         //                          FROM glpi_groups
+         //                          JOIN glpi_groups_users ON glpi_groups_users.groups_id=glpi_groups.id
+         //                          JOIN glpi_plugin_processmaker_users ON glpi_plugin_processmaker_users.id=glpi_groups_users.users_id
+         //                          WHERE glpi_groups.name='".$group['name']."'") as $user ) {
+         foreach ($res as $user) {
+            //$query = "INSERT INTO GROUP_USER (`GRP_UID`, `USR_UID`) VALUES ( '".$pmGroupList[$group['name']]['CON_ID']."', '".$user['pm_users_id']."' )";
+            //$PM_DB->query( $query );
+            $PM_DB->insert('GROUP_USER', ['GRP_UID' => $pmGroupList[$group['name']]['CON_ID'],
+                                          'USR_UID' => $user['pm_users_id']
+                                         ]
+                           );
          }
          $task->addVolume(1);
          $task->log( "Updated users into PM group: '".$group['name']."'" );
       }
 
       // now should renew the duedate of the users
-      $PM_DB->query("UPDATE USERS SET USR_DUE_DATE='2035-12-31' WHERE USR_DUE_DATE<>'2035-12-31'; ");
-      $PM_DB->query("UPDATE RBAC_USERS SET USR_DUE_DATE='2035-12-31' WHERE USR_DUE_DATE<>'2035-12-31'; ");
-
+      //$PM_DB->query("UPDATE USERS SET USR_DUE_DATE='2035-12-31' WHERE USR_DUE_DATE<>'2035-12-31'; ");
+      //$PM_DB->query("UPDATE RBAC_USERS SET USR_DUE_DATE='2035-12-31' WHERE USR_DUE_DATE<>'2035-12-31'; ");
+      $PM_DB->update('USERS',
+                        ['USR_DUE_DATE' => '2035-12-31'],
+                        ['USR_DUE_DATE' => ['!=', '2035-12-31']]
+                     );
+      $PM_DB->update('RBAC_USERS',
+                        ['USR_DUE_DATE' => '2035-12-31'],
+                        ['USR_DUE_DATE' => ['!=', '2035-12-31']]
+                     );
       if ($error) {
           return -1;
       } else {
@@ -1684,10 +1732,22 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       if ($techId == 0) { // then we must look-up DB to get the group that will be assigned to the task
          $groupname='';
          if ($groupId == 0) {
+            $res = $PM_DB->request([
+                           'SELECT'       => 'CONTENT.CON_VALUE',
+                           'FROM'         => 'TASK_USER',
+                           'INNER JOIN'   => ['CONTENT' => ['AND' => ['FKEY' => ['CONTENT' => 'CON_ID', 'TASK_USER' => 'USR_UID'], ['CONTENT' => 'CON_CATEGORY', 'GRP_TITLE'], ['CONTENT' => 'CON_LANG', 'en']]]],
+                           'WHERE'        => ['AND' => ['TASK_USER.TAS_UID' => $pmTaskId, 'TASK_USER.TU_RELATION' => 2]],
+                           'LIMIT'        => 1
+                        ]);
             $query = "SELECT CONTENT.CON_VALUE FROM TASK_USER
                             JOIN CONTENT ON CONTENT.CON_ID=TASK_USER.USR_UID AND CONTENT.CON_CATEGORY='GRP_TITLE' AND CONTENT.CON_LANG = 'en'
                             WHERE TASK_USER.TAS_UID='$pmTaskId' AND TASK_USER.TU_RELATION=2 LIMIT 1;";
          } else {
+            $res = $PM_DB->request([
+                           'SELECT' => 'CON_VALUE',
+                           'FROM'   => 'CONTENT',
+                           'WHERE'  => ['AND' => ['CONTENT.CON_ID' => $groupId, 'CONTENT.CON_CATEGORY' => 'GRP_TITLE', 'CONTENT.CON_LANG' => 'en']]
+                        ]);
             $query = "SELECT CON_VALUE FROM CONTENT
                             WHERE CONTENT.CON_ID='$groupId' AND CONTENT.CON_CATEGORY='GRP_TITLE' AND CONTENT.CON_LANG='en' ;";
          }
@@ -1695,17 +1755,26 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
          // or
          // as there is only one group per guid
          // then we should have at maximun 1 record
-         foreach ($PM_DB->request($query) as $onlyrec) {
+         foreach ($res as $onlyrec) {
+            //foreach ($PM_DB->request($query) as $onlyrec) {
             $groupname = $onlyrec['CON_VALUE'];
          }
 
          $groups_id_tech = 0;
-         $query = "SELECT id AS glpi_group_id FROM glpi_groups WHERE name LIKE '$groupname';";
-         $res = $DB->query($query);
-         if ($DB->numrows($res) > 0) {
-            $row = $DB->fetch_array( $res );
+         $res = $DB->request([
+                  'SELECT' => 'id AS glpi_group_id',
+                  'FROM'   => 'glpi_groups',
+                  'WHERE'  => ['name' => ['LIKE', $groupname]]
+               ]);
+         if ($row = $res->next()) {
             $groups_id_tech = $row['glpi_group_id'];
          }
+         //$query = "SELECT id AS glpi_group_id FROM glpi_groups WHERE name LIKE '$groupname';";
+         //$res = $DB->query($query);
+         //if ($DB->numrows($res) > 0) {
+         //   $row = $DB->fetch_array( $res );
+         //   $groups_id_tech = $row['glpi_group_id'];
+         //}
 
       } else {
          // adds the user tech to ticket watcher if neccessary
@@ -1762,9 +1831,18 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
          //            'plugin_processmaker_cases_id' => $cases_id,
          //            'del_index' => $delIndex
          //            ], [], false);
-         $query = "INSERT INTO glpi_plugin_processmaker_tasks (items_id, itemtype, plugin_processmaker_cases_id, plugin_processmaker_taskcategories_id, del_index, del_thread)
-                     VALUES ({$glpi_task->getId()}, '{$glpi_task->getType()}', $cases_id, {$pmtaskcat->fields['id']}, $delIndex, $delThread);";
-         $DB->query( $query );
+         $DB->insert('glpi_plugin_processmaker_tasks',
+                     [
+                     'items_id'                                => $glpi_task->getId(),
+                     'itemtype'                                => $glpi_task->getType(),
+                     'plugin_processmaker_cases_id'            => $cases_id,
+                     'plugin_processmaker_taskcategories_id'   => $pmtaskcat->fields['id'],
+                     'del_index'                               => $delIndex,
+                     'del_thread'                              =>$delThread
+                     ]);
+         //$query = "INSERT INTO glpi_plugin_processmaker_tasks (items_id, itemtype, plugin_processmaker_cases_id, plugin_processmaker_taskcategories_id, del_index, del_thread)
+         //            VALUES ({$glpi_task->getId()}, '{$glpi_task->getType()}', $cases_id, {$pmtaskcat->fields['id']}, $delIndex, $delThread);";
+         //$DB->query( $query );
       }
 
       // send notification if needed for new task as now we have the PluginProcessmakerTask in the DB
@@ -1989,10 +2067,12 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       global $DB;
 
       $query = "SELECT * FROM glpi_plugin_processmaker_tasks WHERE plugin_processmaker_cases_id=$cases_id and del_index=$delIndex; ";
-      $res = $DB->query($query);
-      if ($DB->numrows($res) > 0) {
+      //$res = $DB->query($query);
+      $res = $DB->request('glpi_plugin_processmaker_tasks', ['AND' => ['plugin_processmaker_cases_id' => $cases_id, 'del_index' => $delIndex]]);
+      //if ($DB->numrows($res) > 0) {
+      if ($row = $res->next()) {
          $dbu = new DbUtils;
-         $row = $DB->fetch_array( $res );
+         //$row = $DB->fetch_array( $res );
 
          $glpi_task = new $row['itemtype'];
          $glpi_task->getFromDB( $row['items_id'] );
@@ -2040,8 +2120,8 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
          self::restoreNotification($donotif);
 
          // Close the task
-         $DB->query("UPDATE glpi_plugin_processmaker_tasks SET del_thread_status = '".PluginProcessmakerTask::CLOSED."' WHERE id = {$row['id']}");
-
+         //$DB->query("UPDATE glpi_plugin_processmaker_tasks SET del_thread_status = '".PluginProcessmakerTask::CLOSED."' WHERE id = {$row['id']}");
+         $DB->update('glpi_plugin_processmaker_tasks', ['del_thread_status' => PluginProcessmakerTask::CLOSED], ['id' => $row['id']]);
          // restore current glpi time
          $_SESSION["glpi_currenttime"] = $saved_date_time;
 
@@ -2059,12 +2139,13 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    */
    public function claimTask($cases_id, $delIndex, $users_id_tech = null) {
       global $DB;
-
+      $res = $DB->request('glpi_plugin_processmaker_tasks', ['AND' => ['plugin_processmaker_cases_id' => $cases_id, 'del_index' => $delIndex]]);
       $query = "SELECT * FROM glpi_plugin_processmaker_tasks WHERE plugin_processmaker_cases_id='$cases_id' and del_index=$delIndex; ";
-      $res = $DB->query($query);
-      if ($DB->numrows($res) > 0) {
+      //$res = $DB->query($query);
+      //if ($DB->numrows($res) > 0) {
+      if ($row = $res->next()) {
          $dbu = new DbUtils;
-         $row = $DB->fetch_array( $res );
+         //$row = $DB->fetch_array( $res );
          $glpi_task = new $row['itemtype'];
          $glpi_task->getFromDB( $row['items_id'] );
 
@@ -2089,14 +2170,14 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
      */
    public static function getCaseIdFromItem ($item_type, $item_id) {
       global $DB;
-
+      $res = $DB->request('glpi_plugin_processmaker_cases', ['AND' => ['itemtype' => $item_type, 'items_id' => $item_id]]);
       $query = "SELECT * FROM glpi_plugin_processmaker_cases WHERE `itemtype` = '$item_type' AND `items_id` = $item_id ;";
-        $res = $DB->query($query);
-      if ($DB->numrows($res) > 0) {
-         // case is existing for this item
-         // then get info from db
-         $row = $DB->fetch_array($res);
-
+      //  $res = $DB->query($query);
+      //if ($DB->numrows($res) > 0) {
+      //   // case is existing for this item
+      //   // then get info from db
+      //   $row = $DB->fetch_array($res);
+      if ($row = $res->next()) {
          return $row['id'];
       }
 
@@ -2112,14 +2193,14 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
     */
    public static function getCaseGuidFromItem ($item_type, $item_id) {
       global $DB;
-
+      $res = $DB->request('glpi_plugin_processmaker_cases', ['AND' => ['itemtype' => $item_type, 'items_id' => $item_id]]);
       $query = "SELECT * FROM glpi_plugin_processmaker_cases WHERE `itemtype` = '$item_type' AND `items_id` = $item_id ;";
-      $res = $DB->query($query);
-      if ($DB->numrows($res) > 0) {
-         // case is existing for this item
-         // then get info from db
-         $row = $DB->fetch_array($res);
-
+      //$res = $DB->query($query);
+      //if ($DB->numrows($res) > 0) {
+      //   // case is existing for this item
+      //   // then get info from db
+      //   $row = $DB->fetch_array($res);
+      if ($row = $res->next()) {
          return $row['case_guid'];
       }
 
@@ -2363,12 +2444,19 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       $item_users = $item->userlinkclass;
       $item_userstable = $dbu->getTableForItemType( $item_users );
       $itemlink = getForeignKeyFieldForItemType( $itemtype );
-
+      $res = $DB->request([
+                     'SELECT'    => ['glpi_plugin_processmaker_users.pm_users_id as pm_users_id', 'glpi_plugin_processmaker_users.id as id'],
+                     'FROM'      => $item_userstable,
+                     'LEFT JOIN' => ['glpi_plugin_processmaker_users' => ['FKEY' => ['glpi_plugin_processmaker_users' => 'id', $item_userstable => 'users_id']]],
+                     'WHERE'     => ['AND' => ["$item_userstable.$itemlink" => $itemId, "$item_userstable.type" => $userType]],
+                     'ORDER'     => ['ORDER' => $item_userstable.'.id']
+                  ]);
         $query = "select glpi_plugin_processmaker_users.pm_users_id as pm_users_id, glpi_plugin_processmaker_users.id as id from $item_userstable
-				left join glpi_plugin_processmaker_users on glpi_plugin_processmaker_users.id = $item_userstable.users_id
-				where $item_userstable.$itemlink = $itemId and $item_userstable.type = $userType
+            left join glpi_plugin_processmaker_users on glpi_plugin_processmaker_users.id = $item_userstable.users_id
+            where $item_userstable.$itemlink = $itemId and $item_userstable.type = $userType
                 order by $item_userstable.id";
-      foreach ($DB->request( $query ) as $dbuser) {
+      //foreach ($DB->request( $query ) as $dbuser) {
+      foreach ($res as $dbuser) {
          $users[] = [ 'glpi_id' => $dbuser['id'], 'pm_id' => $dbuser['pm_users_id'] ];
       }
 
@@ -2612,18 +2700,53 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       global $DB;
       $dbu = new DbUtils;
       $processList = [ ];
-      $entityAncestors = implode( ", ", $dbu->getAncestorsOf( $dbu->getTableForItemType( 'Entity' ), $entity ) );
-      if (strlen( $entityAncestors ) > 0) {
-         $entityAncestors = " OR (entities_id IN ($entityAncestors) AND is_recursive = 1) ";
+      //$entityAncestors = implode( ", ", $dbu->getAncestorsOf( $dbu->getTableForItemType( 'Entity' ), $entity ) );
+      $entityAncestors = $dbu->getAncestorsOf( $dbu->getTableForItemType( 'Entity' ), $entity );
+      //if (strlen( $entityAncestors ) > 0) {
+      if ($category > 0) {
+         $query = [
+                  'SELECT DISTINCT' => ['glpi_plugin_processmaker_processes.id' ],
+                  'FIELDS'          => ['glpi_plugin_processmaker_processes.name'],
+                  //'DISTINCT'     => true,
+                  'FROM'            => 'glpi_plugin_processmaker_processes',
+                  'INNER JOIN'      => [
+                     'glpi_plugin_processmaker_processes_profiles' => [
+                        'FKEY' => [
+                           'glpi_plugin_processmaker_processes_profiles' => 'plugin_processmaker_processes_id',
+                           'glpi_plugin_processmaker_processes'          => 'id',
+                           ['AND' => [
+                              'glpi_plugin_processmaker_processes.itilcategories_id' => ['!=', 0]
+                              ]
+                           ]
+                        ]
+                     ]
+                  ],
+                  'WHERE'        => [
+                     'AND' => [
+                        'itilcategories_id' => $category,
+                        'type' => $type,
+                        'profiles_id' => $profile,
+                        'entities_id' => $entity
+                     ]
+                  ]
+            ];
+         if (count( $entityAncestors ) > 0) {
+            //$entityAncestors = " OR (entities_id IN ($entityAncestors) AND is_recursive = 1) ";
+            $entityAncestors[] = $entity;
+            $query['WHERE']['AND']['entities_id'] =  $entityAncestors;
+            $query['WHERE']['AND']['is_recursive'] = 1;
+         }
+         $res = $DB->request($query);
+         foreach ($res as $row) {
+            $processList[] = $row;
+         }
+         $processList = array_map("unserialize", array_unique(array_map("serialize", $processList)));
       }
+      //$query ="SELECT DISTINCT glpi_plugin_processmaker_processes.id, glpi_plugin_processmaker_processes.name FROM glpi_plugin_processmaker_processes
+      //      INNER JOIN glpi_plugin_processmaker_processes_profiles ON glpi_plugin_processmaker_processes_profiles.plugin_processmaker_processes_id=glpi_plugin_processmaker_processes.id
+      //      WHERE is_active = 1 AND itilcategories_id = $category AND `type` = $type AND profiles_id = $profile  AND (entities_id = $entity $entityAncestors)";
 
-      $query ="SELECT DISTINCT glpi_plugin_processmaker_processes.id, glpi_plugin_processmaker_processes.name FROM glpi_plugin_processmaker_processes
-            INNER JOIN glpi_plugin_processmaker_processes_profiles ON glpi_plugin_processmaker_processes_profiles.plugin_processmaker_processes_id=glpi_plugin_processmaker_processes.id
-            WHERE is_active = 1 AND itilcategories_id = $category AND `type` = $type AND profiles_id = $profile  AND (entities_id = $entity $entityAncestors)";
-
-      foreach ($DB->request( $query ) as $row) {
-         $processList[] = $row;
-      }
+      //foreach ($DB->request( $query ) as $row) {
 
       return $processList;
 
@@ -2757,8 +2880,11 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                         "GLPI_NEXT_GROUP_TO_BE_ASSIGNED",
                         "GLPI_ITEM_TITLE",
                         "GLPI_TICKET_FOLLOWUP_CONTENT",
+                        "GLPI_ITEM_FOLLOWUP_CONTENT",
                         "GLPI_TICKET_FOLLOWUP_IS_PRIVATE",
+                        "GLPI_ITEM_FOLLOWUP_IS_PRIVATE",
                         "GLPI_TICKET_FOLLOWUP_REQUESTTYPES_ID",
+                        "GLPI_ITEM_FOLLOWUP_REQUESTTYPES_ID",
                         "GLPI_ITEM_TASK_ENDDATE",
                         "GLPI_ITEM_TASK_STARTDATE",
                         "GLPI_ITEM_TASK_REMINDER",
@@ -2842,7 +2968,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       }
 
       $createFollowup = false; // by default
-      if (array_key_exists( 'GLPI_TICKET_FOLLOWUP_CONTENT', $casevariablevalues ) && $casevariablevalues[ 'GLPI_TICKET_FOLLOWUP_CONTENT' ] != '') {
+      if (array_key_exists( 'GLPI_ITEM_FOLLOWUP_CONTENT', $casevariablevalues ) && $casevariablevalues[ 'GLPI_ITEM_FOLLOWUP_CONTENT' ] != '') {
          //&& array_key_exists( 'GLPI_TICKET_FOLLOWUP_IS_PRIVATE', $infoForTasks )
          //&& array_key_exists( 'GLPI_TICKET_FOLLOWUP_REQUESTTYPES_ID', $infoForTasks )
          $createFollowup = true;
@@ -2883,7 +3009,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
       // create a followup if requested
       if ($createFollowup && $itemtype == 'Ticket') {
-         $this->addTicketFollowup( $items_id, $casevariablevalues );
+         $this->addItemFollowup( $itemtype, $items_id, $casevariablevalues );
       }
 
       if ($txtItemTitle != '') {
@@ -2920,10 +3046,23 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
             $locTaskCat = new PluginProcessmakerTaskCategory;
             if ($locTaskCat->getFromGUID($route->taskId) && $locTaskCat->fields['is_subprocess']) {
                // look for APP_UID
+               $res = $PM_DB->request([
+                                 'SELECT' => [
+                                    'APPUID'
+                                 ],
+                                 'FROM' => 'SUB_APPLICATION',
+                                 'WHERE' => [
+                                    'AND' => [
+                                       'APP_PARENT'       => $myCase->fields['case_guid'],
+                                       'DEL_INDEX_PARENT' => $route->delIndex,
+                                       'SA_STATUS'        => 'ACTIVE'
+                                    ]
+                                 ]
+                              ]);
                $res = $PM_DB->query("SELECT APP_UID FROM SUB_APPLICATION WHERE APP_PARENT='{$myCase->fields['case_guid']}' AND DEL_INDEX_PARENT={$route->delIndex} AND SA_STATUS='ACTIVE'"); // AND DEL_THREAD_PARENT={$route->delThread} seems like it is not set to correct threadIndex
-               if ($res && $PM_DB->numrows($res) == 1) {
+               if ($row = $res->next() && $PM_DB->numrows($res) == 1) {
                   // then new task is a sub-process,
-                  $row = $PM_DB->fetch_assoc($res);
+                  //$row = $PM_DB->fetch_assoc($res);
 
                   // now need to get the PRO_UID
                   $sub_caseInfo = self::getCaseInfo($row['APP_UID']);
@@ -2961,7 +3100,18 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
                      // if end date was specified, then must change due date of the PM task
                      if ($taskEndDate != '') {
-                        $PM_DB->query( "UPDATE APP_DELEGATION SET DEL_TASK_DUE_DATE='$taskEndDate' WHERE APP_UID='".$sub_caseInfo->caseId."' AND DEL_INDEX=".$sub_route->delIndex);
+                        $PM_DB->update(
+                                 'APP_DELEGATION',
+                                 [
+                                 'DEL_TASK_DUE_DATE' => $taskEndDate
+                                 ],
+                                 ['AND' => [
+                                    'APP_UID'   => $sub_caseInfo->caseId,
+                                    'DEL_INDEX' => $sub_route->delIndex
+                                    ]
+                                 ]
+                              );
+                        //$PM_DB->query( "UPDATE APP_DELEGATION SET DEL_TASK_DUE_DATE='$taskEndDate' WHERE APP_UID='".$sub_caseInfo->caseId."' AND DEL_INDEX=".$sub_route->delIndex);
                      }
 
                   }
@@ -3032,7 +3182,17 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                                        );
                // if end date was specified, then must change due date of the PM task
                if ($taskEndDate != '') {
-                  $PM_DB->query( "UPDATE APP_DELEGATION SET DEL_TASK_DUE_DATE='$taskEndDate' WHERE APP_UID='".$caseInfo->caseId."' AND DEL_INDEX=".$route->delIndex);
+                  $PM_DB->update(
+                           'APP_DELEGATION',
+                           [
+                           'DEL_TASK_DUE_DATE' => $taskEndDate
+                           ],
+                           ['AND' => [
+                              'APP_UID'   => $caseInfo->caseId,
+                              'DEL_INDEX' => $route->delIndex
+                              ]
+                           ]);
+                  //$PM_DB->query( "UPDATE APP_DELEGATION SET DEL_TASK_DUE_DATE='$taskEndDate' WHERE APP_UID='".$caseInfo->caseId."' AND DEL_INDEX=".$route->delIndex);
                }
             }
 
@@ -3079,7 +3239,8 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
                      // if end date was specified, then must change due date of the PM task
                      if ($taskEndDate != '') {
-                           $PM_DB->query( "UPDATE APP_DELEGATION SET DEL_TASK_DUE_DATE='$taskEndDate' WHERE APP_UID='".$sub_caseInfo->caseId."' AND DEL_INDEX=".$open_task->delIndex);
+                        $PM_DB->update('APP_DELEGATION', ['DEL_TASK_DUE_DATE' => $taskEndDate], ['AND' => ['APP_UID' => $sub_caseInfo->caseId, 'DEL_INDEX' => $open_task->delIndex]]);
+                           //$PM_DB->query( "UPDATE APP_DELEGATION SET DEL_TASK_DUE_DATE='$taskEndDate' WHERE APP_UID='".$sub_caseInfo->caseId."' AND DEL_INDEX=".$open_task->delIndex);
                      }
                   }
                }
@@ -3102,7 +3263,15 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    public static function getPMGroups() {
       global $PM_DB;
       $pmGroupList = [];
-      foreach ($PM_DB->request("SELECT * FROM CONTENT WHERE CONTENT.CON_CATEGORY='GRP_TITLE' AND CONTENT.CON_LANG='en'") as $dbgroup) {
+      $res = $PM_DB->request(
+                        'CONTENT', [
+                        'AND' => [
+                           'CONTENT.CON_CATEGORY' => 'GRP_TITLE',
+                           'CONTENT.CON_LANG'     => 'en'
+                        ]
+                        ]);
+      //foreach ($PM_DB->request("SELECT * FROM CONTENT WHERE CONTENT.CON_CATEGORY='GRP_TITLE' AND CONTENT.CON_LANG='en'") as $dbgroup) {
+      foreach ($res as $dbgroup) {
          $pmGroupList[$dbgroup['CON_VALUE']] = $dbgroup;
       }
       return $pmGroupList;

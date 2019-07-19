@@ -265,11 +265,18 @@ class PluginProcessmakerCase extends CommonDBTM {
     */
    public function reassignTask ($delIndex, $newDelIndex, $delThread, $newDelThread, $newTech) {
       global $DB;
-
-      $query = "SELECT * FROM glpi_plugin_processmaker_tasks WHERE plugin_processmaker_cases_id={$this->getID()} AND del_index=$delIndex AND del_thread=$delThread; ";
-      $res = $DB->query($query);
-      if ($DB->numrows($res) > 0) {
-         $row = $DB->fetch_array( $res );
+      $res = $DB->request('glpi_plugin_processmaker_tasks', [
+                          'AND' =>  [
+                             'plugin_processmaker_cases_id' => $this->getID(),
+                             'del_index' => $delIndex,
+                             'del_thead' => $delThread
+                          ]
+                          ]);
+      //$query = "SELECT * FROM glpi_plugin_processmaker_tasks WHERE plugin_processmaker_cases_id={$this->getID()} AND del_index=$delIndex AND del_thread=$delThread; ";
+      //$res = $DB->query($query);
+      //if ($DB->numrows($res) > 0) {
+      //   $row = $DB->fetch_array( $res );
+      if ($row = $res->next()) {
          $glpi_task = new $row['itemtype'];
          $glpi_task->getFromDB( $row['items_id'] );
 
@@ -281,8 +288,15 @@ class PluginProcessmakerCase extends CommonDBTM {
          $glpi_task->update( [ 'id' => $row['items_id'], $foreignkey => $glpi_task->fields[ $foreignkey ],  'users_id_tech' => $newTech ]);
 
          // then update the delIndex and delThread
-         $query = "UPDATE glpi_plugin_processmaker_tasks SET del_index = $newDelIndex, del_thread = $newDelThread WHERE id={$row['id']}; ";
-         $res = $DB->query($query);
+         //$query = "UPDATE glpi_plugin_processmaker_tasks SET del_index = $newDelIndex, del_thread = $newDelThread WHERE id={$row['id']}; ";
+         //$res = $DB->query($query);
+         $DB->Update( 'glpi_plugin_processmaker_tasks', [
+                        'del_index'   => $newDelIndex,
+                        'del_thread'  => $newDelThread
+                        ], [
+                        'id' => $row['id']
+                        ]
+                     );
       }
    }
 
@@ -295,11 +309,20 @@ class PluginProcessmakerCase extends CommonDBTM {
 
       // get all tasks that are OPEN for any sub-case of this case
       $case_tasks = [];
-      $query = "SELECT `glpi_plugin_processmaker_tasks`.*  FROM `glpi_plugin_processmaker_tasks`
-                  WHERE `glpi_plugin_processmaker_tasks`.`plugin_processmaker_cases_id`={$this->getID()} AND `del_thread_status`='OPEN'";
-      foreach ($DB->request($query) as $task) {
+      $res = $DB->request('glpi_plugin_processmaker_tasks', [
+                     'AND' => [
+                        'plugin_processmaker_cases_id' => $this->getID(),
+                        'del_thread_status' => 'OPEN'
+                     ]
+                     ]);
+      foreach ($res as $task) {
          $case_tasks[$task['del_index']] = $task;
       }
+      //$query = "SELECT `glpi_plugin_processmaker_tasks`.*  FROM `glpi_plugin_processmaker_tasks`
+      //            WHERE `glpi_plugin_processmaker_tasks`.`plugin_processmaker_cases_id`={$this->getID()} AND `del_thread_status`='OPEN'";
+      //foreach ($DB->request($query) as $task) {
+      //   $case_tasks[$task['del_index']] = $task;
+      //}
 
       //// get all tasks that are OPEN for any sub-case of this case
       //$sub_cases = [];
@@ -314,11 +337,19 @@ class PluginProcessmakerCase extends CommonDBTM {
       if (property_exists($caseInfo, 'currentUsers')) {
          $caseInfo->currentUsers = $this->sortTasks($caseInfo->currentUsers, PluginProcessmakerUser::getPMUserId(Session::getLoginUserID()));
       }
-      $query = "SELECT `DEL_INDEX`, `DEL_DELEGATE_DATE` FROM `APP_DELEGATION` WHERE `APP_UID`='{$caseInfo->caseId}'";
+      $res = $PM_DB->request([
+                     'SELECT' => ['DEL_INDEX', 'DEL_DELEGATE_DATE'],
+                     'FROM'   => 'APP_DELEGATION',
+                     'WHERE'  => ['APP_UID' => $caseInfo->caseId]
+                     ]);
+      //$query = "SELECT `DEL_INDEX`, `DEL_DELEGATE_DATE` FROM `APP_DELEGATION` WHERE `APP_UID`='{$caseInfo->caseId}'";
       $tasks = [];
-      foreach ($PM_DB->request($query) as $row) {
+      foreach ($res as $row) {
          $tasks[$row['DEL_INDEX']] = $row['DEL_DELEGATE_DATE'];
       }
+      //foreach ($PM_DB->request($query) as $row) {
+      //   $tasks[$row['DEL_INDEX']] = $row['DEL_DELEGATE_DATE'];
+      //}
 
       echo "<p></p>";
       // show the case properties like given by PM server
@@ -346,9 +377,21 @@ class PluginProcessmakerCase extends CommonDBTM {
                $case_url .= $case_tasks[$currentTask->delIndex]['id'];
                echo "<td class='tab_bg_2'><a href='$case_url'>".$currentTask->taskName."</a></td>";
             } else {
-               $res = $PM_DB->query("SELECT APP_UID FROM SUB_APPLICATION WHERE APP_PARENT='{$this->fields['case_guid']}' AND DEL_INDEX_PARENT={$currentTask->delIndex} AND SA_STATUS='ACTIVE'");
-               if ($res && $PM_DB->numrows($res) == 1) {
-                  $row = $PM_DB->fetch_assoc($res);
+               $res = $PM_DB->request([
+                                 'SELECT' => 'APP_UID',
+                                 'FROM'   => 'SUB_APPLICATION',
+                                 'WHERE'  => [
+                                    'AND' => [
+                                       'APP_PARENT'         => $this->fields['case_guid'],
+                                       'DEL_INDEX_PARENT'   => $currentTask->delIndex,
+                                       'SA_STATUS'          => 'ACTIVE'
+                                    ]
+                                 ]
+                                 ]);
+               //$res = $PM_DB->query("SELECT APP_UID FROM SUB_APPLICATION WHERE APP_PARENT='{$this->fields['case_guid']}' AND DEL_INDEX_PARENT={$currentTask->delIndex} AND SA_STATUS='ACTIVE'");
+               //if ($res && $PM_DB->numrows($res) == 1) {
+               //   $row = $PM_DB->fetch_assoc($res);
+               if ($res->numrows() == 1 && $row = $res->next()) {
                   $sub_case = new PluginProcessmakerCase;
                   $sub_case->getFromGUID($row['APP_UID']);
                   $case_url .= $sub_case->getID()."-".$currentTask->delIndex;
@@ -572,20 +615,36 @@ class PluginProcessmakerCase extends CommonDBTM {
       $canupdate = $item->can($items_id, UPDATE);
 
       $rand = mt_rand();
-
-      $query = "SELECT gppc.`id` AS assocID, gppc.`id` as id, gppp.id as pid, gppp.name as pname, gppc.`case_status`, gppc.`plugin_processmaker_cases_id`
-                FROM `glpi_plugin_processmaker_cases` as gppc
-                LEFT JOIN `glpi_plugin_processmaker_processes` AS gppp ON gppp.`id`=gppc.`plugin_processmaker_processes_id`
-                WHERE gppc.`itemtype` = '$itemtype'
-                  AND gppc.`items_id` = $items_id
-                ";
-      $result = $DB->query($query);
+      $res = $DB->request([
+                     'SELECT'    => ['gppc.id AS assocID', 'gppc.id AS id', 'gppp.id AS pid', 'gppp.name AS pname', 'gppc.case_status', 'gppc.plugin_processmaker_cases_id'],
+                     'FROM'      => 'glpi_plugin_processmaker_cases AS gppc',
+                     'LEFT JOIN' => [
+                        'glpi_plugin_processmaker_processes AS gppp' => [
+                           'FKEY' => [
+                              'gppp' => 'id',
+                              'gppc' => 'plugin_processmaker_processes_id']
+                           ]
+                        ],
+                     'WHERE'     => [
+                        'AND' => [
+                           'gppc.itemtype' => $itemtype,
+                           'gppc.items_id' => $items_id
+                        ]
+                     ]
+                  ]);
+      //$query = "SELECT gppc.`id` AS assocID, gppc.`id` as id, gppp.id as pid, gppp.name as pname, gppc.`case_status`, gppc.`plugin_processmaker_cases_id`
+      //          FROM `glpi_plugin_processmaker_cases` as gppc
+      //          LEFT JOIN `glpi_plugin_processmaker_processes` AS gppp ON gppp.`id`=gppc.`plugin_processmaker_processes_id`
+      //          WHERE gppc.`itemtype` = '$itemtype'
+      //            AND gppc.`items_id` = $items_id
+      //          ";
+      //$result = $DB->query($query);
 
       $cases = [];
       $used  = [];
       $pid   = [];
-      if ($numrows = $DB->numrows($result)) {
-         while ($data = $DB->fetch_assoc($result)) {
+      if ($numrows = $res->numrows()) {
+         foreach ($res as $data) {
             $cases[$data['id']] = $data;
             $used[$data['id']]  = $data['id'];
             if (isset($pid[$data['pid']])) {
@@ -595,6 +654,17 @@ class PluginProcessmakerCase extends CommonDBTM {
             }
          }
       }
+      //if ($numrows = $DB->numrows($result)) {
+      //   while ($data = $DB->fetch_assoc($result)) {
+      //      $cases[$data['id']] = $data;
+      //      $used[$data['id']]  = $data['id'];
+      //      if (isset($pid[$data['pid']])) {
+      //         $pid[$data['pid']] += 1;
+      //      } else {
+      //         $pid[$data['pid']] = 1;
+      //      }
+      //   }
+      //}
 
       $columns = ['pname'  => __('Process', 'processmaker'),
                   'name'   => __('Title', 'processmaker'),
@@ -621,18 +691,23 @@ class PluginProcessmakerCase extends CommonDBTM {
          echo "<tr class='tab_bg_2'><td class='tab_bg_2'>";
          echo __('Select the process you want to add', 'processmaker');
          echo "</td><td class='tab_bg_2'>";
+         $condition[] = ['is_active' => 1];
          if ($itemtype == 'Ticket') {
+            $condition[] = ['is_incident' => 1];
             $is_itemtype = "AND is_incident=1";
             if ($item->fields['type'] == Ticket::DEMAND_TYPE) {
+               $condition[] = ['is_request' => 1];
                $is_itemtype = "AND is_request=1";
             }
          } else {
+            $condition[] = ['is_'.strtolower($itemtype) => 1];
             $is_itemtype = "AND is_".strtolower($itemtype)."=1";
          }
          PluginProcessmakerProcess::dropdown(['value' => 0,
                                               'entity' => $item->fields['entities_id'],
                                               'name' => 'plugin_processmaker_processes_id',
-                                              'condition' => "is_active=1 $is_itemtype",
+                                              //'condition' => "is_active=1 $is_itemtype",
+                                              'condition'   => $condition,
                                               'specific_tags' => ['count_cases_per_item' => $pid]
                                               ]);
          echo "</td><td class='tab_bg_2'>";
@@ -762,14 +837,24 @@ class PluginProcessmakerCase extends CommonDBTM {
    private function deleteTasks() {
       global $DB;
       $ret = false;
+      $sub = new QuerySubQuery([
+                     'SELECT' => 'items_id',
+                     'FROM'   => 'glpi_plugin_processmaker_tasks',
+                     'WHERE'  => ['plugin_processmaker_cases_id' => $this->fields['id']]
+                  ]);
 
-      $query = "DELETE FROM glpi_".strtolower($this->fields['itemtype'])."tasks WHERE id IN (SELECT items_id FROM glpi_plugin_processmaker_tasks WHERE plugin_processmaker_cases_id='".$this->fields['id']."')";
-      if ($DB->query( $query )) {
-         $query = "DELETE FROM glpi_plugin_processmaker_tasks WHERE plugin_processmaker_cases_id='".$this->fields['id']."'";
-         if ($DB->query( $query )) {
+      if ($DB->delete('glpi_'.strtolower($this->fields['itemtype']).'tasks', ['id' => $sub ])) {
+         if ($DB->delete('glpi_plugin_processmaker_tasks', ['plugin_processmaker_cases_id' => $this->fields['id']])) {
             $ret = true;
          }
       }
+      //$query = "DELETE FROM glpi_".strtolower($this->fields['itemtype'])."tasks WHERE id IN (SELECT items_id FROM glpi_plugin_processmaker_tasks WHERE plugin_processmaker_cases_id='".$this->fields['id']."')";
+      //if ($DB->query( $query )) {
+      //   $query = "DELETE FROM glpi_plugin_processmaker_tasks WHERE plugin_processmaker_cases_id='".$this->fields['id']."'";
+      //   if ($DB->query( $query )) {
+      //      $ret = true;
+      //   }
+      //}
       return $ret;
    }
 
@@ -795,10 +880,29 @@ class PluginProcessmakerCase extends CommonDBTM {
       $ret = false;
 
       if (isset($this->fields['case_status']) && $this->fields['case_status'] == "TO_DO") {
-         $query = "UPDATE glpi_".$this->fields['itemtype']."tasks SET state=0,users_id_tech=0,begin=NULL,end=NULL  WHERE state=1 AND id in (select items_id from glpi_plugin_processmaker_tasks where plugin_processmaker_cases_id='".$this->fields['id']."')";
-         if ($DB->query( $query )) {
+         $sub = new QuerySubQuery([
+                           'SELECT' => 'items_id',
+                           'FROM'   => 'glpi_plugin_processmaker_tasks',
+                           'WHERE'  => ['plugin_processmaker_cases_id' => $this->fields['id']]
+                        ]);
+         $res = $DB->update('glpi_'.$this->fields['itemtype'].'tasks', [
+                  'state'           => 0,
+                  'users_id_tech'   => 0,
+                  'begin'           => null,
+                  'end'             => null
+                  ], [
+                  'AND' => [
+                     'state'     => 1,
+                     'id'        => $sub
+                  ]
+                  ]);
+         if ($res) {
             $ret = true;
          }
+         //$query = "UPDATE glpi_".$this->fields['itemtype']."tasks SET state=0,users_id_tech=0,begin=NULL,end=NULL  WHERE state=1 AND id in (select items_id from glpi_plugin_processmaker_tasks where plugin_processmaker_cases_id='".$this->fields['id']."')";
+         //if ($DB->query( $query )) {
+         //   $ret = true;
+         //}
       }
       return $ret;
    }
@@ -930,22 +1034,36 @@ class PluginProcessmakerCase extends CommonDBTM {
             if (isset($options['searchopt']['processmaker_cases'])) {
                switch ($options['searchopt']['processmaker_cases']) {
                   case 'creation_date':
-                     $res = $PM_DB->query('SELECT * FROM APPLICATION WHERE APP_NUMBER = '.$values['id']);
-                     if ($res->num_rows > 0) {
-                        $row = $PM_DB->fetch_assoc($res);
+                     $res = $PM_DB->request('APPLICATION', [
+                                       'APP_NUMBER' => $values['id']
+                                       ]
+                                    );
+                     if ($row = $res->next()) {
                         return Html::convDateTime($row['APP_CREATE_DATE']);
                      }
+                     //$res = $PM_DB->query('SELECT * FROM APPLICATION WHERE APP_NUMBER = '.$values['id']);
+                     //if ($res->num_rows > 0) {
+                     //   $row = $PM_DB->fetch_assoc($res);
+                     //   return Html::convDateTime($row['APP_CREATE_DATE']);
+                     //}
                      //$locCase = new self;
                      //$locCase->getFromDB($values['id']);
                      //$caseInfo = $locCase->getCaseInfo();
                      //return Html::convDateTime($caseInfo->createDate);
                      break;
                   case 'update_date':
-                     $res = $PM_DB->query('SELECT * FROM APPLICATION WHERE APP_NUMBER = '.$values['id']);
-                     if ($res->num_rows > 0) {
-                        $row = $PM_DB->fetch_assoc($res);
+                     $res = $PM_DB->request('APPLICATION', [
+                                       'APP_NUMBER' => $values['id']
+                                       ]
+                                    );
+                     if ($row = $res->next()) {
                         return Html::convDateTime($row['APP_UPDATE_DATE']);
                      }
+                     //$res = $PM_DB->query('SELECT * FROM APPLICATION WHERE APP_NUMBER = '.$values['id']);
+                     //if ($res->num_rows > 0) {
+                     //   $row = $PM_DB->fetch_assoc($res);
+                     //   return Html::convDateTime($row['APP_UPDATE_DATE']);
+                     //}
                      //$locCase = new self;
                      //$locCase->getFromDB($values['id']);
                      //$caseInfo = $locCase->getCaseInfo();
@@ -1356,9 +1474,12 @@ class PluginProcessmakerCase extends CommonDBTM {
    function deleteCronTaskActions() {
       global $DB;
 
-      $query = "DELETE FROM `glpi_plugin_processmaker_crontaskactions` WHERE `plugin_processmaker_cases_id` = ".$this->getID();
-
-      return $DB->query($query);
+      return $DB->delete('glpi_plugin_processmaker_crontaskactions', [
+                     'plugin_processmaker_cases_id' => $this->getID()
+                     ]
+                  );
+      //$query = "DELETE FROM `glpi_plugin_processmaker_crontaskactions` WHERE `plugin_processmaker_cases_id` = ".$this->getID();
+      //return $DB->query($query);
    }
 
 }

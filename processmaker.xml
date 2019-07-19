@@ -36,6 +36,10 @@
          <num>3.5.2</num>
          <compatibility>9.3</compatibility>
       </version>
+     <version>
+       <num>3.6.2</num>
+       <compatibility>9.4</compatibility>
+     </version>
    </versions>
    <langs>
       <lang>en_gb</lang>

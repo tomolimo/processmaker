@@ -2,7 +2,7 @@
 
 // used for case cancellation
 define("CANCEL", 256);
-define('PROCESSMAKER_VERSION', '3.5.2');
+define('PROCESSMAKER_VERSION', '3.6.2');
 
 // Init the hooks of the plugins -Needed
 function plugin_init_processmaker() {
@@ -128,8 +128,8 @@ function plugin_version_processmaker() {
       'homepage'       => 'https://github.com/tomolimo/processmaker',
       'requirements'   => [
          'glpi'   => [
-            'min' => '9.3',
-            'max' => '9.4'
+            'min' => '9.4',
+            'max' => '9.5'
          ],
       ]
    ];
@@ -137,8 +137,8 @@ function plugin_version_processmaker() {
 
 // Optional : check prerequisites before install : may print errors or add to message after redirect
 function plugin_processmaker_check_prerequisites() {
-   if (version_compare(GLPI_VERSION, '9.3', 'lt') || version_compare(GLPI_VERSION, '9.4', 'ge')) {
-      echo "This plugin requires GLPI >= 9.3 and < 9.4";
+   if (version_compare(GLPI_VERSION, '9.4', 'lt') || version_compare(GLPI_VERSION, '9.5', 'ge')) {
+      echo "This plugin requires GLPI >= 9.4 and < 9.5";
       return false;
    }
 

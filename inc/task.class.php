@@ -79,13 +79,24 @@ class PluginProcessmakerTask extends CommonITILTask
       $selfTable = $dbu->getTableForItemType( __CLASS__);
       //$itemTypeTaskTable = getTableForItemType( $itemtype );
 
+      $res = $DB->request([
+                     'SELECT' => $selfTable.'.items_id AS taskID',
+                     'FROM'   => $selfTable,
+                     'WHERE'  => [
+                        'AND' => [
+                           $selfTable.'del_thread_status' => self::OPEN,
+                           $selfTable.'plugin_processmaker_cases_id' =>$case_id
+                        ]
+                     ]
+         ]);
       $query = "SELECT `$selfTable`.`items_id` as taskID from $selfTable
                   WHERE `$selfTable`.`del_thread_status` = '".self::OPEN."' AND `$selfTable`.`plugin_processmaker_cases_id` = '$case_id';";
 
       //$query = "SELECT $itemTypeTaskTable.id as taskID from $itemTypeTaskTable
       //            INNER JOIN $selfTable on $selfTable.items_id=$itemTypeTaskTable.id
       //            WHERE $itemTypeTaskTable.state=1 and $selfTable.plugin_processmaker_cases_id='$case_id';";
-      foreach ($DB->request($query) as $row) {
+      //foreach ($DB->request($query) as $row) {
+      foreach ($res as $row) {
          $ret[$row['taskID']]=$row['taskID'];
       }
       return $ret;
@@ -164,8 +175,17 @@ class PluginProcessmakerTask extends CommonITILTask
 
          // get all tasks that are OPEN for this case
          $tasks = [];
+         $res = $DB->request(
+                        'glpi_plugin_processmaker_tasks', [
+                           'AND' => [
+                              'plugin_processmaker_cases_id' => $case->fields['id'],
+                              'del_thread_status'            => 'OPEN'
+                           ]
+                        ]
+            );
          $query = "SELECT * FROM `glpi_plugin_processmaker_tasks` WHERE `plugin_processmaker_cases_id`={$case->fields['id']} AND `del_thread_status`='OPEN'";
-         foreach ($DB->request($query) as $task) {
+         //foreach ($DB->request($query) as $task) {
+         foreach ($res as $task) {
             $tasks[$task['del_index']] = $task;
          }
 
@@ -200,9 +220,21 @@ class PluginProcessmakerTask extends CommonITILTask
          }
 
          foreach ($main_tasks as $task) {
-            $res = $PM_DB->query("SELECT APP_UID FROM SUB_APPLICATION WHERE APP_PARENT='{$case->fields['case_guid']}' AND DEL_INDEX_PARENT={$task->delIndex} AND SA_STATUS='ACTIVE'");
-            if ($res && $PM_DB->numrows($res) == 1) {
-               $row = $PM_DB->fetch_assoc($res);
+            $res = $PM_DB->request([
+                              'SELECT' => 'APP_UID',
+                              'FROM'   => 'SUB_APPLICATION',
+                              'WHERE'  => [
+                                 'AND' => [
+                                    'APP_PARENT'       => $case->fields['case_guid'],
+                                    'DEL_INDEX_PARENT' => $task->delIndex,
+                                    'SA_STATUS'        => 'ACTIVE'
+                                 ]
+                              ]
+               ]);
+            //$res = $PM_DB->query("SELECT APP_UID FROM SUB_APPLICATION WHERE APP_PARENT='{$case->fields['case_guid']}' AND DEL_INDEX_PARENT={$task->delIndex} AND SA_STATUS='ACTIVE'");
+            //if ($res && $PM_DB->numrows($res) == 1) {
+            if ($row = $res->next() && $res->numrows() == 1) {
+               //$row = $PM_DB->fetch_assoc($res);
                $loc_case = new PluginProcessmakerCase;
                $loc_case->getFromGUID($row['APP_UID']);
                $tab[$loc_case->getID()."-".$task->delIndex] = "<i><sub>> ".$task->taskName."</sub></i>";
@@ -253,18 +285,34 @@ class PluginProcessmakerTask extends CommonITILTask
 
          // get all tasks that are OPEN for any sub-case of this case
          $sub_tasks = [];
-         $query = "SELECT `glpi_plugin_processmaker_tasks`.*  FROM `glpi_plugin_processmaker_tasks`
-                  WHERE `glpi_plugin_processmaker_tasks`.`plugin_processmaker_cases_id`={$matches['cases_id']} AND `del_thread_status`='OPEN'";
-         foreach ($DB->request($query) as $task) {
+         $res = $DB->request(
+                        'glpi_plugin_processmaker_tasks AS ppt',
+                        ['AND' => [
+                           'ppt.plugin_processmaker_cases_id' => $matches['cases_id'],
+                           'del_thread_status'  => 'OPEN']
+                        ]
+                     );
+         //$query = "SELECT `glpi_plugin_processmaker_tasks`.*  FROM `glpi_plugin_processmaker_tasks`
+         //         WHERE `glpi_plugin_processmaker_tasks`.`plugin_processmaker_cases_id`={$matches['cases_id']} AND `del_thread_status`='OPEN'";
+         //foreach ($DB->request($query) as $task) {
+         foreach ($res as $task) {
             $sub_tasks[$task['plugin_processmaker_cases_id']][$task['del_index']] = $task;
          }
          $sub_case = new PluginProcessmakerCase;
          $sub_case->getFromDB($matches['cases_id']);
          $sub_case_url = $sub_case->getLinkURL().'&forcetab=PluginProcessmakerTask$';
 
-         $query = "SELECT `DEL_INDEX`, `DEL_DELEGATE_DATE` FROM `APP_DELEGATION` WHERE `APP_UID`='{$sub_case->fields['case_guid']}'";
+         $res = $PM_DB->request([
+                           'SELECT' => ['DEL_INDEX', 'DEL_DELEGATE_DATE'],
+                           'FROM'   => 'APP_DELEGATION',
+                           'WHERE'  => [
+                              'APP_UID' => $sub_case->fields['case_guid']
+                           ]
+            ]);
+         //$query = "SELECT `DEL_INDEX`, `DEL_DELEGATE_DATE` FROM `APP_DELEGATION` WHERE `APP_UID`='{$sub_case->fields['case_guid']}'";
          $sub_tasks_pm = [];
-         foreach ($PM_DB->request($query) as $row) {
+         //foreach ($PM_DB->request($query) as $row) {
+         foreach ($res as $row) {
             $sub_tasks_pm[$row['DEL_INDEX']] = $row['DEL_DELEGATE_DATE'];
          }
 
