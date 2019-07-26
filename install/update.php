@@ -11,7 +11,9 @@ function processmaker_update() {
       include_once(GLPI_ROOT."/plugins/processmaker/inc/config.class.php");
       $config = PluginProcessmakerConfig::getInstance();
       $current_version = $config->fields['db_version'];
-      if (empty($current_version)) $current_version = '2.4.1';
+      if (empty($current_version)) {
+         $current_version = '2.4.1';
+      }
    }
 
    switch ($current_version) {

@@ -2,7 +2,7 @@
 
 // used for case cancellation
 define("CANCEL", 256);
-define('PROCESSMAKER_VERSION', '3.4.10');
+define('PROCESSMAKER_VERSION', '3.4.12');
 
 // Init the hooks of the plugins -Needed
 function plugin_init_processmaker() {
@@ -15,9 +15,11 @@ function plugin_init_processmaker() {
 
    Plugin::registerClass('PluginProcessmakerProcessmaker');
 
-   Plugin::registerClass('PluginProcessmakerCase', ['addtabon' => $objects]);
+   Plugin::registerClass('PluginProcessmakerCase', ['addtabon' => $objects, 'notificationtemplates_types'  => true]);
 
-   Plugin::registerClass('PluginProcessmakerTaskCategory');
+   Plugin::registerClass('PluginProcessmakerTask', ['notificationtemplates_types'  => true]);
+
+   Plugin::registerClass('PluginProcessmakerTaskCategory', ['addtabon' => 'TaskCategory']);
 
    if (Session::haveRightsOr("config", [READ, UPDATE])) {
       Plugin::registerClass('PluginProcessmakerConfig', ['addtabon' => 'Config']);

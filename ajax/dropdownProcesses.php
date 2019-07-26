@@ -69,9 +69,9 @@ if ($DB->numrows($result)) {
    while ($data = $DB->fetch_array($result)) {
       $process_entities = PluginProcessmakerProcess::getEntitiesForProfileByProcess($data["id"], $_SESSION['glpiactiveprofile']['id'], true);
       $can_add = $data['max_cases_per_item'] == 0 || !isset($count_cases_per_item[$data["id"]]) || $count_cases_per_item[$data["id"]] < $data['max_cases_per_item'];
-      if ($processall 
+      if ($processall
           || ($data['maintenance'] != 1
-              && in_array( $_REQUEST["entity_restrict"], $process_entities) 
+              && in_array( $_REQUEST["entity_restrict"], $process_entities)
               && $can_add) ) {
 
          array_push( $processes, ['id'   => $data["id"],

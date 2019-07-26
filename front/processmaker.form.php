@@ -14,7 +14,7 @@ switch ($_POST["action"]) {
                $case = new PluginProcessmakerCase;
                if ($case->getFromGUID($resultCase->caseId)) {
                   $link         = $case->getLinkURL();
-                  $task = new PluginProcessmakerTask();
+                  $task = new PluginProcessmakerTask($_POST['itemtype'].'Task');
                   $task->getFromDBByQuery(" WHERE `plugin_processmaker_cases_id`=".$case->getID()); // normally there is only one and only one first task
                   //$link .= '&forcetab=PluginProcessmakerTask$'.$task->getID();
                   Session::setActiveTab('PluginProcessmakerCase', 'PluginProcessmakerTask$'.$task->getID());

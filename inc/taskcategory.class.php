@@ -18,11 +18,19 @@ class PluginProcessmakerTaskCategory extends CommonDBTM
 {
 
    function getTabNameForItem(CommonGLPI $item, $withtemplate = 0) {
-      return __('Task List', 'processmaker');
+      if ($item->getType() == 'TaskCategory') {
+         $pmtaskcat = new PluginProcessmakerTaskCategory;
+         if ($pmtaskcat->getFromDBbyCategory($item->fields['id'])) {
+            return __('Process task', 'processmaker');
+         } else {
+            return ''; // means no tab
+         }
+      }
+      return __('Task list', 'processmaker');
    }
 
 
-   static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0) {
+   static function displayTabContentForProcess(CommonGLPI $item, $tabnum = 1, $withtemplate = 0) {
       global $DB, $CFG_GLPI;
 
       self::title($item);
@@ -86,6 +94,114 @@ class PluginProcessmakerTaskCategory extends CommonDBTM
       return true;
    }
 
+
+   /**
+    * Summary of displayTabContentForTaskCategory
+    * @param CommonGLPI $item 
+    * @param mixed $tabnum 
+    * @param mixed $withtemplate 
+    * @return boolean
+    */
+   static function displayTabContentForTaskCategory(CommonGLPI $item, $tabnum = 1, $withtemplate = 0) {
+      global $DB, $CFG_GLPI;
+
+      $is_taskcat = false;
+      $processes_id = 0;
+      $pmtaskcat = new PluginProcessmakerTaskCategory;
+      $is_taskcat = $pmtaskcat->getFromDBbyCategory($item->fields['id']);
+      $processes_id = $pmtaskcat->fields['plugin_processmaker_processes_id'];
+
+      echo "<div class='center'><br><table class='tab_cadre_fixehov'>";
+
+      echo "<tr><th colspan='8'>".__('Process task', 'processmaker')."</th></tr>";
+      echo "<tr><th>".__('Process name', 'processmaker')."</th>";
+      echo "<th>".__('Task name', 'processmaker')."</th>";
+
+      echo "<th>".__('Complete name')."</th>" .
+      "<th>".__('Start', 'processmaker')."</th>" .
+      "<th>".__('Task GUID', 'processmaker')."</th>" .
+      "<th>".__('Comments')."</th>" .
+      "<th>".__('Active')."</th>" .
+      "<th>".__('Sub-process', 'processmaker')."</th>" .
+      "</tr>";
+
+      $query = "SELECT pm.pm_task_guid, pm.taskcategories_id, pm.`is_start`, glp.name as 'pname', gl.name, gl.completename, gl.`comment`, pm.is_active, pm.is_subprocess FROM glpi_plugin_processmaker_taskcategories AS pm
+                  LEFT JOIN glpi_taskcategories AS gl ON pm.taskcategories_id=gl.id
+                  LEFT JOIN glpi_taskcategories AS glp ON glp.id=gl.taskcategories_id
+                  WHERE pm.taskcategories_id=".$item->getID().";";
+
+      foreach ($DB->request($query) as $taskCat) {
+         echo "<tr class='tab_bg_1'>";
+
+         echo "<td class='b'><a href='";
+         echo Toolbox::getItemTypeFormURL('PluginProcessmakerProcess') . "?id=" . $processes_id . "'>" . $taskCat['pname'];
+         if ($_SESSION["glpiis_ids_visible"]) {
+            echo " (" . $processes_id . ")";
+         }
+         echo "</a></td>";
+         echo "<td class='b'>";
+         echo  $taskCat['name'];
+
+         if ($_SESSION["glpiis_ids_visible"]) {
+            echo " (" . $taskCat['taskcategories_id'] . ")";
+         }
+         echo "</td>";
+
+         echo "<td>" . $taskCat['completename'] . "</td>";
+
+         echo "<td class='center'>";
+         if ($taskCat['is_start']) {
+            echo "<img src='".$CFG_GLPI["root_doc"]."/pics/ok.png' width='14' height='14' alt=\"".
+            __('Start', 'processmaker')."\">";
+         }
+         echo "</td>";
+
+         echo "<td >".$taskCat['pm_task_guid']."</td>";
+
+         echo "<td>".$taskCat['comment']."</td>";
+
+         echo "<td class='center'>";
+         if ($taskCat['is_active']) {
+            echo "<img src='".$CFG_GLPI["root_doc"]."/pics/ok.png' width='14' height='14' alt=\"".
+            __('Active')."\">";
+         }
+         echo "</td>";
+
+         echo "<td class='center'>";
+         if ($taskCat['is_subprocess']) {
+            echo "<img src='".$CFG_GLPI["root_doc"]."/pics/ok.png' width='14' height='14' alt=\"".
+            __('Sub-process', 'processmaker')."\">";
+         }
+         echo "</td>";
+
+         echo "</tr>";
+      }
+      echo "</table></div>";
+
+      return true;
+   }
+
+
+   /**
+    * Summary of displayTabContentForItem
+    * @param CommonGLPI $item 
+    * @param mixed $tabnum 
+    * @param mixed $withtemplate 
+    * @return boolean
+    */
+   static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0) {
+      $ret = false;
+      switch ($item->getType()) {
+         case 'PluginProcessmakerProcess':
+            $ret = self::displayTabContentForProcess($item, $tabnum, $withtemplate);
+            break;
+         case 'TaskCategory':
+            $ret = self::displayTabContentForTaskCategory($item, $tabnum, $withtemplate);
+            break;
+      }
+      return $ret;
+   }
+
     /**
      * Print a good title for task categories tab
      * add button for re-synchro of taskcategory list (only if rigths are w)
@@ -103,7 +219,6 @@ class PluginProcessmakerTaskCategory extends CommonDBTM
          }
          Html::displayTitle($pic, $title, "", $buttons);
       }
-
    }
 
     //function getLinkItemFromExternalID($extId) {

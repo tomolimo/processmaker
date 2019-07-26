@@ -752,7 +752,12 @@ class PluginProcessmakerProcess extends CommonDBTM {
       }
 
       if (strlen($search)>0 && $search!=$CFG_GLPI["ajax_wildcard"]) {
-         $where .= " AND (glpi_plugin_processmaker_processes.name $search
+         if ($where == '') {
+            $where = ' WHERE ';
+         } else {
+            $where .= ' AND ';
+         }
+         $where .= " (glpi_plugin_processmaker_processes.name $search
                         OR glpi_plugin_processmaker_processes.comment $search) ";
       }
 
