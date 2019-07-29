@@ -1,4 +1,4 @@
-﻿//debugger;
+//debugger;
 // To manage submits to case.front.php
 var GLPI_HTTP_CASE_FORM = window.location.href.replace(window.location.search, ''); //window.location.href.split('/', loc_split.length - 2).join('/') + '/plugins/processmaker/front/case.front.php'; // http://hostname/glpi/...
 // to manage reloads

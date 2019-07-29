@@ -114,8 +114,8 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    static function getAllPMErrorArray() {
 
       $tab = [self::ERROR_CREATING_CASE  => _x('errors', 'Error creating case!', 'processmaker'),
-                   self::ERROR_NO_RIGHTS      => _x('errors', 'Can\'t create case: no rights for it!', 'processmaker'),
-                   self::ERROR_CREATING_CASE2 => _x('errors', 'Error creating case!', 'processmaker')];
+              self::ERROR_NO_RIGHTS      => _x('errors', 'Can\'t create case: no rights for it!', 'processmaker'),
+              self::ERROR_CREATING_CASE2 => _x('errors', 'Error creating case!', 'processmaker')];
 
       return $tab;
    }
@@ -1111,12 +1111,12 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                      }
 
                      // do not send notifications
-                     $donotif = self::saveNotification(false);
+                     $donotif = PluginProcessmakerNotificationTargetProcessmaker::saveNotificationState(false);
 
                      // now manage tasks associated with item
                      $PM_SOAP->claimTask( $postdata['APP_UID'], $postdata['DEL_INDEX'], $users_id );
 
-                     self::restoreNotification($donotif);
+                     PluginProcessmakerNotificationTargetProcessmaker::restoreNotificationState($donotif);
 
                   }
 
@@ -1594,9 +1594,9 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
             $glpi_item_user = $dbu->getItemForItemtype( $glpi_item->getType() . "_User" );
 
             // do not send notifications
-            $donotif = self::saveNotification(false);
+            $donotif = PluginProcessmakerNotificationTargetProcessmaker::saveNotificationState(false);
             $glpi_item_user->add( [ $glpi_item::getForeignKeyField() => $glpi_item->getId(), 'users_id' => $techId, 'type' => CommonITILActor::OBSERVER, '_disablenotif' => true ] );
-            self::restoreNotification($donotif);
+            PluginProcessmakerNotificationTargetProcessmaker::restoreNotificationState($donotif);
             return true;
          }
       }
@@ -1745,9 +1745,9 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                                         'field'       => 'begin'];
       }
 
-      $donotif = self::saveNotification(false); // do not send notification yet as the PluginProcessmakerTask is not yet added to DB
+      $donotif = PluginProcessmakerNotificationTargetProcessmaker::saveNotificationState(false); // do not send notification yet as the PluginProcessmakerTask is not yet added to DB
       $glpi_task->add( Toolbox::addslashes_deep( $input ) );
-      self::restoreNotification($donotif);
+      PluginProcessmakerNotificationTargetProcessmaker::restoreNotificationState($donotif);
 
       // to prevent error message for overlapping planning
       if (isset($_SESSION["MESSAGE_AFTER_REDIRECT"][WARNING])) {
@@ -1768,31 +1768,37 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       }
 
       // send notification if needed for new task as now we have the PluginProcessmakerTask in the DB
-      $donotif = self::saveNotification($options['notif']);
+      $donotif = PluginProcessmakerNotificationTargetProcessmaker::saveNotificationState($options['notif']);
+      // Notification management
       $item = new $itemtype;
       $item->getFromDB($items_id);
-      NotificationEvent::raiseEvent('add_task', $item, ['task_id' => $glpi_task->getID(), 'is_private' => isset($glpi_task->fields['is_private']) ? $glpi_task->fields['is_private'] : 0]);
-      self::restoreNotification($donotif);
-
-   }
-
-
-   private static function saveNotification($donotif) {
-      global $CFG_GLPI;
-      // $CFG_GLPI["use_notifications"] is available since 9.2
-      $savenotif = isset($CFG_GLPI["use_notifications"]) ? $CFG_GLPI["use_notifications"] : $CFG_GLPI["use_mailing"];
-      if (!$donotif) {
-         isset($CFG_GLPI["use_notifications"]) ? $CFG_GLPI["use_notifications"] = false : $CFG_GLPI["use_mailing"] = false;
+      // search if at least one active notification is existing for that pm task with that event 'task_update_'.$glpi_task->fields['taskcategories_id']
+      $res = PluginProcessmakerNotificationTargetTask::getNotifications('task_add', $glpi_task->fields['taskcategories_id'], $item->fields['entities_id']);
+      if ($res['notifications'] && count($res['notifications']) > 0) {
+         $pm_task = new PluginProcessmakerTask($glpi_task->getType());
+         $pm_task->getFromDB($glpi_task->getId());
+         NotificationEvent::raiseEvent($res['event'],
+                                       $pm_task,
+                                       ['plugin_processmaker_cases_id' => $cases_id,
+                                        'itemtype'    => $glpi_task->getType(),
+                                        'task_id'     => $glpi_task->getID(),
+                                        'is_private'  => isset($glpi_task->fields['is_private']) ? $glpi_task->fields['is_private'] : 0,
+                                        'entities_id' => $item->fields['entities_id']
+                                       ]);
+      } else {
+         NotificationEvent::raiseEvent('add_task',
+                                       $item,
+                                       ['plugin_processmaker_cases_id' => $cases_id,
+                                        'itemtype'                     => $itemtype,
+                                        'task_id'                      => $glpi_task->getID(),
+                                        'is_private'                   => isset($glpi_task->fields['is_private']) ? $glpi_task->fields['is_private'] : 0
+                                       ]);
       }
-      return $savenotif;
+
+      PluginProcessmakerNotificationTargetProcessmaker::restoreNotificationState($donotif);
+
    }
 
-
-   private static function restoreNotification($savenotif) {
-      global $CFG_GLPI;
-      // $CFG_GLPI["use_notifications"] is available since 9.2
-      isset($CFG_GLPI["use_notifications"]) ? $CFG_GLPI["use_notifications"] = $savenotif : $CFG_GLPI["use_mailing"] = $savenotif;
-   }
 
    /**
    * Summary of add1stTask
@@ -2035,9 +2041,9 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                     //'groups_id_tech' => 0,
                     'content'        => $DB->escape($glpi_task->fields[ 'content' ].$options['txtToAppend'])
                    ];
-         $donotif = self::saveNotification($options['notif']);
+         $donotif = PluginProcessmakerNotificationTargetProcessmaker::saveNotificationState($options['notif']);
          $glpi_task->update($params);
-         self::restoreNotification($donotif);
+         PluginProcessmakerNotificationTargetProcessmaker::restoreNotificationState($donotif);
 
          // Close the task
          $DB->query("UPDATE glpi_plugin_processmaker_tasks SET del_thread_status = '".PluginProcessmakerTask::CLOSED."' WHERE id = {$row['id']}");
@@ -2072,10 +2078,11 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
          $glpi_item = $dbu->getItemForItemtype( $itemType );
          $glpi_item->getFromDB( $glpi_task->fields[ getForeignKeyFieldForItemType( $itemType ) ] );
 
-         $glpi_task->update( [ 'id' => $row['items_id'],
-                                    $glpi_item->getForeignKeyField() => $glpi_item->getId(),
-                                    'users_id_tech' => (isset($users_id_tech)?$users_id_tech: Session::getLoginUserID()),
-                                    'groups_id_tech' => 0 ]);
+         $glpi_task->update( [ 'id'                             => $row['items_id'],
+                               $glpi_item->getForeignKeyField() => $glpi_item->getId(),
+                               'users_id_tech'                  => (isset($users_id_tech)?$users_id_tech: Session::getLoginUserID()),
+                               'groups_id_tech'                 => 0,
+                               'update'                         => true]);
       }
    }
 
@@ -2524,9 +2531,9 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    public static function plugin_item_get_data_processmaker($item) {
       global $_SESSION, $CFG_GLPI;
       if (isset( $item->data ) && isset( $item->data['tasks'] )) {
+         $pmtask_itemtype = $item->obj->getType().'Task';
          $pmtask = new PluginProcessmakerTask($pmtask_itemtype);
          foreach ($item->data['tasks'] as &$task) {
-            $pmtask_itemtype = $item->obj->getType().'Task';
             $pmtask_items_id = $task['##task.id##'];
 
             // for each task, we must check if it is in our task table
@@ -2771,11 +2778,17 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                         "GLPI_ITEM_SET_SOLUTION_TYPE_ID",
                         "GLPI_ITEM_APPEND_TO_SOLUTION_DESCRIPTION",
                         "GLPI_ITEM_INITIAL_DUE_DATE",
-                        "GLPI_ITEM_DUE_DATE"
+                        "GLPI_ITEM_DUE_DATE",
+                        "GLPI_SEND_EMAIL"
                        ];
 
       // now tries to get some variables to setup content for new task and to append text to solved task
       $casevariablevalues = $myCase->getVariables($casevariables);
+
+      $sendemail = '';
+      if (array_key_exists( 'GLPI_SEND_EMAIL', $casevariablevalues ) && $casevariablevalues[ 'GLPI_SEND_EMAIL' ] != '') {
+         $sendemail = json_decode($casevariablevalues[ 'GLPI_SEND_EMAIL' ], true);
+      }
 
       $itemSetStatus = '';
       if (array_key_exists( 'GLPI_ITEM_SET_STATUS', $casevariablevalues )) {
@@ -3036,7 +3049,16 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                }
             }
 
-         }
+      // send email if requested
+      if (is_array($sendemail)) {
+         NotificationEvent::raiseEvent('send_email',
+                                       $myCase,
+                                       ['glpi_send_email' => $sendemail,
+                                        'case'            => $myCase
+                                       ]);
+      }
+
+   }
 
       } else {
          // must check if current case is a sub-process, and if it has ended, then must reflect parent case into the current item.
@@ -3051,7 +3073,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                foreach ($parentCaseInfo->currentUsers as $open_task) {
                   // must check if $open_task is not is_subprocess and is not already existing in the item
                   $locTaskCat = new PluginProcessmakerTaskCategory;
-                  $locTask = new PluginProcessmakerTask();
+                  $locTask = new PluginProcessmakerTask($itemtype.'Task');
 
                   $locTaskRestrict=[
                                          'WHERE'  => [
@@ -3091,6 +3113,15 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
       // evolution of case status: DRAFT, TO_DO, COMPLETED, CANCELLED
       $myCase->update( [ 'id' => $myCase->getID(), 'case_status' => $caseInfo->caseStatus, 'name' => $caseInfo->caseName ] );
+
+      // send email if requested
+      if (is_array($sendemail)) {
+         NotificationEvent::raiseEvent('send_email',
+                                       $myCase,
+                                       ['glpi_send_email' => $sendemail,
+                                        'case'            => $myCase
+                                       ]);
+      }
 
    }
 

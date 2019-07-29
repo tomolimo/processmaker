@@ -1,4 +1,4 @@
-﻿$(function () {
+$(function () {
    $(document).ajaxComplete(function (event, jqXHR, ajaxOptions) {
       //debugger;
       var pattern = /##processmaker.*(##|...)/g;
