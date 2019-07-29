@@ -79,13 +79,13 @@ $users = [];
 $count = 0;
 //if ($DB->numrows($result)) {
 //   while ($data = $DB->fetch_assoc($result)) {
-if ($res->numrows()) {
+//if ($res->numrows()) {
    foreach ($res as $data) {
       $users[$data["id"]] = $dbu->formatUserName($data["id"], $data["name"], $data["realname"],
                                            $data["firstname"]);
       $logins[$data["id"]] = $data["name"];
    }
-}
+//}
 
 if (!function_exists('dpuser_cmp')) {
    function dpuser_cmp($a, $b) {

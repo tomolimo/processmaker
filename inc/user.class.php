@@ -23,7 +23,7 @@ class PluginProcessmakerUser extends CommonDBTM {
      * @param $used array: Already used items ID: not to display in dropdown
      * @param $search pattern
      *
-     * @return mysql result set.
+    * @return DBmysqlIterator
      **/
    static function getSqlSearchResult ($taskId, $count = true, $right = "all", $entity_restrict = -1, $value = 0,
                                         $used = [], $search = '', $limit = '') {
@@ -104,12 +104,12 @@ class PluginProcessmakerUser extends CommonDBTM {
 
          //$where .= " AND `glpi_users`.`id` NOT IN (";
          if (is_numeric($value)) {
-            $first = false;
+            //$first = false;
             //$where .= $value;
             $used[] = $value;
             //$query2['WHERE']['AND']['NOT']['glpi_users.id'] = $value;
          } else {
-            $first = true;
+            //$first = true;
          }
          //$query2['WHERE']['AND']['NOT']['glpi_users.id'] = $used;
          //foreach ($used as $val) {
@@ -258,7 +258,7 @@ class PluginProcessmakerUser extends CommonDBTM {
      *    - used : array / Already used items ID: not to display in dropdown (default empty)
      *    - on_change : string / value to transmit to "onChange"
      *
-     * @param $options possible options
+     * @param $options array of possible options
      *
      * @return int (print out an HTML select box)
      **/

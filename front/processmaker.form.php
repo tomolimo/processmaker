@@ -14,7 +14,7 @@ switch ($_POST["action"]) {
                $case = new PluginProcessmakerCase;
                if ($case->getFromGUID($resultCase->caseId)) {
                   $link         = $case->getLinkURL();
-                  $task = new PluginProcessmakerTask();
+                  $task = new PluginProcessmakerTask($_POST['itemtype'].'Task');
 
                   $task->getFromDBByRequest([
                                   'WHERE'  => [

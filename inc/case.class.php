@@ -265,27 +265,50 @@ class PluginProcessmakerCase extends CommonDBTM {
     */
    public function reassignTask ($delIndex, $newDelIndex, $delThread, $newDelThread, $newTech) {
       global $DB;
-      $res = $DB->request('glpi_plugin_processmaker_tasks', [
-                          'AND' =>  [
-                             'plugin_processmaker_cases_id' => $this->getID(),
-                             'del_index' => $delIndex,
-                             'del_thead' => $delThread
-                          ]
-                          ]);
-      //$query = "SELECT * FROM glpi_plugin_processmaker_tasks WHERE plugin_processmaker_cases_id={$this->getID()} AND del_index=$delIndex AND del_thread=$delThread; ";
-      //$res = $DB->query($query);
-      //if ($DB->numrows($res) > 0) {
-      //   $row = $DB->fetch_array( $res );
-      if ($row = $res->next()) {
-         $glpi_task = new $row['itemtype'];
-         $glpi_task->getFromDB( $row['items_id'] );
 
-         $itilobject_itemtype = $this->fields['itemtype']; //str_replace( 'Task', '', $row['itemtype'] );
+      $dbu = new DbUtils;
+      $pm_task_row = $dbu->getAllDataFromTable(PluginProcessmakerTask::getTable(), ['plugin_processmaker_cases_id' => $this->getID(), 'del_index' => $delIndex, 'del_thread' => $delThread]);
+      if ($pm_task_row && count($pm_task_row) == 1) {
+         $pm_task_row = array_shift($pm_task_row);
+         $glpi_task = new $pm_task_row['itemtype'];
+         $glpi_task->getFromDB( $pm_task_row['items_id'] );
+
+         $itilobject_itemtype = $this->fields['itemtype'];
          $foreignkey = getForeignKeyFieldForItemType( $itilobject_itemtype );
 
          PluginProcessmakerProcessmaker::addWatcher( $itilobject_itemtype, $glpi_task->fields[ $foreignkey ], $newTech );
 
-         $glpi_task->update( [ 'id' => $row['items_id'], $foreignkey => $glpi_task->fields[ $foreignkey ],  'users_id_tech' => $newTech ]);
+         $donotif = PluginProcessmakerNotificationTargetProcessmaker::saveNotificationState(false); // do not send notification yet
+         $glpi_task->update( ['id' => $glpi_task->getID(), $foreignkey => $glpi_task->fields[$foreignkey], 'users_id_tech' => $newTech, 'update' => true] );
+         PluginProcessmakerNotificationTargetProcessmaker::restoreNotificationState($donotif);
+
+         // Notification management
+         // search if at least one active notification is existing for that pm task with that event 'task_update_'.$glpi_task->fields['taskcategories_id']
+         $res = PluginProcessmakerNotificationTargetTask::getNotifications('task_update', $glpi_task->fields['taskcategories_id'], $this->fields['entities_id']);
+         if ($res['notifications'] && count($res['notifications']) > 0) {
+            $pm_task = new PluginProcessmakerTask($pm_task_row['itemtype']);
+            $pm_task->getFromDB($pm_task_row['items_id']);
+            NotificationEvent::raiseEvent($res['event'],
+                                          $pm_task,
+                                          ['plugin_processmaker_cases_id' => $this->getID(),
+                                           'itemtype'          => $pm_task_row['itemtype'],
+                                           'task_id'           => $glpi_task->getID(),
+                                           'old_users_id_tech' => $glpi_task->oldvalues['users_id_tech'],
+                                           'is_private'        => isset($glpi_task->fields['is_private']) ? $glpi_task->fields['is_private'] : 0,
+                                           'entities_id'       => $this->fields['entities_id'],
+                                           'case'              => $this
+                                          ]);
+         } else {
+            $item = new $itilobject_itemtype;
+            $item->getFromDB($glpi_task->fields[$foreignkey]);
+            NotificationEvent::raiseEvent('update_task',
+                                          $item,
+                                          ['plugin_processmaker_cases_id' => $this->getID(),
+                                           'itemtype'                     => $pm_task_row['itemtype'],
+                                           'task_id'                      => $glpi_task->getID(),
+                                           'is_private'                   => isset($glpi_task->fields['is_private']) ? $glpi_task->fields['is_private'] : 0
+                                          ]);
+         }
 
          // then update the delIndex and delThread
          //$query = "UPDATE glpi_plugin_processmaker_tasks SET del_index = $newDelIndex, del_thread = $newDelThread WHERE id={$row['id']}; ";
@@ -294,7 +317,7 @@ class PluginProcessmakerCase extends CommonDBTM {
                         'del_index'   => $newDelIndex,
                         'del_thread'  => $newDelThread
                         ], [
-                        'id' => $row['id']
+                        'id' => $pm_task_row['id']
                         ]
                      );
       }
@@ -694,14 +717,14 @@ class PluginProcessmakerCase extends CommonDBTM {
          $condition[] = ['is_active' => 1];
          if ($itemtype == 'Ticket') {
             $condition[] = ['is_incident' => 1];
-            $is_itemtype = "AND is_incident=1";
+            //$is_itemtype = "AND is_incident=1";
             if ($item->fields['type'] == Ticket::DEMAND_TYPE) {
                $condition[] = ['is_request' => 1];
-               $is_itemtype = "AND is_request=1";
+               //$is_itemtype = "AND is_request=1";
             }
          } else {
             $condition[] = ['is_'.strtolower($itemtype) => 1];
-            $is_itemtype = "AND is_".strtolower($itemtype)."=1";
+            //$is_itemtype = "AND is_".strtolower($itemtype)."=1";
          }
          PluginProcessmakerProcess::dropdown(['value' => 0,
                                               'entity' => $item->fields['entities_id'],

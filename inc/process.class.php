@@ -190,7 +190,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
                                  ] );
             }
             // here we should take into account translations if any
-            if ( isset($taskArray[ $taskGUID ])) {
+            if (isset($taskArray[ $taskGUID ])) {
                foreach ($taskArray[ $taskGUID ] as $langTask => $taskL) {
                   // look for 'name' field
                   if ($loc_id = DropdownTranslation::getTranslationID( $taskCat->getID(), 'TaskCategory', 'name', $langTask )) {
@@ -318,7 +318,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
                );
          //$query = "SELECT * FROM `".PluginProcessmakerCase::getTable()."` WHERE `plugin_processmaker_processes_id` = ".$key;
          //$res = $DB->query($query);
-         if ($DB->numrows($res) === 0) {
+         if ($res->numrows() === 0) {
             // and if no will delete the process
             $proc->delete(['id' => $key]);
             // delete main taskcat
@@ -815,13 +815,13 @@ class PluginProcessmakerProcess extends CommonDBTM {
    * @param $count true if execute an count(*),
    * @param $search pattern
    *
-   * @return mysql result set.
+   * @return DBmysqlIterator.
    **/
    static function getSqlSearchResult ($count = true, $search = []) {
       global $DB, $CFG_GLPI;
       $query = [];
-      $where = '';
-      $orderby = '';
+      //$where = '';
+      //$orderby = '';
 
       if (isset($_REQUEST['condition']) && isset($_SESSION['glpicondition'][$_REQUEST['condition']])) {
          //$where = ' WHERE '.$_SESSION['glpicondition'][$_REQUEST['condition']]; //glpi_plugin_processmaker_processes.is_active=1 ';
@@ -838,7 +838,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
          //$orderby = " ORDER BY glpi_plugin_processmaker_processes.name ASC";
       }
 
-      if (!empty($search) && $search!=$CFG_GLPI["ajax_wildcard"]) {
+      if (!empty($search) && $search != $CFG_GLPI["ajax_wildcard"]) {
          $query['WHERE']['AND']['OR']['glpi_plugin_processmaker_processes.name'] = $search;
          $query['WHERE']['AND']['OR']['glpi_plugin_processmaker_processes.comment'] = $search;
          //$where .= " AND (glpi_plugin_processmaker_processes.name $search
@@ -847,7 +847,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
       $query['FROM'] = 'glpi_plugin_processmaker_processes';
       //$query = "SELECT $fields FROM glpi_plugin_processmaker_processes ".$where." ".$orderby.";";
       //return $DB->query($query);
-      $r= $DB->request($query);
+      //$r= $DB->request($query);
       return $DB->request($query);
    }
 
@@ -858,7 +858,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
    * @return mixed
    */
    static function getProcessName($pid, $link = 0) {
-      global $DB;
+      global $DB, $CFG_GLPI;
       $process='';
       if ($link==2) {
          $process = ["name"    => "",
@@ -872,8 +872,10 @@ class PluginProcessmakerProcess extends CommonDBTM {
       //if ($result && $DB->numrows($result)==1) {
       //   $data     = $DB->fetch_assoc($result);
       if ($res && $res->numrows() == 1) {
-         $processname = $res['name'];//$data["name"];
-         if ($link==2) {
+//         $processname = $res['name'];//$data["name"];
+         $data = $res->next();
+         $processname = $data["name"];
+         if ($link == 2) {
             $process["name"]    = $processname;
             $process["link"]    = $CFG_GLPI["root_doc"]."/plugins/processmaker/front/process.form.php?id=".$pid;
             $process["comment"] = __('Name')."&nbsp;: ".$processname."<br>".__('Comments').
@@ -908,10 +910,10 @@ class PluginProcessmakerProcess extends CommonDBTM {
                         ]
                      ]
                   ]);
-      $query = "SELECT `entities_id`, `is_recursive`
-                FROM `glpi_plugin_processmaker_processes_profiles`
-                WHERE `plugin_processmaker_processes_id` = '$processes_id'
-                      AND `profiles_id` = '$profiles_id'";
+      //$query = "SELECT `entities_id`, `is_recursive`
+      //          FROM `glpi_plugin_processmaker_processes_profiles`
+      //          WHERE `plugin_processmaker_processes_id` = '$processes_id'
+      //                AND `profiles_id` = '$profiles_id'";
 
       $entities = [];
       //foreach ($DB->request($query) as $data) {
@@ -961,6 +963,5 @@ class PluginProcessmakerProcess extends CommonDBTM {
       echo "</p>";
       echo "</div>";
    }
-
 }
 

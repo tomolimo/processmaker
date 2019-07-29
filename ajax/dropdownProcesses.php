@@ -67,7 +67,7 @@ $result = PluginProcessmakerProcess::getSqlSearchResult(false, $search);
 
 //if ($DB->numrows($result)) {
 //   while ($data = $DB->fetch_array($result)) {
-if ($result->numrows()) {
+//if ($result->numrows()) {
    foreach ($result as $data) {
       $process_entities = PluginProcessmakerProcess::getEntitiesForProfileByProcess($data["id"], $_SESSION['glpiactiveprofile']['id'], true);
       $can_add = $data['max_cases_per_item'] == 0 || !isset($count_cases_per_item[$data["id"]]) || $count_cases_per_item[$data["id"]] < $data['max_cases_per_item'];
@@ -82,7 +82,7 @@ if ($result->numrows()) {
          $count++;
       }
    }
-}
+//}
 
 $ret['results'] = $processes;
 $ret['count']   = $count;

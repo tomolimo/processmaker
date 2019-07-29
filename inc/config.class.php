@@ -326,9 +326,6 @@ class PluginProcessmakerConfig extends CommonDBTM {
             foreach ($res as $row) {
                $pmGroups[ $row['CON_ID'] ] = $row['CON_VALUE'];
             }
-            //foreach ($PM_DB->request( $query ) as $row) {
-            //   $pmGroups[ $row['CON_ID'] ] = $row['CON_VALUE'];
-            //}
             Dropdown::showFromArray( 'pm_group_guid', $pmGroups, ['value' => $config->fields['pm_group_guid']] );
          } else {
             echo "<font color='red'>".__('Not connected');

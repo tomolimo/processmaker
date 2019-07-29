@@ -114,8 +114,8 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    static function getAllPMErrorArray() {
 
       $tab = [self::ERROR_CREATING_CASE  => _x('errors', 'Error creating case!', 'processmaker'),
-                   self::ERROR_NO_RIGHTS      => _x('errors', 'Can\'t create case: no rights for it!', 'processmaker'),
-                   self::ERROR_CREATING_CASE2 => _x('errors', 'Error creating case!', 'processmaker')];
+              self::ERROR_NO_RIGHTS      => _x('errors', 'Can\'t create case: no rights for it!', 'processmaker'),
+              self::ERROR_CREATING_CASE2 => _x('errors', 'Error creating case!', 'processmaker')];
 
       return $tab;
    }
@@ -145,11 +145,20 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       $fu = new ITILFollowup();//new TicketFollowup();
       $fu->getEmpty(); // to get default values
       $input = $fu->fields;
+      if (isset( $txtForFollowup['GLPI_TICKET_FOLLOWUP_CONTENT'] )) {
+         $input['content'] = $DB->escape($txtForFollowup['GLPI_TICKET_FOLLOWUP_CONTENT']);
+      }
       if (isset( $txtForFollowup['GLPI_ITEM_FOLLOWUP_CONTENT'] )) {
          $input['content'] = $DB->escape($txtForFollowup['GLPI_ITEM_FOLLOWUP_CONTENT']);
       }
+      if (isset( $txtForFollowup['GLPI_TICKET_FOLLOWUP_IS_PRIVATE'] )) {
+         $input['is_private'] = $txtForFollowup['GLPI_TICKET_FOLLOWUP_IS_PRIVATE'];
+      }
       if (isset( $txtForFollowup['GLPI_ITEM_FOLLOWUP_IS_PRIVATE'] )) {
          $input['is_private'] = $txtForFollowup['GLPI_ITEM_FOLLOWUP_IS_PRIVATE'];
+      }
+      if (isset( $txtForFollowup['GLPI_TICKET_FOLLOWUP_REQUESTTYPES_ID'] )) {
+         $input['requesttypes_id'] = $txtForFollowup['GLPI_TICKET_FOLLOWUP_REQUESTTYPES_ID'];
       }
       if (isset( $txtForFollowup['GLPI_ITEM_FOLLOWUP_REQUESTTYPES_ID'] )) {
          $input['requesttypes_id'] = $txtForFollowup['GLPI_ITEM_FOLLOWUP_REQUESTTYPES_ID'];
@@ -157,6 +166,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       $input['items_id'] = $itemId;//$input['tickets_id'] = $itemId;
       $input['users_id'] = (isset($users_id) ? $users_id : Session::getLoginUserID( true )); // $this->taskWriter;
       $input['itemtype'] = $itemtype;
+
       $fu->add( $input );
    }
 
@@ -1115,12 +1125,12 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                      }
 
                      // do not send notifications
-                     $donotif = self::saveNotification(false);
+                     $donotif = PluginProcessmakerNotificationTargetProcessmaker::saveNotificationState(false);
 
                      // now manage tasks associated with item
                      $PM_SOAP->claimTask( $postdata['APP_UID'], $postdata['DEL_INDEX'], $users_id );
 
-                     self::restoreNotification($donotif);
+                     PluginProcessmakerNotificationTargetProcessmaker::restoreNotificationState($donotif);
 
                   }
 
@@ -1270,9 +1280,9 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       //if($pmgrp_key = array_search($PM_SOAP->pm_group_guid, array_column($pmGroupList, 'guid'))) {
       //   $pmgroup = $pmGroupList[$pmgrp_key];
       //}
-      foreach ($pmGroupList as $pmGroupL) {
-         if ($pmGroupL->guid == $PM_SOAP->pm_group_guid) {
-            $pmGroup = $pmGroupL;
+      foreach ($pmGroupList as $pmGroupList) {
+         if ($pmGroupList->guid == $PM_SOAP->pm_group_guid) {
+            $pmGroup = $pmGroupList;
             break; // to get the name :)
          }
       }
@@ -1583,7 +1593,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
          if (preg_match($ptnProcessToStart, $str, $matches) > 0) {
             // and it is requested to start a case of process
             $processGuid = $matches[1];
-            $hasCase = self::getCaseIdFromItem( 'Ticket', $parm->fields['id'] );
+            $hasCase = self::hasCase( 'Ticket', $parm->fields['id'] );
             if ($hasCase === false) {
                // check writer
                $writer = new User;
@@ -1642,9 +1652,9 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
             $glpi_item_user = $dbu->getItemForItemtype( $glpi_item->getType() . "_User" );
 
             // do not send notifications
-            $donotif = self::saveNotification(false);
+            $donotif = PluginProcessmakerNotificationTargetProcessmaker::saveNotificationState(false);
             $glpi_item_user->add( [ $glpi_item::getForeignKeyField() => $glpi_item->getId(), 'users_id' => $techId, 'type' => CommonITILActor::OBSERVER, '_disablenotif' => true ] );
-            self::restoreNotification($donotif);
+            PluginProcessmakerNotificationTargetProcessmaker::restoreNotificationState($donotif);
             return true;
          }
       }
@@ -1729,6 +1739,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       $input['users_id'] = $this->taskWriter;
 
       // manage groups
+      $groups_id_tech = 0;
       if ($techId == 0) { // then we must look-up DB to get the group that will be assigned to the task
          $groupname='';
          if ($groupId == 0) {
@@ -1739,17 +1750,17 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                            'WHERE'        => ['AND' => ['TASK_USER.TAS_UID' => $pmTaskId, 'TASK_USER.TU_RELATION' => 2]],
                            'LIMIT'        => 1
                         ]);
-            $query = "SELECT CONTENT.CON_VALUE FROM TASK_USER
-                            JOIN CONTENT ON CONTENT.CON_ID=TASK_USER.USR_UID AND CONTENT.CON_CATEGORY='GRP_TITLE' AND CONTENT.CON_LANG = 'en'
-                            WHERE TASK_USER.TAS_UID='$pmTaskId' AND TASK_USER.TU_RELATION=2 LIMIT 1;";
+            //$query = "SELECT CONTENT.CON_VALUE FROM TASK_USER
+            //                JOIN CONTENT ON CONTENT.CON_ID=TASK_USER.USR_UID AND CONTENT.CON_CATEGORY='GRP_TITLE' AND CONTENT.CON_LANG = 'en'
+            //                WHERE TASK_USER.TAS_UID='$pmTaskId' AND TASK_USER.TU_RELATION=2 LIMIT 1;";
          } else {
             $res = $PM_DB->request([
                            'SELECT' => 'CON_VALUE',
                            'FROM'   => 'CONTENT',
                            'WHERE'  => ['AND' => ['CONTENT.CON_ID' => $groupId, 'CONTENT.CON_CATEGORY' => 'GRP_TITLE', 'CONTENT.CON_LANG' => 'en']]
                         ]);
-            $query = "SELECT CON_VALUE FROM CONTENT
-                            WHERE CONTENT.CON_ID='$groupId' AND CONTENT.CON_CATEGORY='GRP_TITLE' AND CONTENT.CON_LANG='en' ;";
+            //$query = "SELECT CON_VALUE FROM CONTENT
+            //                WHERE CONTENT.CON_ID='$groupId' AND CONTENT.CON_CATEGORY='GRP_TITLE' AND CONTENT.CON_LANG='en' ;";
          }
          // as there is a LIMIT of 1
          // or
@@ -1760,7 +1771,6 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
             $groupname = $onlyrec['CON_VALUE'];
          }
 
-         $groups_id_tech = 0;
          $res = $DB->request([
                   'SELECT' => 'id AS glpi_group_id',
                   'FROM'   => 'glpi_groups',
@@ -1814,9 +1824,9 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                                         'field'       => 'begin'];
       }
 
-      $donotif = self::saveNotification(false); // do not send notification yet as the PluginProcessmakerTask is not yet added to DB
+      $donotif = PluginProcessmakerNotificationTargetProcessmaker::saveNotificationState(false); // do not send notification yet as the PluginProcessmakerTask is not yet added to DB
       $glpi_task->add( Toolbox::addslashes_deep( $input ) );
-      self::restoreNotification($donotif);
+      PluginProcessmakerNotificationTargetProcessmaker::restoreNotificationState($donotif);
 
       // to prevent error message for overlapping planning
       if (isset($_SESSION["MESSAGE_AFTER_REDIRECT"][WARNING])) {
@@ -1838,7 +1848,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                      'plugin_processmaker_cases_id'            => $cases_id,
                      'plugin_processmaker_taskcategories_id'   => $pmtaskcat->fields['id'],
                      'del_index'                               => $delIndex,
-                     'del_thread'                              =>$delThread
+                     'del_thread'                              => $delThread
                      ]);
          //$query = "INSERT INTO glpi_plugin_processmaker_tasks (items_id, itemtype, plugin_processmaker_cases_id, plugin_processmaker_taskcategories_id, del_index, del_thread)
          //            VALUES ({$glpi_task->getId()}, '{$glpi_task->getType()}', $cases_id, {$pmtaskcat->fields['id']}, $delIndex, $delThread);";
@@ -1846,31 +1856,37 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       }
 
       // send notification if needed for new task as now we have the PluginProcessmakerTask in the DB
-      $donotif = self::saveNotification($options['notif']);
+      $donotif = PluginProcessmakerNotificationTargetProcessmaker::saveNotificationState($options['notif']);
+      // Notification management
       $item = new $itemtype;
       $item->getFromDB($items_id);
-      NotificationEvent::raiseEvent('add_task', $item, ['task_id' => $glpi_task->getID(), 'is_private' => isset($glpi_task->fields['is_private']) ? $glpi_task->fields['is_private'] : 0]);
-      self::restoreNotification($donotif);
-
-   }
-
-
-   private static function saveNotification($donotif) {
-      global $CFG_GLPI;
-      // $CFG_GLPI["use_notifications"] is available since 9.2
-      $savenotif = isset($CFG_GLPI["use_notifications"]) ? $CFG_GLPI["use_notifications"] : $CFG_GLPI["use_mailing"];
-      if (!$donotif) {
-         isset($CFG_GLPI["use_notifications"]) ? $CFG_GLPI["use_notifications"] = false : $CFG_GLPI["use_mailing"] = false;
+      // search if at least one active notification is existing for that pm task with that event 'task_update_'.$glpi_task->fields['taskcategories_id']
+      $res = PluginProcessmakerNotificationTargetTask::getNotifications('task_add', $glpi_task->fields['taskcategories_id'], $item->fields['entities_id']);
+      if ($res['notifications'] && count($res['notifications']) > 0) {
+         $pm_task = new PluginProcessmakerTask($glpi_task->getType());
+         $pm_task->getFromDB($glpi_task->getId());
+         NotificationEvent::raiseEvent($res['event'],
+                                       $pm_task,
+                                       ['plugin_processmaker_cases_id' => $cases_id,
+                                        'itemtype'                     => $glpi_task->getType(),
+                                        'task_id'                      => $glpi_task->getID(),
+                                        'is_private'                   => isset($glpi_task->fields['is_private']) ? $glpi_task->fields['is_private'] : 0,
+                                        'entities_id'                  => $item->fields['entities_id']
+                                       ]);
+      } else {
+         NotificationEvent::raiseEvent('add_task',
+                                       $item,
+                                       ['plugin_processmaker_cases_id' => $cases_id,
+                                        'itemtype'                     => $itemtype,
+                                        'task_id'                      => $glpi_task->getID(),
+                                        'is_private'                   => isset($glpi_task->fields['is_private']) ? $glpi_task->fields['is_private'] : 0
+                                       ]);
       }
-      return $savenotif;
+
+      PluginProcessmakerNotificationTargetProcessmaker::restoreNotificationState($donotif);
+
    }
 
-
-   private static function restoreNotification($savenotif) {
-      global $CFG_GLPI;
-      // $CFG_GLPI["use_notifications"] is available since 9.2
-      isset($CFG_GLPI["use_notifications"]) ? $CFG_GLPI["use_notifications"] = $savenotif : $CFG_GLPI["use_mailing"] = $savenotif;
-   }
 
    /**
    * Summary of add1stTask
@@ -2066,7 +2082,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    public function solveTask($cases_id, $delIndex, $options = []) {
       global $DB;
 
-      $query = "SELECT * FROM glpi_plugin_processmaker_tasks WHERE plugin_processmaker_cases_id=$cases_id and del_index=$delIndex; ";
+      //$query = "SELECT * FROM glpi_plugin_processmaker_tasks WHERE plugin_processmaker_cases_id=$cases_id and del_index=$delIndex; ";
       //$res = $DB->query($query);
       $res = $DB->request('glpi_plugin_processmaker_tasks', ['AND' => ['plugin_processmaker_cases_id' => $cases_id, 'del_index' => $delIndex]]);
       //if ($DB->numrows($res) > 0) {
@@ -2115,9 +2131,9 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                     //'groups_id_tech' => 0,
                     'content'        => $DB->escape($glpi_task->fields[ 'content' ].$options['txtToAppend'])
                    ];
-         $donotif = self::saveNotification($options['notif']);
+         $donotif = PluginProcessmakerNotificationTargetProcessmaker::saveNotificationState($options['notif']);
          $glpi_task->update($params);
-         self::restoreNotification($donotif);
+         PluginProcessmakerNotificationTargetProcessmaker::restoreNotificationState($donotif);
 
          // Close the task
          //$DB->query("UPDATE glpi_plugin_processmaker_tasks SET del_thread_status = '".PluginProcessmakerTask::CLOSED."' WHERE id = {$row['id']}");
@@ -2140,7 +2156,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    public function claimTask($cases_id, $delIndex, $users_id_tech = null) {
       global $DB;
       $res = $DB->request('glpi_plugin_processmaker_tasks', ['AND' => ['plugin_processmaker_cases_id' => $cases_id, 'del_index' => $delIndex]]);
-      $query = "SELECT * FROM glpi_plugin_processmaker_tasks WHERE plugin_processmaker_cases_id='$cases_id' and del_index=$delIndex; ";
+      //$query = "SELECT * FROM glpi_plugin_processmaker_tasks WHERE plugin_processmaker_cases_id='$cases_id' and del_index=$delIndex; ";
       //$res = $DB->query($query);
       //if ($DB->numrows($res) > 0) {
       if ($row = $res->next()) {
@@ -2153,82 +2169,101 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
          $glpi_item = $dbu->getItemForItemtype( $itemType );
          $glpi_item->getFromDB( $glpi_task->fields[ getForeignKeyFieldForItemType( $itemType ) ] );
 
-         $glpi_task->update( [ 'id' => $row['items_id'],
-                                    $glpi_item->getForeignKeyField() => $glpi_item->getId(),
-                                    'users_id_tech' => (isset($users_id_tech)?$users_id_tech: Session::getLoginUserID()),
-                                    'groups_id_tech' => 0 ]);
+         $glpi_task->update( [ 'id'                             => $row['items_id'],
+                               $glpi_item->getForeignKeyField() => $glpi_item->getId(),
+                               'users_id_tech'                  => (isset($users_id_tech)?$users_id_tech: Session::getLoginUserID()),
+                               'groups_id_tech'                 => 0,
+                               'update'                         => true]);
       }
    }
 
 
-    /**
-     * Summary of getCaseIdFromItem
-     *      get case id for an id item_id of type item_type (if a case if attached to it)
-     * @param string  $item_type, the type for the item ("Ticket", "Problem", ...)
-     * @param integer $item_id,   the id for the item
-     * @return string the case guid, false if no case is attached to item, or if an error occurred
-     */
-   public static function getCaseIdFromItem ($item_type, $item_id) {
-      global $DB;
-      $res = $DB->request('glpi_plugin_processmaker_cases', ['AND' => ['itemtype' => $item_type, 'items_id' => $item_id]]);
-      $query = "SELECT * FROM glpi_plugin_processmaker_cases WHERE `itemtype` = '$item_type' AND `items_id` = $item_id ;";
-      //  $res = $DB->query($query);
-      //if ($DB->numrows($res) > 0) {
-      //   // case is existing for this item
-      //   // then get info from db
-      //   $row = $DB->fetch_array($res);
-      if ($row = $res->next()) {
-         return $row['id'];
-      }
+   // /**
+   //  * Summary of getCaseIdFromItem
+   //  *      get case id for an id item_id of type item_type (if a case if attached to it)
+   //  * @param string  $item_type, the type for the item ("Ticket", "Problem", ...)
+   //  * @param integer $item_id,   the id for the item
+   //  * @return string the case guid, false if no case is attached to item, or if an error occurred
+   //  */
+   //public static function getCaseIdFromItem ($item_type, $item_id) {
+   //   global $DB;
+   //   $res = $DB->request('glpi_plugin_processmaker_cases', ['AND' => ['itemtype' => $item_type, 'items_id' => $item_id]]);
+   //   //$query = "SELECT * FROM glpi_plugin_processmaker_cases WHERE `itemtype` = '$item_type' AND `items_id` = $item_id ;";
+   //   //  $res = $DB->query($query);
+   //   //if ($DB->numrows($res) > 0) {
+   //   //   // case is existing for this item
+   //   //   // then get info from db
+   //   //   $row = $DB->fetch_array($res);
+   //   if ($row = $res->next()) {
+   //      return $row['id'];
+   //   }
 
-      return false;
-   }
+   //   return false;
+   //}
 
    /**
-    * Summary of getCaseGuidFromItem
-    *      get case id for an id item_id of type item_type (if a case if attached to it)
+    * Summary of hasCase
+    *      returns true if cases are attached to item, false otherwise
     * @param string  $item_type, the type for the item ("Ticket", "Problem", ...)
     * @param integer $item_id,   the id for the item
-    * @return string the case guid, false if no case is attached to item, or if an error occurred
+    * @return boolean true if at least one case is attached, otherwise false
     */
-   public static function getCaseGuidFromItem ($item_type, $item_id) {
+   public static function hasCase($item_type, $item_id) {
       global $DB;
       $res = $DB->request('glpi_plugin_processmaker_cases', ['AND' => ['itemtype' => $item_type, 'items_id' => $item_id]]);
-      $query = "SELECT * FROM glpi_plugin_processmaker_cases WHERE `itemtype` = '$item_type' AND `items_id` = $item_id ;";
-      //$res = $DB->query($query);
-      //if ($DB->numrows($res) > 0) {
-      //   // case is existing for this item
-      //   // then get info from db
-      //   $row = $DB->fetch_array($res);
-      if ($row = $res->next()) {
-         return $row['case_guid'];
+      if ($res->numrows() > 0) {
+         return true;
       }
 
       return false;
    }
 
-    /**
-     * Summary of getCaseFromItem
-     *      get case infos for an id item_id of type item_type (if a case if attached to it)
-     * @param string  $item_type, the type for the item ("Ticket", "Problem", ...)
-     * @param integer $item_id,   the id for the item
-     * @return getCaseInfoResponse object, false if no case is attached to item, or if an error occurred
-     */
-   public function getCaseFromItem($item_type, $item_id) {
-      global $DB;
 
-      $caseId = self::getCaseGuidFromItem( $item_type, $item_id );
-      if ($caseId !== false) {
-         $caseInfo = $this->getCaseInfo( $caseId );
-         if ($caseInfo !== false && $caseInfo->status_code == 0) {
-             return $caseInfo;
-         } else {
-            return false; // means any error
-         }
-      } else {
-         return false; // means no case
-      }
-   }
+   ///**
+   // * Summary of getCaseGuidFromItem
+   // *      get case id for an id item_id of type item_type (if a case if attached to it)
+   // * @param string  $item_type, the type for the item ("Ticket", "Problem", ...)
+   // * @param integer $item_id,   the id for the item
+   // * @return string the case guid, false if no case is attached to item, or if an error occurred
+   // */
+   //public static function getCaseGuidFromItem ($item_type, $item_id) {
+   //   global $DB;
+   //   $res = $DB->request('glpi_plugin_processmaker_cases', ['AND' => ['itemtype' => $item_type, 'items_id' => $item_id]]);
+   //   //$query = "SELECT * FROM glpi_plugin_processmaker_cases WHERE `itemtype` = '$item_type' AND `items_id` = $item_id ;";
+   //   //$res = $DB->query($query);
+   //   //if ($DB->numrows($res) > 0) {
+   //   //   // case is existing for this item
+   //   //   // then get info from db
+   //   //   $row = $DB->fetch_array($res);
+   //   if ($row = $res->next()) {
+   //      return $row['case_guid'];
+   //   }
+
+   //   return false;
+   //}
+
+   // /**
+   //  * Summary of getCaseFromItem
+   //  *      get case infos for an id item_id of type item_type (if a case if attached to it)
+   //  * @param string  $item_type, the type for the item ("Ticket", "Problem", ...)
+   //  * @param integer $item_id,   the id for the item
+   //  * @return getCaseInfoResponse object, false if no case is attached to item, or if an error occurred
+   //  */
+   //public function getCaseFromItem($item_type, $item_id) {
+   //   global $DB;
+
+   //   $caseId = self::getCaseGuidFromItem( $item_type, $item_id );
+   //   if ($caseId !== false) {
+   //      $caseInfo = $this->getCaseInfo( $caseId );
+   //      if ($caseInfo !== false && $caseInfo->status_code == 0) {
+   //          return $caseInfo;
+   //      } else {
+   //         return false; // means any error
+   //      }
+   //   } else {
+   //      return false; // means no case
+   //   }
+   //}
 
     /**
      * Summary of multiexplode
@@ -2451,10 +2486,10 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                      'WHERE'     => ['AND' => ["$item_userstable.$itemlink" => $itemId, "$item_userstable.type" => $userType]],
                      'ORDER'     => ['ORDER' => $item_userstable.'.id']
                   ]);
-        $query = "select glpi_plugin_processmaker_users.pm_users_id as pm_users_id, glpi_plugin_processmaker_users.id as id from $item_userstable
-            left join glpi_plugin_processmaker_users on glpi_plugin_processmaker_users.id = $item_userstable.users_id
-            where $item_userstable.$itemlink = $itemId and $item_userstable.type = $userType
-                order by $item_userstable.id";
+        //$query = "select glpi_plugin_processmaker_users.pm_users_id as pm_users_id, glpi_plugin_processmaker_users.id as id from $item_userstable
+        //    left join glpi_plugin_processmaker_users on glpi_plugin_processmaker_users.id = $item_userstable.users_id
+        //    where $item_userstable.$itemlink = $itemId and $item_userstable.type = $userType
+        //        order by $item_userstable.id";
       //foreach ($DB->request( $query ) as $dbuser) {
       foreach ($res as $dbuser) {
          $users[] = [ 'glpi_id' => $dbuser['id'], 'pm_id' => $dbuser['pm_users_id'] ];
@@ -2612,9 +2647,9 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    public static function plugin_item_get_data_processmaker($item) {
       global $_SESSION, $CFG_GLPI;
       if (isset( $item->data ) && isset( $item->data['tasks'] )) {
+         $pmtask_itemtype = $item->obj->getType().'Task';
          $pmtask = new PluginProcessmakerTask($pmtask_itemtype);
          foreach ($item->data['tasks'] as &$task) {
-            $pmtask_itemtype = $item->obj->getType().'Task';
             $pmtask_items_id = $task['##task.id##'];
 
             // for each task, we must check if it is in our task table
@@ -2897,11 +2932,17 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                         "GLPI_ITEM_SET_SOLUTION_TYPE_ID",
                         "GLPI_ITEM_APPEND_TO_SOLUTION_DESCRIPTION",
                         "GLPI_ITEM_INITIAL_DUE_DATE",
-                        "GLPI_ITEM_DUE_DATE"
+                        "GLPI_ITEM_DUE_DATE",
+                        "GLPI_SEND_EMAIL"
                        ];
 
       // now tries to get some variables to setup content for new task and to append text to solved task
       $casevariablevalues = $myCase->getVariables($casevariables);
+
+      $sendemail = '';
+      if (array_key_exists( 'GLPI_SEND_EMAIL', $casevariablevalues ) && $casevariablevalues[ 'GLPI_SEND_EMAIL' ] != '') {
+         $sendemail = json_decode($casevariablevalues[ 'GLPI_SEND_EMAIL' ], true);
+      }
 
       $itemSetStatus = '';
       if (array_key_exists( 'GLPI_ITEM_SET_STATUS', $casevariablevalues )) {
@@ -2968,9 +3009,8 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       }
 
       $createFollowup = false; // by default
-      if (array_key_exists( 'GLPI_ITEM_FOLLOWUP_CONTENT', $casevariablevalues ) && $casevariablevalues[ 'GLPI_ITEM_FOLLOWUP_CONTENT' ] != '') {
-         //&& array_key_exists( 'GLPI_TICKET_FOLLOWUP_IS_PRIVATE', $infoForTasks )
-         //&& array_key_exists( 'GLPI_TICKET_FOLLOWUP_REQUESTTYPES_ID', $infoForTasks )
+      if ((array_key_exists( 'GLPI_TICKET_FOLLOWUP_CONTENT', $casevariablevalues ) && $casevariablevalues[ 'GLPI_TICKET_FOLLOWUP_CONTENT' ] != '')
+       || (array_key_exists( 'GLPI_ITEM_FOLLOWUP_CONTENT', $casevariablevalues ) && $casevariablevalues[ 'GLPI_ITEM_FOLLOWUP_CONTENT' ] != '')) {
          $createFollowup = true;
       }
 
@@ -3008,7 +3048,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                         ] );
 
       // create a followup if requested
-      if ($createFollowup && $itemtype == 'Ticket') {
+      if ($createFollowup) { // && $itemtype == 'Ticket') {
          $this->addItemFollowup( $itemtype, $items_id, $casevariablevalues );
       }
 
@@ -3059,8 +3099,9 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                                     ]
                                  ]
                               ]);
-               $res = $PM_DB->query("SELECT APP_UID FROM SUB_APPLICATION WHERE APP_PARENT='{$myCase->fields['case_guid']}' AND DEL_INDEX_PARENT={$route->delIndex} AND SA_STATUS='ACTIVE'"); // AND DEL_THREAD_PARENT={$route->delThread} seems like it is not set to correct threadIndex
-               if ($row = $res->next() && $PM_DB->numrows($res) == 1) {
+               //$res = $PM_DB->query("SELECT APP_UID FROM SUB_APPLICATION WHERE APP_PARENT='{$myCase->fields['case_guid']}' AND DEL_INDEX_PARENT={$route->delIndex} AND SA_STATUS='ACTIVE'"); // AND DEL_THREAD_PARENT={$route->delThread} seems like it is not set to correct threadIndex
+               //if ($row = $res->next() && $PM_DB->numrows($res) == 1) {
+               if ($res->numrows() == 1 && $row = $res->next()) {
                   // then new task is a sub-process,
                   //$row = $PM_DB->fetch_assoc($res);
 
@@ -3196,7 +3237,16 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                }
             }
 
-         }
+      // send email if requested
+      if (is_array($sendemail)) {
+         NotificationEvent::raiseEvent('send_email',
+                                       $myCase,
+                                       ['glpi_send_email' => $sendemail,
+                                        'case'            => $myCase
+                                       ]);
+      }
+
+   }
 
       } else {
          // must check if current case is a sub-process, and if it has ended, then must reflect parent case into the current item.
@@ -3211,7 +3261,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                foreach ($parentCaseInfo->currentUsers as $open_task) {
                   // must check if $open_task is not is_subprocess and is not already existing in the item
                   $locTaskCat = new PluginProcessmakerTaskCategory;
-                  $locTask = new PluginProcessmakerTask();
+                  $locTask = new PluginProcessmakerTask($itemtype.'Task');
 
                   $locTaskRestrict=[
                                          'WHERE'  => [
@@ -3252,6 +3302,15 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
       // evolution of case status: DRAFT, TO_DO, COMPLETED, CANCELLED
       $myCase->update( [ 'id' => $myCase->getID(), 'case_status' => $caseInfo->caseStatus, 'name' => $caseInfo->caseName ] );
+
+      // send email if requested
+      if (is_array($sendemail)) {
+         NotificationEvent::raiseEvent('send_email',
+                                       $myCase,
+                                       ['glpi_send_email' => $sendemail,
+                                        'case'            => $myCase
+                                       ]);
+      }
 
    }
 
