@@ -28,8 +28,12 @@ class PluginProcessmakerUser extends CommonDBTM {
    static function getSqlSearchResult ($taskId, $count = true, $right = "all", $entity_restrict = -1, $value = 0,
                                         $used = [], $search = '', $limit = '') {
       global $DB, $PM_DB, $CFG_GLPI;
+      // first need to get all users from $taskId
+      $adhoc_users = Session::haveRight('plugin_processmaker_case', ADHOC_REASSIGN) ? 2 : -1;
+      // TU_TYPE in (1, 2) means 1 is normal, 2 is for adhoc
+      // TU_RELATION is 1 for user, and 2 for group
       $res1 = new QuerySubQuery([
-                        'SELECT'       => ['GROUP_USER.USR_UID AS pm_user_id'],
+                        'SELECT'       => 'GROUP_USER.USR_UID AS pm_user_id',
                         'FROM'         => 'TASK_USER',
                         'INNER JOIN'   => [
                            'GROUP_USER' => [
@@ -37,12 +41,15 @@ class PluginProcessmakerUser extends CommonDBTM {
                                  'GROUP_USER' => 'GRP_UID',
                                  'TASK_USER' => 'USR_UID',
                                  ['AND' => [
-                                    'TASk_USER.TU_RELATION' => 2,
-                                    'TASk_USER.TU_TYPE' => 1
+                                    'TASK_USER.TU_RELATION' => 2,
+                                    'TASK_USER.TU_TYPE' => [1, $adhoc_users]
                                     ]
                                  ]
                               ]
                            ]
+                        ],
+                        'WHERE' => [
+                              'TAS_UID'               => $taskId,
                         ]
          ]);
       $res2 = new QuerySubQuery([
@@ -52,7 +59,7 @@ class PluginProcessmakerUser extends CommonDBTM {
                            'AND' => [
                               'TAS_UID'               => $taskId,
                               'TASK_USER.TU_RELATION' => 1,
-                              'TASk_USER.TU_TYPE'     => 1
+                              'TASK_USER.TU_TYPE' => [1, $adhoc_users]
                            ]
                         ]
          ]);
@@ -60,7 +67,6 @@ class PluginProcessmakerUser extends CommonDBTM {
       $res = $PM_DB->request([
                         'FROM' => $union
                      ]);
-      // first need to get all users from $taskId
       //$db_pm = PluginProcessmakerConfig::getInstance()->getProcessMakerDB();
       //$pmQuery = "SELECT GROUP_USER.USR_UID AS pm_user_id FROM TASK_USER
       //              JOIN GROUP_USER ON GROUP_USER.GRP_UID=TASK_USER.USR_UID AND TASK_USER.TU_RELATION = 2 AND TASK_USER.TU_TYPE=1
@@ -85,8 +91,8 @@ class PluginProcessmakerUser extends CommonDBTM {
              break;
 
          case "all" :
-            //$where = " `glpi_users`.`id` > '1' ";
-            $query2['WHERE']['AND']['glpi_users.id'] = ['>', 1];
+            //$where = " `glpi_users`.`id` > '0' ";
+            $query2['WHERE']['AND']['glpi_users.id'] = ['>', 0];
              break;
       }
 

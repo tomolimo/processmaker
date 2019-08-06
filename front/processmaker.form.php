@@ -85,7 +85,7 @@ switch ($_POST["action"]) {
       } else if (isset($_POST['reassign'])) {
          // here we should re-assign the current task to $_POST['users_id_recipient']
          //$GLPINewPMUserId = PluginProcessmakerUser::getPMUserId( $_POST['users_id_recipient'] );
-         if ($_POST['users_id'] != $_POST['users_id_recipient']) { // normally should be different as of the dropdown prevents already used
+         if ($_POST['users_id'] != $_POST['users_id_recipient'] && $_POST['users_id_recipient'] != 0) { // normally should be different as of the dropdown prevents already used
             $locCase = new PluginProcessmakerCase;
             $locCase->getFromDB($_POST['cases_id']);
 
@@ -100,7 +100,13 @@ switch ($_POST["action"]) {
                Session::addMessageAfterRedirect(__('Error re-assigning task: ', 'processmaker').$pmResponse->message, true, ERROR);
             }
          } else {
-            Session::addMessageAfterRedirect(__('Task already assigned to this person!', 'processmaker'), true, ERROR);
+            if ($_POST['users_id_recipient'] == 0) {
+               Session::addMessageAfterRedirect(__('Can\'t un-assign Task!', 'processmaker'), true, ERROR);
+            } else {
+               if ($_POST['users_id'] === $_POST['users_id_recipient'] ) { // normally should be different as of the dropdown prevents already used
+                  Session::addMessageAfterRedirect(__('Task already assigned to this person!', 'processmaker'), true, ERROR);
+               }
+            }
          }
          //} else if (isset($_POST['delete'])) {
          //   // delete case from case table, this will also delete the tasks
