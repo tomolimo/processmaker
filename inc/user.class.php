@@ -30,13 +30,14 @@ class PluginProcessmakerUser extends CommonDBTM {
       global $DB, $PM_DB, $CFG_GLPI;
 
       // first need to get all users from $taskId
-      //$db_pm = PluginProcessmakerConfig::getInstance()->getProcessMakerDB();
+      $adhoc_users = Session::haveRight('plugin_processmaker_case', ADHOC_REASSIGN) ? 2 : -1;
+      // TU_TYPE in (1, 2) means 1 is normal user, 2 is for adhoc users
       $pmQuery = "SELECT GROUP_USER.USR_UID AS pm_user_id FROM TASK_USER
-                    JOIN GROUP_USER ON GROUP_USER.GRP_UID=TASK_USER.USR_UID AND TASK_USER.TU_RELATION = 2 AND TASK_USER.TU_TYPE=1
+                    JOIN GROUP_USER ON GROUP_USER.GRP_UID=TASK_USER.USR_UID AND TASK_USER.TU_RELATION = 2 AND TASK_USER.TU_TYPE IN (1, $adhoc_users)
                     WHERE TAS_UID = '$taskId'
                   UNION
                   SELECT TASK_USER.USR_UID AS pm_user_id FROM TASK_USER
-                     WHERE TAS_UID = '$taskId' AND TASK_USER.TU_RELATION = 1 AND TASK_USER.TU_TYPE=1 ; ";
+                     WHERE TAS_UID = '$taskId' AND TASK_USER.TU_RELATION = 1 AND TASK_USER.TU_TYPE IN (1, $adhoc_users); ";
       $pmUsers = [ ];
       foreach ($PM_DB->request( $pmQuery ) as $pmUser) {
          $pmUsers[ ] = $pmUser[ 'pm_user_id' ];
@@ -50,7 +51,7 @@ class PluginProcessmakerUser extends CommonDBTM {
              break;
 
          case "all" :
-            $where = " `glpi_users`.`id` > '1' ";
+            $where = " `glpi_users`.`id` > '0' ";
              break;
       }
 
