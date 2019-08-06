@@ -329,8 +329,8 @@ class PluginProcessmakerTask extends CommonITILTask
       }
 
       if (isset($currentUser)) {
-         if ($currentUser->userId && $task[$tabnum]['del_index']) {
-            // to load users for task re-assign only when task is not to be 'claimed' and if task is not a sub-case
+         if (/*$currentUser->userId &&*/ $task[$tabnum]['del_index']) {
+            // to load users for task re-assign only when task is not a sub-case
 
             echo "<div class='tab_bg_2' id='divUsers-".$currentUser->delIndex."'><div class='loadingindicator'>".__('Loading...')."</div></div>";
             echo "<script>$('#divUsers-{$task[$tabnum]['del_index']}').load( '".$CFG_GLPI["root_doc"]."/plugins/processmaker/ajax/task_users.php?cases_id="
@@ -344,7 +344,19 @@ class PluginProcessmakerTask extends CommonITILTask
                      ."&taskGuid="
                      .$currentUser->taskId
                      ."&delIndex={$task[$tabnum]['del_index']}&delThread={$currentUser->delThread}&rand=$rand' ); </script>";
-         } else {
+         //} else {
+         //   // manages the claim
+         //   // current task is to be claimed
+         //   // get the assigned group to the item task
+         //   $itemtask = $dbu->getItemForItemtype( $task[$tabnum]['itemtype'] );
+         //   $itemtask->getFromDB( $task[$tabnum]['items_id'] );
+         //   // check if this group can be found in the current user's groups
+         //   if (!isset($_SESSION['glpigroups']) || !in_array( $itemtask->fields['groups_id_tech'], $_SESSION['glpigroups'] )) {
+         //      $hide_claim_button=true;
+         //   }
+         }
+
+         if (!$currentUser->userId || !$task[$tabnum]['del_index']) {
             // manages the claim
             // current task is to be claimed
             // get the assigned group to the item task

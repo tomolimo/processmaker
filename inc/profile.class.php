@@ -20,7 +20,7 @@ class PluginProcessmakerProfile extends CommonDBTM {
                    ['itemtype' => 'PluginProcessmakerConfig',
                         'label'    =>  __('Cases', 'processmaker'),
                         'field'    => 'plugin_processmaker_case',
-                        'rights' => [READ => __('Read'), CANCEL => __('Cancel', 'processmaker'), DELETE  => __('Delete')]]
+                        'rights' => [READ => __('Read'), CANCEL => __('Cancel', 'processmaker'), DELETE  => __('Delete'), ADHOC_REASSIGN => __('Ad Hoc user re-assign', 'processmaker')]]
                    ];
 
       return $rights;
@@ -69,7 +69,7 @@ class PluginProcessmakerProfile extends CommonDBTM {
      * @param mixed $ID
      */
    static function createAdminAccess($ID) {
-      self::addDefaultProfileInfos($ID, ['plugin_processmaker_config' => READ + UPDATE, 'plugin_processmaker_case' => READ + DELETE + CANCEL], true);
+      self::addDefaultProfileInfos($ID, ['plugin_processmaker_config' => READ + UPDATE, 'plugin_processmaker_case' => READ + DELETE + CANCEL + ADHOC_REASSIGN], true);
    }
 
     /**
