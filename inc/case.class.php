@@ -832,7 +832,7 @@ class PluginProcessmakerCase extends CommonDBTM {
       $ret = false;
 
       if (isset($this->fields['case_status']) && $this->fields['case_status'] == "TO_DO") {
-         $query = "UPDATE glpi_".$this->fields['itemtype']."tasks SET state=0,users_id_tech=0,begin=NULL,end=NULL  WHERE state=1 AND id in (select items_id from glpi_plugin_processmaker_tasks where plugin_processmaker_cases_id='".$this->fields['id']."')";
+         $query = "UPDATE glpi_".$this->fields['itemtype']."tasks SET state=0,users_id_tech=0,groups_id_tech=0,begin=NULL,end=NULL  WHERE state=1 AND id in (select items_id from glpi_plugin_processmaker_tasks where plugin_processmaker_cases_id='".$this->fields['id']."')";
          if ($DB->query( $query )) {
             $ret = true;
          }
