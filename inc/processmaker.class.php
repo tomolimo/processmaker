@@ -1743,11 +1743,12 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       if ($techId == 0) { // then we must look-up DB to get the group that will be assigned to the task
          $groupname='';
          if ($groupId == 0) {
+            // TU_RELATION=2 is groups and TU_TYPE=1 means normal (= not adhoc)
             $res = $PM_DB->request([
                            'SELECT'       => 'CONTENT.CON_VALUE',
                            'FROM'         => 'TASK_USER',
                            'INNER JOIN'   => ['CONTENT' => ['AND' => ['FKEY' => ['CONTENT' => 'CON_ID', 'TASK_USER' => 'USR_UID'], ['CONTENT' => 'CON_CATEGORY', 'GRP_TITLE'], ['CONTENT' => 'CON_LANG', 'en']]]],
-                           'WHERE'        => ['AND' => ['TASK_USER.TAS_UID' => $pmTaskId, 'TASK_USER.TU_RELATION' => 2]],
+                           'WHERE'        => ['AND' => ['TASK_USER.TAS_UID' => $pmTaskId, 'TASK_USER.TU_RELATION' => 2, 'TASK_USER.TU_TYPE' => 1]],
                            'LIMIT'        => 1
                         ]);
             //$query = "SELECT CONTENT.CON_VALUE FROM TASK_USER
@@ -2913,6 +2914,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       $casevariables = ["GLPI_ITEM_TASK_CONTENT",
                         "GLPI_ITEM_APPEND_TO_TASK",
                         "GLPI_NEXT_GROUP_TO_BE_ASSIGNED",
+                        "GLPI_ITEM_TASK_GROUP",
                         "GLPI_ITEM_TITLE",
                         "GLPI_TICKET_FOLLOWUP_CONTENT",
                         "GLPI_ITEM_FOLLOWUP_CONTENT",
@@ -2970,6 +2972,9 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       $groupId = 0;
       if (array_key_exists( 'GLPI_NEXT_GROUP_TO_BE_ASSIGNED', $casevariablevalues )) {
          $groupId = $casevariablevalues[ 'GLPI_NEXT_GROUP_TO_BE_ASSIGNED' ];
+      }
+      if (array_key_exists( 'GLPI_ITEM_TASK_GROUP', $casevariablevalues )) {
+         $groupId = $casevariablevalues[ 'GLPI_ITEM_TASK_GROUP' ];
       }
 
       $taskStartDate = '';
@@ -3237,16 +3242,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                }
             }
 
-      // send email if requested
-      if (is_array($sendemail)) {
-         NotificationEvent::raiseEvent('send_email',
-                                       $myCase,
-                                       ['glpi_send_email' => $sendemail,
-                                        'case'            => $myCase
-                                       ]);
-      }
-
-   }
+         }
 
       } else {
          // must check if current case is a sub-process, and if it has ended, then must reflect parent case into the current item.
@@ -3278,7 +3274,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                                             $parentCaseInfo,
                                             $open_task->delIndex,
                                             PluginProcessmakerUser::getGLPIUserId($open_task->userId),
-                                            0,
+                                            $groupId,
                                             $open_task->taskId,
                                             $open_task->delThread,
                                             [ 'txtTaskContent' => $txtTaskContent,
@@ -3289,7 +3285,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
                      // if end date was specified, then must change due date of the PM task
                      if ($taskEndDate != '') {
-                        $PM_DB->update('APP_DELEGATION', ['DEL_TASK_DUE_DATE' => $taskEndDate], ['AND' => ['APP_UID' => $sub_caseInfo->caseId, 'DEL_INDEX' => $open_task->delIndex]]);
+                        $PM_DB->update('APP_DELEGATION', ['DEL_TASK_DUE_DATE' => $taskEndDate], ['AND' => ['APP_UID' => $parentCaseInfo->caseId, 'DEL_INDEX' => $open_task->delIndex]]);
                            //$PM_DB->query( "UPDATE APP_DELEGATION SET DEL_TASK_DUE_DATE='$taskEndDate' WHERE APP_UID='".$sub_caseInfo->caseId."' AND DEL_INDEX=".$open_task->delIndex);
                      }
                   }

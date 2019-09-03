@@ -1,8 +1,11 @@
 <?php
 
+define('PROCESSMAKER_VERSION', '3.6.5');
+
 // used for case cancellation
 define("CANCEL", 256);
-define('PROCESSMAKER_VERSION', '3.6.3');
+// used for ad-hoc user re-assign
+define("ADHOC_REASSIGN", 512);
 
 // Init the hooks of the plugins -Needed
 function plugin_init_processmaker() {

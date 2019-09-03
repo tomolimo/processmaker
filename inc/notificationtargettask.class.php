@@ -105,6 +105,9 @@ class PluginProcessmakerNotificationTargetTask extends PluginProcessmakerNotific
       // task information
       $taskobj = $this->obj;
 
+      // del index
+      $this->data['##task.delindex##'] = $taskobj->fields['del_index'];
+
       // is private?
       $this->data['##task.isprivate##'] = Dropdown::getYesNo(false);
       if ($taskobj->maybePrivate()) {
@@ -175,7 +178,8 @@ class PluginProcessmakerNotificationTargetTask extends PluginProcessmakerNotific
                'task.end'                => __('End date'),
                'task.status'             => __('Status'),
                'task.lastupdater'        => __('Last updater'),
-               'task.update'             => __('Last update')
+               'task.update'             => __('Last update'),
+               'task.delindex'           => __('Delegation index')
              ];
       foreach ($tags as $tag => $label) {
          $elt= ['tag'   => $tag,

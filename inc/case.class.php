@@ -232,10 +232,13 @@ class PluginProcessmakerCase extends CommonDBTM {
     */
    function reassignCase($delIndex, $taskGuid, $delThread, $users_id_source, $users_id_target) {
       global $PM_SOAP;
-      $users_guid_source = PluginProcessmakerUser::getPMUserId($users_id_source);
+      $users_guid_source = ''; // by default
+      if ($users_id_source !== 0) { // when task is not 'to be claimed'
+         $users_guid_source = PluginProcessmakerUser::getPMUserId($users_id_source);
+      }
       $users_guid_target = PluginProcessmakerUser::getPMUserId($users_id_target);
       $pmResponse = $PM_SOAP->reassignCase($this->fields['case_guid'], $delIndex, $users_guid_source, $users_guid_target);
-      // now should managed GLPI Tasks previously assigned to the $users_guid_source
+      // now should manage GLPI Tasks previously assigned to the $users_guid_source
       if ($pmResponse->status_code == 0) {
          // we need to change the delindex of the glpi task and the assigned tech to prevent creation of new tasks
          // we need the delindex of the current glpi task, and the delindex of the new one
@@ -279,7 +282,11 @@ class PluginProcessmakerCase extends CommonDBTM {
          PluginProcessmakerProcessmaker::addWatcher( $itilobject_itemtype, $glpi_task->fields[ $foreignkey ], $newTech );
 
          $donotif = PluginProcessmakerNotificationTargetProcessmaker::saveNotificationState(false); // do not send notification yet
-         $glpi_task->update( ['id' => $glpi_task->getID(), $foreignkey => $glpi_task->fields[$foreignkey], 'users_id_tech' => $newTech, 'update' => true] );
+         $glpi_task->update( ['id'              => $glpi_task->getID(),
+                              $foreignkey       => $glpi_task->fields[$foreignkey],
+                              'users_id_tech'   => $newTech,
+                              'groups_id_tech'  => 0,
+                              'update'          => true] );
          PluginProcessmakerNotificationTargetProcessmaker::restoreNotificationState($donotif);
 
          // Notification management
@@ -911,6 +918,7 @@ class PluginProcessmakerCase extends CommonDBTM {
          $res = $DB->update('glpi_'.$this->fields['itemtype'].'tasks', [
                   'state'           => 0,
                   'users_id_tech'   => 0,
+                  'groups_id_tech'  => 0,
                   'begin'           => null,
                   'end'             => null
                   ], [
