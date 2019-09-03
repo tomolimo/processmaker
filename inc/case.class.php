@@ -918,6 +918,7 @@ class PluginProcessmakerCase extends CommonDBTM {
          $res = $DB->update('glpi_'.$this->fields['itemtype'].'tasks', [
                   'state'           => 0,
                   'users_id_tech'   => 0,
+                  'groups_id_tech'  => 0,
                   'begin'           => null,
                   'end'             => null
                   ], [

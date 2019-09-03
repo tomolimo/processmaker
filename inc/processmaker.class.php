@@ -1743,11 +1743,12 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       if ($techId == 0) { // then we must look-up DB to get the group that will be assigned to the task
          $groupname='';
          if ($groupId == 0) {
+            // TU_RELATION=2 is groups and TU_TYPE=1 means normal (= not adhoc)
             $res = $PM_DB->request([
                            'SELECT'       => 'CONTENT.CON_VALUE',
                            'FROM'         => 'TASK_USER',
                            'INNER JOIN'   => ['CONTENT' => ['AND' => ['FKEY' => ['CONTENT' => 'CON_ID', 'TASK_USER' => 'USR_UID'], ['CONTENT' => 'CON_CATEGORY', 'GRP_TITLE'], ['CONTENT' => 'CON_LANG', 'en']]]],
-                           'WHERE'        => ['AND' => ['TASK_USER.TAS_UID' => $pmTaskId, 'TASK_USER.TU_RELATION' => 2]],
+                           'WHERE'        => ['AND' => ['TASK_USER.TAS_UID' => $pmTaskId, 'TASK_USER.TU_RELATION' => 2, 'TASK_USER.TU_TYPE' => 1]],
                            'LIMIT'        => 1
                         ]);
             //$query = "SELECT CONTENT.CON_VALUE FROM TASK_USER
