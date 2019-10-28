@@ -385,9 +385,9 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    *       routes a case (i.e., moves the case to the next task in the process according to its routing rules).
    *       Embedded routeCase() PM web service call (definition: http://wiki.processmaker.com/index.php/2.0/ProcessMaker_WSDL_Web_Services#routeCase.28.29)
    *       A session must be open before with login()
-   * @param $case_guid The case ID, which can be obtained with the caseList() function
-   * @param $delIndex The delegation index, which is a positive integer to identify the current task of the case. If empty then use current delIndex.
-   * @return a routeCaseResponse object, or false exception occured. routing is normalized to be always an array of routeListStruct
+   * @param $case_guid string The case GUID, which can be obtained with the caseList() function
+   * @param $delIndex integer The delegation index, which is a positive integer to identify the current task of the case. If empty then use current delIndex.
+   * @return stdClass|boolean routeCaseResponse object or false when exception occured. routing is normalized to be always an array of routeListStruct
    */
    function routeCase($case_guid, $delIndex) {
       try {
@@ -1854,38 +1854,38 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
          //$query = "INSERT INTO glpi_plugin_processmaker_tasks (items_id, itemtype, plugin_processmaker_cases_id, plugin_processmaker_taskcategories_id, del_index, del_thread)
          //            VALUES ({$glpi_task->getId()}, '{$glpi_task->getType()}', $cases_id, {$pmtaskcat->fields['id']}, $delIndex, $delThread);";
          //$DB->query( $query );
+         //}
+
+         // send notification if needed for new task as now we have the PluginProcessmakerTask in the DB
+         $donotif = PluginProcessmakerNotificationTargetProcessmaker::saveNotificationState($options['notif']);
+         // Notification management
+         $item = new $itemtype;
+         $item->getFromDB($items_id);
+         // search if at least one active notification is existing for that pm task with that event 'task_update_'.$glpi_task->fields['taskcategories_id']
+         $res = PluginProcessmakerNotificationTargetTask::getNotifications('task_add', $glpi_task->fields['taskcategories_id'], $item->fields['entities_id']);
+         if ($res['notifications'] && count($res['notifications']) > 0) {
+            $pm_task = new PluginProcessmakerTask($glpi_task->getType());
+            $pm_task->getFromDB($glpi_task->getId());
+            NotificationEvent::raiseEvent($res['event'],
+                                          $pm_task,
+                                          ['plugin_processmaker_cases_id' => $cases_id,
+                                           'itemtype'                     => $glpi_task->getType(),
+                                           'task_id'                      => $glpi_task->getID(),
+                                           'is_private'                   => isset($glpi_task->fields['is_private']) ? $glpi_task->fields['is_private'] : 0,
+                                           'entities_id'                  => $item->fields['entities_id']
+                                          ]);
+         } else {
+            NotificationEvent::raiseEvent('add_task',
+                                          $item,
+                                          ['plugin_processmaker_cases_id' => $cases_id,
+                                           'itemtype'                     => $itemtype,
+                                           'task_id'                      => $glpi_task->getID(),
+                                           'is_private'                   => isset($glpi_task->fields['is_private']) ? $glpi_task->fields['is_private'] : 0
+                                          ]);
+         }
+
+         PluginProcessmakerNotificationTargetProcessmaker::restoreNotificationState($donotif);
       }
-
-      // send notification if needed for new task as now we have the PluginProcessmakerTask in the DB
-      $donotif = PluginProcessmakerNotificationTargetProcessmaker::saveNotificationState($options['notif']);
-      // Notification management
-      $item = new $itemtype;
-      $item->getFromDB($items_id);
-      // search if at least one active notification is existing for that pm task with that event 'task_update_'.$glpi_task->fields['taskcategories_id']
-      $res = PluginProcessmakerNotificationTargetTask::getNotifications('task_add', $glpi_task->fields['taskcategories_id'], $item->fields['entities_id']);
-      if ($res['notifications'] && count($res['notifications']) > 0) {
-         $pm_task = new PluginProcessmakerTask($glpi_task->getType());
-         $pm_task->getFromDB($glpi_task->getId());
-         NotificationEvent::raiseEvent($res['event'],
-                                       $pm_task,
-                                       ['plugin_processmaker_cases_id' => $cases_id,
-                                        'itemtype'                     => $glpi_task->getType(),
-                                        'task_id'                      => $glpi_task->getID(),
-                                        'is_private'                   => isset($glpi_task->fields['is_private']) ? $glpi_task->fields['is_private'] : 0,
-                                        'entities_id'                  => $item->fields['entities_id']
-                                       ]);
-      } else {
-         NotificationEvent::raiseEvent('add_task',
-                                       $item,
-                                       ['plugin_processmaker_cases_id' => $cases_id,
-                                        'itemtype'                     => $itemtype,
-                                        'task_id'                      => $glpi_task->getID(),
-                                        'is_private'                   => isset($glpi_task->fields['is_private']) ? $glpi_task->fields['is_private'] : 0
-                                       ]);
-      }
-
-      PluginProcessmakerNotificationTargetProcessmaker::restoreNotificationState($donotif);
-
    }
 
 
@@ -2098,7 +2098,6 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
          $hostItem->getFromDB( $glpi_task->fields[ $itemFKField ] );
 
          // change current glpi_currenttime to be sure that date_mode for solved task will not be identical than date_mode of the newly started task
-         //$end_date = new DateTime( $_SESSION["glpi_currenttime"] );
          $saved_date_time = $_SESSION["glpi_currenttime"];
          $_SESSION["glpi_currenttime"] = (new DateTime($saved_date_time))->sub(new DateInterval("PT1S"))->format("Y-m-d H:i:s");
 
@@ -2132,13 +2131,42 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                     //'groups_id_tech' => 0,
                     'content'        => $DB->escape($glpi_task->fields[ 'content' ].$options['txtToAppend'])
                    ];
-         $donotif = PluginProcessmakerNotificationTargetProcessmaker::saveNotificationState($options['notif']);
+
+         $donotif = PluginProcessmakerNotificationTargetProcessmaker::saveNotificationState(false); // do not send notification yet
          $glpi_task->update($params);
          PluginProcessmakerNotificationTargetProcessmaker::restoreNotificationState($donotif);
 
          // Close the task
          //$DB->query("UPDATE glpi_plugin_processmaker_tasks SET del_thread_status = '".PluginProcessmakerTask::CLOSED."' WHERE id = {$row['id']}");
          $DB->update('glpi_plugin_processmaker_tasks', ['del_thread_status' => PluginProcessmakerTask::CLOSED], ['id' => $row['id']]);
+
+         // send notification if needed for new task as now the PluginProcessmakerTask has been updated in the DB
+         $donotif = PluginProcessmakerNotificationTargetProcessmaker::saveNotificationState($options['notif']);
+         // Notification management
+         // search if at least one active notification is existing for that pm task with that event 'task_update_'.$glpi_task->fields['taskcategories_id']
+         $res = PluginProcessmakerNotificationTargetTask::getNotifications('task_done', $glpi_task->fields['taskcategories_id'], $hostItem->fields['entities_id']);
+         if ($res['notifications'] && count($res['notifications']) > 0) {
+            $pm_task = new PluginProcessmakerTask($glpi_task->getType());
+            $pm_task->getFromDB($glpi_task->getId());
+            NotificationEvent::raiseEvent($res['event'],
+                                          $pm_task,
+                                          ['plugin_processmaker_cases_id' => $cases_id,
+                                           'itemtype'    => $glpi_task->getType(),
+                                           'task_id'     => $glpi_task->getID(),
+                                           'is_private'  => isset($glpi_task->fields['is_private']) ? $glpi_task->fields['is_private'] : 0,
+                                           'entities_id' => $hostItem->fields['entities_id']
+                                          ]);
+         } else {
+            NotificationEvent::raiseEvent('update_task',
+                                          $hostItem,
+                                          ['plugin_processmaker_cases_id' => $cases_id,
+                                           'itemtype'                     => $hostItem->getType(),
+                                           'task_id'                      => $glpi_task->getID(),
+                                           'is_private'                   => isset($glpi_task->fields['is_private']) ? $glpi_task->fields['is_private'] : 0
+                                          ]);
+         }
+         PluginProcessmakerNotificationTargetProcessmaker::restoreNotificationState($donotif);
+
          // restore current glpi time
          $_SESSION["glpi_currenttime"] = $saved_date_time;
 
@@ -2903,6 +2931,8 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       $item = new $itemtype;
       $item->getFromDB($items_id);
 
+      //Toolbox::logInFile("processmaker_derivate", Toolbox::backtrace(false) . "derivateCase: myCase = " . print_r($myCase, true) . "\nrequest = " . print_r($request, true) . "\nusers_id = " . print_r($users_id, true) );
+
       // save the dynaform variables into the current case
       if (isset($request['UID']) && isset($request['APP_UID']) && isset($request['__DynaformName__'])) {
             $resultSave = $this->saveForm( $request );
@@ -2910,6 +2940,16 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
       // now derivate the case !!!
       $pmRouteCaseResponse = $this->routeCase($myCase->fields['case_guid'], $request['DEL_INDEX']);
+      //Toolbox::logInFile("processmaker_derivate", "routeCase: pmRouteCaseResponse = " . print_r($pmRouteCaseResponse, true));
+
+      if ($pmRouteCaseResponse->status_code != 0) {
+         Session::addMessageAfterRedirect(sprintf(__('Unable to derivate case! Retry in a moment, or ask your administrator.<hr>Error code: %u<br/>Error message: %s<br/>', 'processmaker'),
+                                                  $pmRouteCaseResponse->status_code,
+                                                  $pmRouteCaseResponse->message),
+                                          true,
+                                          ERROR);
+         return;
+      }
 
       $casevariables = ["GLPI_ITEM_TASK_CONTENT",
                         "GLPI_ITEM_APPEND_TO_TASK",
@@ -3037,9 +3077,6 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
          $resetcasevariables[$val] = '';
       }
       $resultSave = $myCase->sendVariables($resetcasevariables);
-
-      // print_r( $pmRouteCaseResponse ) ;
-      // die() ;
 
       // now manage tasks associated with item
       // switch own task to 'done' and create a new one

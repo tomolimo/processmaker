@@ -4,7 +4,7 @@
  * PluginProcessmakerNotificationTargetProcessmaker short summary.
  *
  * PluginProcessmakerNotificationTargetProcessmaker description.
- * 
+ *
  * Common notificationtarget class for cases and tasks
  *
  * @version 1.0
@@ -58,11 +58,16 @@ class PluginProcessmakerNotificationTargetProcessmaker extends NotificationTarge
                'case.id'                 => __('Case id', 'processmaker'),
                'case.title'              => __('Case title', 'processmaker'),
                'case.description'        => __('Case description', 'processmaker'),
-               'case.url'                => __('URL'),
+               'case.url'                => __('Case URL'),
                'var.XXX'                 => __('Case variable \'XXX\'', 'processmaker'),
                'array.YYY'               => __('List of values in \'YYY\' array', 'processmaker'),
                'array.numberofYYY'       => __('Number of rows in \'YYY\' array', 'processmaker'),
-               'array.YYY.colname'       => __('Value for colname in case array \'YYY\'', 'processamker')
+               'array.YYY.colname'       => __('Value for colname in \'YYY\' array', 'processmaker'),
+               '1darray.ZZZ.key'         => __('Value for key in \'ZZZ\' assoc array (1-dimension array)', 'processmaker'),
+               'item.type'               => __('Item type', 'processmaker'),
+               'item.id'                 => __('Item id', 'processmaker'),
+               'item.url'                => __('Item URL', 'processmaker'),
+               'item.title'              => __('Item title', 'processmaker')
              ];
 
       foreach ($tags as $tag => $label) {
@@ -76,6 +81,9 @@ class PluginProcessmakerNotificationTargetProcessmaker extends NotificationTarge
             $elt['allowed_values'] = [__('YYY is to be replaced by any array variables', 'processmaker')];
             $elt['foreach'] = true;
          }
+         if ($tag == '1darray.ZZZ.key') {
+            $elt['allowed_values'] = [__('ZZZ is to be replaced by any assoc array variables (1-dimension array with key/value pairs)', 'processmaker')];
+         }
          $this->addTagToList($elt);
       }
 
@@ -87,7 +95,7 @@ class PluginProcessmakerNotificationTargetProcessmaker extends NotificationTarge
     * Get all data needed for template processing
     **/
    public function addDataForTemplate($event, $options = []) {
-      global $PM_DB, $CFG_GLPI;
+      global $CFG_GLPI, $PM_DB;
 
       $excluded = ['_VAR_CHANGED_',
                    'PIN',
@@ -107,11 +115,6 @@ class PluginProcessmakerNotificationTargetProcessmaker extends NotificationTarge
       $process->getFromDB($options['case']->fields['plugin_processmaker_processes_id']);
       $taskcat_id = $process->fields['taskcategories_id'];
 
-      // set defaults to all
-      foreach ($this->tags as $key => $val) {
-         $this->data["##$key##"] = "-";
-      }
-
       // get case variable values
       $res = $PM_DB->query("SELECT APP_DATA, APP_TITLE, APP_DESCRIPTION FROM APPLICATION WHERE APP_NUMBER = ".$options['case']->fields['id']);
       if ($res && $PM_DB->numrows($res) == 1) {
@@ -125,10 +128,16 @@ class PluginProcessmakerNotificationTargetProcessmaker extends NotificationTarge
                   // add numberof for count of rows
                   $this->data["##array.numberof$key##"] = count($val);
                   // get the keys/vals of the sub-array
-                  foreach ($val as $row) {
-                     foreach ($row as $col_name => $col_val) {
-                        $this->data["array.$key"][]["##array.$key.$col_name##"] = $col_val;
-                        $this->data["##lang.array.$key.$col_name##"] = $col_name;
+                  foreach ($val as $attribute => $row) {
+                     if (is_array($row)) {
+                        $index = isset($this->data["array.$key"]) ? count($this->data["array.$key"]) : 0;
+                        foreach ($row as $col_name => $col_val) {
+                           $this->data["array.$key"][$index]["##array.$key.$col_name##"] = $col_val;
+                           $this->data["##lang.array.$key.$col_name##"] = $col_name;
+                        }
+                     } else {
+                        $this->data["1darray.$key"]["##array.$key.$attribute##"] = $row;
+                        $this->data["##lang.1darray.$key.$attribute##"] = $attribute;
                      }
                   }
                } else {
@@ -145,24 +154,67 @@ class PluginProcessmakerNotificationTargetProcessmaker extends NotificationTarge
       $this->data['##case.id##'] = $options['case']->fields['id'];
 
       // case URL
-      $this->data['##case.url##'] = $CFG_GLPI["url_base"]."/index.php?redirect=".urlencode("/plugins/processmaker/front/case.form.php?id=".$options['case']->fields['id']);
-
+      $this->data['##case.url##'] = $this->formatURL($options['additionnaloption']['usertype'],
+                                                     urlencode(urlencode($CFG_GLPI["url_base"] .
+                                                               PluginProcessmakerCase::getFormURLWithID($options['case']->fields['id'], false))));
       // parent task information: meta data on process
       // will get parent of task which is the process task category
-      $tmp_taskcatinfo['name'] = DropdownTranslation::getTranslatedValue( $taskcat_id, 'TaskCategory', 'name');
-      $tmp_taskcatinfo['comment'] = DropdownTranslation::getTranslatedValue( $taskcat_id, 'TaskCategory', 'comment');
+      $tmp_taskcatinfo['name'] = DropdownTranslation::getTranslatedValue($taskcat_id, 'TaskCategory', 'name');
+      $tmp_taskcatinfo['comment'] = DropdownTranslation::getTranslatedValue($taskcat_id, 'TaskCategory', 'comment');
       // process title
       $this->data['##process.categoryid##'] = $taskcat_id;
       $this->data['##process.category##'] = $tmp_taskcatinfo['name'];
       $this->data['##process.categorycomment##'] = $tmp_taskcatinfo['comment'];
 
-      // add labels
+      // add information about item that hosts the case
+      $item = new $options['case']->fields['itemtype'];
+      $item->getFromDB($options['case']->fields['items_id']);
+      $this->data['##item.type##']  = $item->getTypeName(1);
+      $this->data['##item.id##']    = sprintf("%07d", $options['case']->fields['items_id']);  // to have items_id with 7 digits with leading 0
+      $this->data['##item.url##']   = $this->formatURL($options['additionnaloption']['usertype'],
+                                                       urlencode(urlencode($CFG_GLPI["url_base"] .
+                                                                 $item::getFormURLWithID($options['case']->fields['items_id'], false))));
+      $this->data['##item.title##'] = HTML::entities_deep($item->fields['name']);
+
+      // add labels to tags that are not set
       $this->getTags();
       foreach ($this->tag_descriptions[NotificationTarget::TAG_LANGUAGE] as $tag => $values) {
          if (!isset($this->data[$tag])) {
             $this->data[$tag] = $values['label'];
          }
       }
+   }
+
+
+   /**
+    * Get header to add to content
+    **/
+   function getContentHeader() {
+
+      if ($this->getMode() == \Notification_NotificationTemplate::MODE_MAIL
+         && MailCollector::getNumberOfActiveMailCollectors()
+      ) {
+         return NotificationTargetTicket::HEADERTAG.' '.__('To answer by email, write above this line').' '.
+                NotificationTargetTicket::HEADERTAG;
+      }
+
+      return '';
+   }
+
+
+   /**
+    * Get footer to add to content
+    **/
+   function getContentFooter() {
+
+      if ($this->getMode() == \Notification_NotificationTemplate::MODE_MAIL
+         && MailCollector::getNumberOfActiveMailCollectors()
+      ) {
+         return NotificationTargetTicket::FOOTERTAG.' '.__('To answer by email, write under this line').' '.
+                NotificationTargetTicket::FOOTERTAG;
+      }
+
+      return '';
    }
 
 }
