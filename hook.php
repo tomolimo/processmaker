@@ -241,10 +241,11 @@ function plugin_item_update_processmaker_tasks($parm) {
       $locCase->getFromDB($pmTask->fields['plugin_processmaker_cases_id']);
       $srccase_guid = $locCase->fields['case_guid'];
 
-      $msg  = ' $locCase: '.str_replace("\n", "\n  ", print_r($locCase, true))."\n";
-      $msg .= ' $task: '.str_replace("\n", "\n  ", print_r($parm, true))."\n";
-      $msg .= ' $pmTask: '.str_replace("\n", "\n  ", print_r($pmTask, true))."\n";
-      $msg .= "\n";
+      //$msg  =  Toolbox::backtrace(false);
+      //$msg .= ' $locCase: '.str_replace("\n", "\n  ", print_r($locCase, true))."\n";
+      //$msg .= ' $task: '.str_replace("\n", "\n  ", print_r($parm, true))."\n";
+      //$msg .= ' $pmTask: '.str_replace("\n", "\n  ", print_r($pmTask, true))."\n";
+      //$msg .= "\n";
 
       foreach ($DB->request( 'glpi_plugin_processmaker_caselinks', "is_active = 1 AND sourcetask_guid='".$pmTaskCat->fields['pm_task_guid']."'") as $targetTask) {
 
@@ -289,17 +290,17 @@ function plugin_item_update_processmaker_tasks($parm) {
             unset( $infoForTasks[ $casevar ] );
          }
 
-         $msg .= " ***********\n";
-         $msg .= ' $targetTask: '.str_replace("\n", "\n  ", print_r($targetTask, true))."\n";
+         //$msg .= " ***********\n";
+         //$msg .= ' $targetTask: '.str_replace("\n", "\n  ", print_r($targetTask, true))."\n";
 
          $targetTask['sourcecondition'] = str_replace( array_keys($infoForTasks), $infoForTasks, $targetTask['sourcecondition'] );
 
          $eval = eval( "return (".$targetTask['sourcecondition']." ? 1 : 0);" );
 
-         $msg .= ' $infoForTasks: '.str_replace("\n", "\n  ", print_r($infoForTasks, true))."\n";
-         $msg .= ' $targetTask[\'sourcecondition\']: '.str_replace("\n", "\n  ", print_r($targetTask['sourcecondition'], true))."\n";
-         $msg .= ' $result: '."$eval\n";
-         $msg .= "\n";
+         //$msg .= ' $infoForTasks: '.str_replace("\n", "\n  ", print_r($infoForTasks, true))."\n";
+         //$msg .= ' $targetTask[\'sourcecondition\']: '.str_replace("\n", "\n  ", print_r($targetTask['sourcecondition'], true))."\n";
+         //$msg .= ' $result: '."$eval\n";
+         //$msg .= "\n";
 
          if ($eval) {
             // look at each linked ticket if a case is attached and then if a task like $val is TO_DO
@@ -429,8 +430,8 @@ function plugin_item_update_processmaker_tasks($parm) {
 
       }
 
-      $msg .= "================\n";
-      Toolbox::logInFile("processmaker", $msg);
+      //$msg .= "================\n";
+      //Toolbox::logInFile("processmaker", $msg);
 
    }
 }

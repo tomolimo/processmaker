@@ -41,7 +41,7 @@ class PluginProcessmakerTask extends CommonITILTask
    function getFromDB($items_id) {
       global $DB;
 
-      if ($this->getFromDBByQuery(" WHERE itemtype='".$this->itemtype."' AND items_id=$items_id;" )) {
+      if ($this->getFromDBByQuery(" WHERE itemtype='".$this->itemtype."' AND items_id='$items_id';" )) {
          $task = new $this->itemtype;
          if ($task->getFromDB( $items_id )) {
             // then we should add our own fields

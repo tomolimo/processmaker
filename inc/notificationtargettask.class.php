@@ -18,7 +18,8 @@ class PluginProcessmakerNotificationTargetTask extends PluginProcessmakerNotific
     */
    private static function getDefaultEvents() {
       return ['task_add'    => ['event' => 'task_add_',    'label' => __('New task')],
-              'task_update' => ['event' => 'task_update_', 'label' => __('Update of a task')]
+              'task_update' => ['event' => 'task_update_', 'label' => __('Update of a task')],
+              'task_done'   => ['event' => 'task_done_',   'label' => __('Task done')]
              ];
    }
 
@@ -66,8 +67,9 @@ class PluginProcessmakerNotificationTargetTask extends PluginProcessmakerNotific
          }
          $temp->getFromDB($row['taskcat']);
 
-         $actions[$defaultEvents['task_add']['event'].$row['taskcat']] =  $ptaskcats[$row['ptaskcat']]." > ".$temp->fields['name'].": " . $defaultEvents['task_add']['label'];
+         $actions[$defaultEvents['task_add']['event'].$row['taskcat']]    =  $ptaskcats[$row['ptaskcat']]." > ".$temp->fields['name'].": " . $defaultEvents['task_add']['label'];
          $actions[$defaultEvents['task_update']['event'].$row['taskcat']] =  $ptaskcats[$row['ptaskcat']]." > ".$temp->fields['name'].": " . $defaultEvents['task_update']['label'];
+         $actions[$defaultEvents['task_done']['event'].$row['taskcat']]   =  $ptaskcats[$row['ptaskcat']]." > ".$temp->fields['name'].": " . $defaultEvents['task_done']['label'];
       }
 
       return $actions;
@@ -92,7 +94,7 @@ class PluginProcessmakerNotificationTargetTask extends PluginProcessmakerNotific
       $baseevent = $locevent[0].'_'.$locevent[1];
       $taskcat_id = $locevent[2];
 
-      // task action: add or update
+      // task action: add, update or done
       $this->data['##task.action##'] = $events[$baseevent]['label'];
 
       // task category information: meta data on task
@@ -132,6 +134,15 @@ class PluginProcessmakerNotificationTargetTask extends PluginProcessmakerNotific
 
       // task technician
       $this->data['##task.user##'] = Html::clean($dbu->getUserName($taskobj->fields['users_id_tech']));
+      $tech = new User;
+      $tech->getFromDB($taskobj->fields['users_id_tech']);
+      $this->data['##task.user.login##'] = $tech->fields['name'];
+      if (isset($options['old_users_id_tech'])) {
+         $oldtech = new User;
+         $oldtech->getFromDB($options['old_users_id_tech']);
+         $this->data['##task.former.user##'] = Html::clean($dbu->getUserName($options['old_users_id_tech']));
+         $this->data['##task.former.user.login##'] = $oldtech->fields['name'];
+      }
 
       // task group technician
       $this->data['##task.group##'] = Html::clean(Toolbox::clean_cross_side_scripting_deep(Dropdown::getDropdownName("glpi_groups", $taskobj->fields['groups_id_tech'])), true, 2, false);
@@ -146,7 +157,7 @@ class PluginProcessmakerNotificationTargetTask extends PluginProcessmakerNotific
       // task duration
       $this->data['##task.time##'] = Html::timestampToString($taskobj->fields['actiontime'], false);
 
-      // add labels
+      // add labels to tags that are not set
       $this->getTags();
       foreach ($this->tag_descriptions[NotificationTarget::TAG_LANGUAGE] as $tag => $values) {
          if (!isset($this->data[$tag])) {
@@ -173,6 +184,9 @@ class PluginProcessmakerNotificationTargetTask extends PluginProcessmakerNotific
                'task.categorycomment'    => __('Category comment'),
                'task.time'               => __('Total duration'),
                'task.user'               => __('User assigned to task'),
+               'task.user.login'         => __('User login assigned to task'),
+               'task.former.user'        => __('Former user assigned to task'),
+               'task.former.user.login'  => __('Former user login assigned to task'),
                'task.group'              => __('Group assigned to task'),
                'task.begin'              => __('Start date'),
                'task.end'                => __('End date'),
