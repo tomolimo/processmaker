@@ -289,6 +289,10 @@ class PluginProcessmakerCase extends CommonDBTM {
                               'update'          => true] );
          PluginProcessmakerNotificationTargetProcessmaker::restoreNotificationState($donotif);
 
+         // then update the delIndex and delThread
+         $query = "UPDATE glpi_plugin_processmaker_tasks SET del_index = $newDelIndex, del_thread = $newDelThread WHERE id={$pm_task_row['id']}; ";
+         $res = $DB->query($query);
+
          // Notification management
          // search if at least one active notification is existing for that pm task with that event 'task_update_'.$glpi_task->fields['taskcategories_id']
          $res = PluginProcessmakerNotificationTargetTask::getNotifications('task_update', $glpi_task->fields['taskcategories_id'], $this->fields['entities_id']);
@@ -316,10 +320,6 @@ class PluginProcessmakerCase extends CommonDBTM {
                                            'is_private'                   => isset($glpi_task->fields['is_private']) ? $glpi_task->fields['is_private'] : 0
                                           ]);
          }
-
-         // then update the delIndex and delThread
-         $query = "UPDATE glpi_plugin_processmaker_tasks SET del_index = $newDelIndex, del_thread = $newDelThread WHERE id={$pm_task_row['id']}; ";
-         $res = $DB->query($query);
       }
    }
 
