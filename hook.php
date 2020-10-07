@@ -180,7 +180,10 @@ function plugin_pre_item_update_processmaker(CommonITILObject $parm) {
  * @param mixed $parm is the object
  */
 function plugin_item_update_processmaker_satisfaction($parm) {
-
+   global $PM_SOAP;
+   if (Session::isCron()) { // Task cron log with user admin
+      $PM_SOAP->login(true);
+   } 
    $cases = PluginProcessmakerCase::getIDsFromItem('Ticket', $parm->fields['tickets_id']);
    foreach ($cases as $cases_id) {
       $locCase = new PluginProcessmakerCase;
