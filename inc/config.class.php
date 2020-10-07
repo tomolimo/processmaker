@@ -156,7 +156,7 @@ class PluginProcessmakerConfig extends CommonDBTM {
       if (!$config->fields['maintenance']) {
 
          echo "<tr class='tab_bg_1'>";
-         echo "<td >".__('Server URL (must be in same domain than GLPI)', 'processmaker')."</td><td >";
+         echo "<td >".__('Server URL (must be in same domain than GLPI, if GLPI is using HTTPS, PM server must also use HTTPS)', 'processmaker')."</td><td >";
          echo "<input size='50' type='text' name='pm_server_URL' value='".$config->fields['pm_server_URL']."'>";
          echo "</td></tr>\n";
 

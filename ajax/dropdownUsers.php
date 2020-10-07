@@ -87,11 +87,6 @@ $count = 0;
    }
 //}
 
-if (!function_exists('dpuser_cmp')) {
-   function dpuser_cmp($a, $b) {
-      return strcasecmp($a, $b);
-   }
-}
 
 $datas = [];
 

@@ -247,7 +247,7 @@ Html::helpHeader(__('New ticket'), $_SERVER['PHP_SELF'], $_SESSION["glpiname"]);
 if (isset($_REQUEST['case_guid'])) {
    $res = $DB->request(
                   'glpi_plugin_processmaker_cases', [
-                  ' case_guid'=>$_REQUEST['case_guid']
+                  'case_guid'=>$_REQUEST['case_guid']
                   ]);
    $query = "SELECT * FROM glpi_plugin_processmaker_cases WHERE case_guid='".$_REQUEST['case_guid']."'";
    //$res = $DB->query( $query );

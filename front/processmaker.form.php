@@ -62,7 +62,7 @@ switch ($_POST["action"]) {
               // Must show it...
               //
               $rand = rand( );
-              Html::redirect($CFG_GLPI['root_doc']."/plugins/processmaker/front/processmaker.helpdesk.form.php?processes_id=".$_POST['plugin_processmaker_processes_id']."&case_guid=".$resultCase->caseId."&rand=$rand&itilcategories_id=".$_POST["itilcategories_id"]."&type=".$_REQUEST["type"]."&entities_id=".$_REQUEST['entities_id']);
+              Html::redirect($CFG_GLPI['root_doc']."/plugins/processmaker/front/processmaker.helpdesk.form.php?processes_id=".$_POST['plugin_processmaker_processes_id']."&case_guid=".$resultCase->caseId."&rand=$rand&itilcategories_id=".$_POST["itilcategories_id"]."&type=".$_POST["type"]."&entities_id=".$_POST['entities_id']);
 
          } else {
             Session::addMessageAfterRedirect( PluginProcessmakerProcessmaker::getPMErrorMessage($resultCase->status_code)."<br>$resultCase->message ($resultCase->status_code)", true, ERROR);
@@ -70,94 +70,55 @@ switch ($_POST["action"]) {
          }
 
       }
-        break;
+      break;
 
-   case 'unpausecase_or_reassign_or_delete' :
-      if (isset($_POST['unpause'])) {
+   case 'reassign_reminder' :
+      if (isset($_POST['reassign'])) {
+         // here we should re-assign the current task to $_POST['users_id_recipient']
          $locCase = new PluginProcessmakerCase;
          $locCase->getFromDB($_POST['cases_id']);
-         $pmResultUnpause = $locCase->unpauseCase($_POST['delIndex'], $_POST['users_id']);
-         if ($pmResultUnpause->status_code == 0) {
-            Html::back();
-         } else {
-            echo "Error unpausing case: ".$pmResultUnpause->message." \n";
-         }
-      } else if (isset($_POST['reassign'])) {
-         // here we should re-assign the current task to $_POST['users_id_recipient']
-         //$GLPINewPMUserId = PluginProcessmakerUser::getPMUserId( $_POST['users_id_recipient'] );
-         if ($_POST['users_id'] != $_POST['users_id_recipient'] && $_POST['users_id_recipient'] != 0) { // normally should be different as of the dropdown prevents already used
-            $locCase = new PluginProcessmakerCase;
-            $locCase->getFromDB($_POST['cases_id']);
-
+         if ($_POST['users_id_recipient'] != 0) {
+            // we are assigning a new tech to a task
             $pmResponse = $locCase->reassignCase($_POST['delIndex'],
                                                  $_POST['taskGuid'],
                                                  $_POST['delThread'],
                                                  $_POST['users_id'],
-                                                 $_POST['users_id_recipient']);
+                                                 $_POST['users_id_recipient'],
+                                                 ['comment' => $_POST['comment']]);
             if ($pmResponse) {
                Session::addMessageAfterRedirect(__('Task re-assigned!', 'processmaker'), true, INFO);
             } else {
                Session::addMessageAfterRedirect(__('Error re-assigning task: ', 'processmaker').$pmResponse->message, true, ERROR);
             }
-         } else {
-            if ($_POST['users_id_recipient'] == 0) {
-               Session::addMessageAfterRedirect(__('Can\'t un-assign Task!', 'processmaker'), true, ERROR);
+         } elseif ($_POST['users_id_recipient'] == 0) {
+            // we are unassigning a task, i.e.: task un-claim
+            $pmResponse = $locCase->unassignCase($_POST['delIndex'],
+                                                 $_POST['taskGuid'],
+                                                 $_POST['tasktype'],
+                                                 $_POST['tasks_id'],
+                                                 $_POST['itemtype'],
+                                                 ['comment' => $_POST['comment']]);
+            if ($pmResponse) {
+               Session::addMessageAfterRedirect(__('Task un-claimed!', 'processmaker'), true, INFO);
             } else {
-               if ($_POST['users_id'] === $_POST['users_id_recipient'] ) { // normally should be different as of the dropdown prevents already used
-                  Session::addMessageAfterRedirect(__('Task already assigned to this person!', 'processmaker'), true, ERROR);
-               }
+               Session::addMessageAfterRedirect(__("Can't un-claim task! Verify 'Assignement Rules' in the process definition.", 'processmaker'), true, ERROR);
             }
          }
-         //} else if (isset($_POST['delete'])) {
-         //   // delete case from case table, this will also delete the tasks
-         //   $locCase = new PluginProcessmakerCase;
-         //   if ($locCase->getFromDB($_POST['cases_id']) && $locCase->deleteCase()) {
-         //      // request delete from pm itself
-         //      $PM_SOAP->login(true);
+      } elseif (isset($_POST['reminder'])) {
+         // send notification remider as requested for this task
 
-         //      $resultPM = $PM_SOAP->deleteCase($locCase->fields['case_guid']);
+         $locCase = new PluginProcessmakerCase;
+         $locCase->getFromDB($_POST['cases_id']);
+         $glpi_item = new $_POST['itemtype'];
+         $glpi_item->getFromDB($_POST['items_id']);
+         $pm_task = new PluginProcessmakerTask($_POST['tasktype']);
+         $pm_task->getFromDB($_POST['tasks_id']);
+         $glpi_task = new $_POST['tasktype'];
+         $glpi_task->getFromDB($_POST['tasks_id']);
 
-         //      if ($resultPM->status_code == 0) {
-         //         Session::addMessageAfterRedirect($LANG['processmaker']['item']['case']['deleted'], true, INFO);
-         //      } else {
-         //         Session::addMessageAfterRedirect($LANG['processmaker']['item']['case']['errordeleted'], true, ERROR);
-         //      }
-         //   } else {
-         //      Session::addMessageAfterRedirect($LANG['processmaker']['item']['case']['errordeleted'], true, ERROR);
-         //   }
-         //} else if (isset($_POST['cancel'])) {
-         //   // cancel case from PM
-         //   $locCase = new PluginProcessmakerCase;
-         //   $locCase->getFromDB($_POST['cases_id']);
-         //   $resultPM = $PM_SOAP->cancelCase($locCase->fields['case_guid']); //, $_POST['plugin_processmaker_del_index'], $_POST['plugin_processmaker_users_id'] ) ;
-         //   if ($resultPM->status_code === 0) {
-         //      //$locCase = new PluginProcessmakerCase;
-         //      //$locCase->getFromDB($_POST['cases_id']);
-         //      if ($locCase->cancelCase()) {
-         //         Session::addMessageAfterRedirect($LANG['processmaker']['item']['case']['cancelled'], true, INFO);
-         //      } else {
-         //         Session::addMessageAfterRedirect($LANG['processmaker']['item']['case']['errorcancelled'], true, ERROR);
-         //      }
-         //   } else {
-         //      if ($resultPM->status_code == 100 && $locCase->deleteCase()) { // case is draft then delete it
-         //         // request delete from pm itself
-         //         $PM_SOAP->login(true);
-
-         //         $resultPM = $PM_SOAP->deleteCase($locCase->fields['case_guid']);
-
-         //         if ($resultPM->status_code == 0) {
-         //            Session::addMessageAfterRedirect($LANG['processmaker']['item']['case']['deleted'], true, INFO);
-         //         } else {
-         //            Session::addMessageAfterRedirect($LANG['processmaker']['item']['case']['errordeleted'], true, ERROR);
-         //         }
-         //      } else {
-         //         Session::addMessageAfterRedirect($LANG['processmaker']['item']['case']['errorcancelled']. " " . $resultPM->message, true, ERROR);
-         //      }
-         //   }
+         // send notification now!
+         $pm_task->sendNotification('task_reminder', $glpi_task, $glpi_item, $locCase);
       }
-
-      break;
-
 }
 
 // to return to item

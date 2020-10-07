@@ -67,6 +67,15 @@ class PluginProcessmakerTask extends CommonITILTask
       return false;
    }
 
+
+   /**
+    * Summary of getPMTaskID
+    * @return mixed
+    */
+   function getPMTaskID() {
+      return $this->fields['items_id'];
+   }
+
     /**
      * Summary of getToDoTasks
      * returns all 'to do' tasks associated with this case
@@ -377,31 +386,53 @@ class PluginProcessmakerTask extends CommonITILTask
       }
 
       if (isset($currentUser)) {
-         if (/*$currentUser->userId &&*/ $task[$tabnum]['del_index']) {
+         if ($task[$tabnum]['del_index']) {
             // to load users for task re-assign only when task is not a sub-case
 
             echo "<div class='tab_bg_2' id='divUsers-".$currentUser->delIndex."'><div class='loadingindicator'>".__('Loading...')."</div></div>";
-            echo "<script>$('#divUsers-{$task[$tabnum]['del_index']}').load( '".$CFG_GLPI["root_doc"]."/plugins/processmaker/ajax/task_users.php?cases_id="
-                     .$case->getID()
-                     ."&items_id="
-                     .$case->fields['items_id']
-                     ."&itemtype="
-                     .$case->fields['itemtype']
-                     ."&users_id="
-                     .PluginProcessmakerUser::getGLPIUserId($currentUser->userId)
-                     ."&taskGuid="
-                     .$currentUser->taskId
-                     ."&delIndex={$task[$tabnum]['del_index']}&delThread={$currentUser->delThread}&rand=$rand' ); </script>";
-         //} else {
-         //   // manages the claim
-         //   // current task is to be claimed
-         //   // get the assigned group to the item task
-         //   $itemtask = $dbu->getItemForItemtype( $task[$tabnum]['itemtype'] );
-         //   $itemtask->getFromDB( $task[$tabnum]['items_id'] );
-         //   // check if this group can be found in the current user's groups
-         //   if (!isset($_SESSION['glpigroups']) || !in_array( $itemtask->fields['groups_id_tech'], $_SESSION['glpigroups'] )) {
-         //      $hide_claim_button=true;
-         //   }
+
+            // try to get users whom can't be assigned to this task
+            // already assigned user can't be assigned again to this task
+            $current_assigned_user = PluginProcessmakerUser::getGLPIUserId($currentUser->userId);
+            // and then any forbiden users defined from the case itself
+            $casevariablevalues = $case->getVariables(['GLPI_TASK_PREVENT_REASSIGN']);
+            $prevent_assign = [];
+            if (array_key_exists( 'GLPI_TASK_PREVENT_REASSIGN', $casevariablevalues ) && $casevariablevalues[ 'GLPI_TASK_PREVENT_REASSIGN' ] != '') {
+               $prevent_assign = json_decode($casevariablevalues[ 'GLPI_TASK_PREVENT_REASSIGN' ], true);
+            }
+
+
+            $used_users = [];
+            $used_users[] = $current_assigned_user;
+            if (array_key_exists($currentUser->taskId, $prevent_assign)) {
+               if (is_array($prevent_assign[$currentUser->taskId])) {
+                  foreach ($prevent_assign[$currentUser->taskId] as $pmuser) {
+                     $usr_id = PluginProcessmakerUser::getGlpiIdFromAny($pmuser);
+                     if ($usr_id) {
+                        $used_users[] = $usr_id;
+                     }
+                  }
+               } else {
+                  $usr_id = PluginProcessmakerUser::getGlpiIdFromAny($prevent_assign[$currentUser->taskId]);
+                  if ($usr_id) {
+                     $used_users[] = $usr_id;
+                  }
+               }
+            }
+
+            $data = "{
+                     cases_id  : {$case->getID()},
+                     items_id  : {$case->fields['items_id']},
+                     itemtype  : '{$case->fields['itemtype']}',
+                     tasktype  : '{$task[$tabnum]['itemtype']}',
+                     tasks_id  : {$task[$tabnum]['items_id']},
+                     users_id  : {$current_assigned_user},
+                     taskGuid  : '{$currentUser->taskId}',
+                     delIndex  : {$task[$tabnum]['del_index']},
+                     delThread : {$currentUser->delThread},
+                     used      : [".join(',', array_unique($used_users))."]
+                     }";
+            echo html::scriptBlock("$('#divUsers-{$task[$tabnum]['del_index']}').load('".$CFG_GLPI["root_doc"]."/plugins/processmaker/ajax/task_users.php', $data);");
          }
 
          if (!$currentUser->userId || !$task[$tabnum]['del_index']) {
@@ -422,18 +453,6 @@ class PluginProcessmakerTask extends CommonITILTask
 
       $csrf = Session::getNewCSRFToken();
 
-      //echo "<iframe id='caseiframe-task-{$task[$tabnum]['del_index']}' onload=\"onTaskFrameLoad( event, {$task[$tabnum]['del_index']}, "
-      //   .($hide_claim_button?"true":"false")
-      //   .", '$csrf' );\" style='border:none;' class='tab_bg_2' width='100%' src='";
-      //echo $PM_SOAP->serverURL
-      //   ."/cases/cases_Open?sid="
-      //   .$PM_SOAP->getPMSessionID()
-      //   ."&APP_UID="
-      //   .$case->fields['case_guid']
-      //   ."&DEL_INDEX="
-      //   .$task[$tabnum]['del_index']
-      //   ."&action=TO_DO";
-      //echo "&rand=$rand&glpi_domain={$config->fields['domain']}'></iframe></div>";
       $url = $PM_SOAP->serverURL
          ."/cases/cases_Open?sid=".$PM_SOAP->getPMSessionID()
          ."&APP_UID=".$case->fields['case_guid']
@@ -471,6 +490,42 @@ class PluginProcessmakerTask extends CommonITILTask
             }
          });
       ");
+   }
+
+
+   /**
+    * Summary of sendNotification
+    * Will send either dedicated notification, or standard one
+    * @param string $type is 'task_add', 'task_reassign', 'task_done', 'task_reminder'
+    * @param CommonITILTask $task is the task (TicketTask,...)
+    * @param CommonITILObject $item is the ITIL item (Ticket,...)
+    * @param PluginProcessmakerCase $case is the case
+    */
+   function sendNotification(string $type, CommonITILTask $task, CommonITILObject $item, PluginProcessmakerCase $case = null) {
+      // Notification management
+      // search if at least one active notification is existing for that pm task with that event 'task_update_'.$glpi_task->fields['taskcategories_id']
+      $res = PluginProcessmakerNotificationTargetTask::getNotifications($type, $task->fields['taskcategories_id'], $item->fields['entities_id']);
+      if ($res['notifications'] && count($res['notifications']) > 0) {
+         NotificationEvent::raiseEvent($res['event'],
+                                       $this,
+                                       ['plugin_processmaker_cases_id' => $this->fields['plugin_processmaker_cases_id'],
+                                        'itemtype'          => $item->getType(),
+                                        'task_id'           => $task->getID(),
+                                        'old_users_id_tech' => isset($task->oldvalues['users_id_tech']) ? $task->oldvalues['users_id_tech'] : 0,
+                                        'is_private'        => isset($task->fields['is_private']) ? $task->fields['is_private'] : 0,
+                                        'entities_id'       => $item->fields['entities_id'],
+                                        'case'              => $case,
+                                        'obj'               => $item
+                                       ]);
+      } else {
+         NotificationEvent::raiseEvent(PluginProcessmakerNotificationTargetTask::getDefaultGLPIEvents($type),
+                                       $item,
+                                       ['plugin_processmaker_cases_id' => $this->fields['plugin_processmaker_cases_id'],
+                                        'itemtype'                     => $item->getType(),
+                                        'task_id'                      => $task->getID(),
+                                        'is_private'                   => isset($task->fields['is_private']) ? $task->fields['is_private'] : 0
+                                       ]);
+      }
 
    }
 
