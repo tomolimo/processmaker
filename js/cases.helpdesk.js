@@ -7,10 +7,12 @@ function onClickContinue(obj) {
    //debugger;
    contentDocument = caseIFrame.contentDocument;
    var txtAreaUserRequestSumUp = contentDocument.getElementById('form[UserRequestSumUp]');
-   if (txtAreaUserRequestSumUp) {
-      $("textarea[name='content']").val($(txtAreaUserRequestSumUp).val());
-   } else {
-      $("textarea[name='content']").val('_');
+   if ($("textarea[name='content']").val() == '') {
+      if (txtAreaUserRequestSumUp) {
+         tinymce.activeEditor.setContent($(txtAreaUserRequestSumUp).val().replace(/(\r\n)|(\r)|(\n)/g, '<br>'));
+      } else {
+         tinymce.activeEditor.setContent('_');
+      }
    }
 
    // call old handler if any

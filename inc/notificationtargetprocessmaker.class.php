@@ -10,7 +10,12 @@
  * @version 1.0
  * @author MoronO
  */
-class PluginProcessmakerNotificationTargetProcessmaker extends NotificationTarget {
+class PluginProcessmakerNotificationTargetProcessmaker extends NotificationTargetCommonITILObject {
+
+   const PM_USER_TYPE = 1000;
+
+   const OLD_TASK_TECH_IN_CHARGE = 1;
+
 
    /**
     * Summary of saveNotificationState

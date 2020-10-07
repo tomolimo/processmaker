@@ -180,13 +180,43 @@ function plugin_pre_item_update_processmaker(CommonITILObject $parm) {
  * @param mixed $parm is the object
  */
 function plugin_item_update_processmaker_satisfaction($parm) {
-
+   global $PM_SOAP;
+   if (Session::isCron()) { // Task cron log with user admin
+      $PM_SOAP->login(true);
+   } 
    $cases = PluginProcessmakerCase::getIDsFromItem('Ticket', $parm->fields['tickets_id']);
    foreach ($cases as $cases_id) {
       $locCase = new PluginProcessmakerCase;
       if ($locCase->getFromDB($cases_id)) {
          // case is existing for this item
          $locCase->sendVariables( ['GLPI_SATISFACTION_QUALITY' => $parm->fields['satisfaction']] );
+      }
+   }
+}
+
+
+/**
+ * Summary of plugin_item_update_processmaker_user
+ * When a user login is changed, then must change it in the PM tables
+ * @param User $param is the user being changed
+ */
+function plugin_item_update_processmaker_user(User $param) {
+   // Must test if user login has been changed
+   // if yes, must change the login in the PM tables:
+   // USERS and RBAC_USERS, othewise the link in the processmaker_users table will be invalid
+   if (in_array('name', $param->updates)) {
+      // check if user is in the processmaker_user table
+      $pm_user = PluginProcessmakerUser::getPMUserId($param->getID());
+      if ($pm_user) {
+         // must update the user in PM tables
+         global $PM_SOAP;
+         if ($param->fields['is_active'] == 0 || $param->fields['is_deleted'] == 1) {
+               $status = "INACTIVE";
+            } else {
+               $status = "ACTIVE";
+            }
+         $PM_SOAP->login(true);
+         $pmResult = $PM_SOAP->updateUser( $pm_user, $param->fields['name'], $param->fields['firstname'], $param->fields['realname'], $status );
       }
    }
 }
@@ -376,15 +406,22 @@ function plugin_item_update_processmaker_tasks($parm) {
                   curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'Content-Length: ' . strlen($externalapplicationparams), 'Expect:']);
                   curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1 );
                   curl_setopt($ch, CURLOPT_VERBOSE, 1);
-                  curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, $pmconfig->fields['ssl_verify']);
-                  curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, $pmconfig->fields['ssl_verify']);
 
-                  //curl_setopt($ch, CURLOPT_HTTPPROXYTUNNEL, 1 ) ;
-                  //curl_setopt($ch, CURLOPT_PROXY, "localhost:8889");
+                  if (isset($externalapplication['ssl_verify'])) {
+                     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, $externalapplication['ssl_verify']);
+                     curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, $externalapplication['ssl_verify']);
+                  }
+
+                  if (isset($externalapplication['proxy'])) {
+                     curl_setopt($ch, CURLOPT_HTTPPROXYTUNNEL, 1 ) ;
+                     curl_setopt($ch, CURLOPT_PROXY, $externalapplication['proxy']);
+                  }
 
                   $response = curl_exec ($ch);
-
-                  //Toolbox::logDebug( $response ) ;
+                  if ($response === false) {
+                     //throw new Exception(curl_error($ch), curl_errno($ch));
+                     Toolbox::logDebug( curl_error($ch).":".curl_errno($ch) );
+                  }
 
                   curl_close ($ch);
                }

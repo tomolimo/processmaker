@@ -295,6 +295,7 @@ class PluginProcessmakerUser extends CommonDBTM {
       return 0;
    }
 
+
     /**
      * Summary of getPMUserId
      *      returns processmaker user id for given GLPI user id
@@ -308,6 +309,31 @@ class PluginProcessmakerUser extends CommonDBTM {
       }
       return false;
    }
+
+
+   /**
+    * Summary of getGlpiIdFromAny
+    * Returns the GLPI id of the user or false if not found
+    * Accept either PM GUID, GLPI logon, or GLPI ID
+    * @param  $any 
+    * @return mixed GLPI ID of the user or fasle if not found
+    */
+   public static function getGlpiIdFromAny($any) {
+      $ret = self::getGLPIUserId($any);
+      if ($ret) {
+         return $ret;
+      }
+      $ret = self::getPMUserId($any);
+      if ($ret) {
+         return $any;
+      }
+      $usr = new User;
+      if ($usr->getFromDBbyName($any)) {
+         return $usr->getId();
+      }
+      return false;
+   }
+
 
     ///**
     // * Summary of getNewPassword

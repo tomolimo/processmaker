@@ -1,6 +1,6 @@
 <?php
 
-define('PROCESSMAKER_VERSION', '3.6.6');
+define('PROCESSMAKER_VERSION', '3.6.16');
 
 // used for case cancellation
 define("CANCEL", 256);
@@ -67,7 +67,8 @@ function plugin_init_processmaker() {
    }
    $PLUGIN_HOOKS['pre_item_update']['processmaker'] = $hooks;
 
-   $hooks = ['TicketSatisfaction' => 'plugin_item_update_processmaker_satisfaction'];
+   $hooks = ['TicketSatisfaction' => 'plugin_item_update_processmaker_satisfaction',
+             'User'               => 'plugin_item_update_processmaker_user'];
    foreach ($objects as $obj) {
       $hooks[$obj.'Task'] = 'plugin_item_update_processmaker_tasks';
    }
@@ -91,6 +92,7 @@ function plugin_init_processmaker() {
    }
    $PLUGIN_HOOKS['item_get_pdfdatas']['processmaker'] = $hooks;
 
+   // Javascript
    $plugin = new Plugin();
    if ($plugin->isActivated('processmaker')
         && Session::getLoginUserID() ) {

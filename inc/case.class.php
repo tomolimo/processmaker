@@ -14,6 +14,8 @@ class PluginProcessmakerCase extends CommonDBTM {
    //static public $items_id = 'items_id'; // Field name
    static $rightname                           = 'plugin_processmaker_case';
 
+   private $process = null;
+
    const DRAFT     = 'DRAFT';
    const TO_DO     = 'TO_DO';
    const COMPLETED = 'COMPLETED';
@@ -222,6 +224,123 @@ class PluginProcessmakerCase extends CommonDBTM {
 
 
    /**
+    * Summary of unassignCase
+    * Will unassign the delIndex task, restoring the assigned group
+    * @param  $delIndex int the delegation index
+    * @param  $taskGuid string the GUID of the task
+    * @param  $tasktype string the type of task (TicketTask, ChangeTask, ProblemTask)
+    * @param  $tasks_id int the id of the task
+    * @param  $itemtype string the type of the ITIL object (Ticket, Change, Problem)
+    * @return bool
+    */
+   function unassignCase($delIndex, $taskGuid, $tasktype, $tasks_id, $itemtype, $options) {
+      global $PM_DB, $PM_SOAP, $DB;
+
+      // un-claim task
+      // will unclaim the task
+      // to unclaim a task, we must un-assign the task in the APP_DELEGATION table
+      // and un-assign the task in glpi_itemtypeTask table
+      $groupname = '';
+
+      // should get the group that is assigned to the task in SELF_SERVICE assign type
+      $query = "SELECT TAS_GROUP_VARIABLE FROM TASK WHERE TAS_UID='".$taskGuid."' AND TAS_ASSIGN_TYPE='SELF_SERVICE' LIMIT 1;";
+      foreach($PM_DB->request($query) as $pmGroup) {
+         // should have only one record
+         if ($pmGroup['TAS_GROUP_VARIABLE'] == '') {
+            // then we are in the self-service with a group in the TASK_USER table
+            // TU_RELATION=2 is groups and TU_TYPE=1 means normal (= not adhoc)
+            // then get the group name from the CONTENT table
+            $query = "SELECT CONTENT.CON_VALUE FROM TASK_USER
+                           JOIN CONTENT ON CONTENT.CON_ID=TASK_USER.USR_UID AND CONTENT.CON_CATEGORY='GRP_TITLE' AND CONTENT.CON_LANG = 'en'
+                           WHERE TASK_USER.TAS_UID='".$taskGuid."' AND TASK_USER.TU_RELATION=2 AND TASK_USER.TU_TYPE=1 LIMIT 1;";
+
+            foreach ($PM_DB->request($query) as $onlyrec) {
+               $groupname = $onlyrec['CON_VALUE'];
+            }
+
+
+         } else {
+            // then we are in the self-service with a case variable that contains either a group either an array of users
+            // array of users is not yet supported by PM plugin, as GLPI tasks have one and only one users_id_tech.
+            // group guid (in the case variable) must be retrieved from APP DATA
+
+            // TODO
+            ////////////////////////////////////////////////////////////////
+            // Currently this case is not manageable by GLPI
+            // as GLPI needs at least a user or a group to be assigned to a task
+            // and when using the self-service value based assignment, there 
+            // is a case variable that contains a list of users. This list of users cannot be mapped to a group in GLI
+            // OR may be we may create an artificial group in GLPI that would contains the list of users
+            ////////////////////////////////////////////////////////////////
+
+            // and then we get the name of the group from the CONTENT table
+            //$query = "SELECT CON_VALUE FROM CONTENT
+            //               WHERE CONTENT.CON_ID='$groupId' AND CONTENT.CON_CATEGORY='GRP_TITLE' AND CONTENT.CON_LANG='en' ;";
+
+         }
+      }
+
+      $groups_id_tech = PluginProcessmakerProcessmaker::getGLPIGroupId($groupname);
+
+      if ($groups_id_tech) {
+         // unclaim the case only when a GLPI group can be found
+
+         $query = "UPDATE APP_DELEGATION SET USR_UID='', DEL_INIT_DATE=NULL, USR_ID=0 WHERE APP_NUMBER=".$this->getID()." AND DEL_INDEX=$delIndex;";
+         $PM_DB->query($query);
+
+         $glpi_task = new $tasktype;
+         $glpi_task->getFromDB($tasks_id);
+         $foreignkey = getForeignKeyFieldForItemType( $itemtype );
+
+         $donotif = PluginProcessmakerNotificationTargetProcessmaker::saveNotificationState(false); // do not send notification yet
+         $glpi_task->update( ['id'              => $glpi_task->getID(),
+                              $foreignkey       => $glpi_task->fields[$foreignkey],
+                              'users_id_tech'   => 0,
+                              'groups_id_tech'  => $groups_id_tech,
+                              'update'          => true] );
+         PluginProcessmakerNotificationTargetProcessmaker::restoreNotificationState($donotif);
+
+         // send notification now!
+         $pm_task = new PluginProcessmakerTask($tasktype);
+         $pm_task->getFromDB($tasks_id);
+         $glpi_item = new $itemtype;
+         $glpi_item->getFromDB($glpi_task->fields[$foreignkey]);
+         $pm_task->sendNotification('task_unclaim', $glpi_task, $glpi_item, $this);
+
+         // create an information task and add comment
+         $pm_process = $this->getProcess();
+         $dbu = new DbUtils;
+         $info = __('<b>Task un-claimed!</b><br/><b>Case: </b>%s<br/><b>Task: </b>"%s" has been un-assigned from "%s" and assigned to "%s" group.<br/><b>Reason: </b>%s', 'processmaker');
+         $info .= "<input name='caseid' type='hidden' value='".$this->getID()."'><input name='taskid' type='hidden' value='".$pm_task->getID()."'>";
+         $taskCat = new TaskCategory;
+         $taskCat->getFromDB( $glpi_task->fields['taskcategories_id'] );
+         $info = sprintf($info,
+                         $this->getNameID(['forceid' => true]),
+                         DropdownTranslation::getTranslatedValue($glpi_task->fields['taskcategories_id'], 'TaskCategory', 'name', $_SESSION['glpilanguage'], $taskCat->fields['name']),
+                         Html::clean($dbu->getUserName(isset($glpi_task->oldvalues['users_id_tech']) ? $glpi_task->oldvalues['users_id_tech'] : 0)),
+                         Html::clean($groupname),
+                         $options['comment']
+                        );
+         // unescape some chars and replace CRLF, CR or LF by <br/>
+         $info = str_replace(["\\'", '\\"', '\r\n', '\r', '\n'], ["'", '"', '<br>', '<br>', '<br>'], $info);
+
+         $glpi_task->add([$foreignkey         => $glpi_task->fields[$foreignkey],
+                          'is_private'        => 0, // a post-only user can't create private task
+                          'taskcategories_id' => $pm_process->fields['taskcategories_id'],
+                          'content'           => $DB->escape($info),
+                          'users_id'          => $PM_SOAP->taskWriter,
+                          'state'             => Planning::INFO,
+                          'users_id_tech'     => Session::getLoginUserID(),
+                          ]);
+
+         return true;
+      }
+
+      return false;
+   }
+
+
+   /**
     * Summary of reassignCase
     * @param mixed $delIndex
     * @param mixed $taskGuid
@@ -230,7 +349,7 @@ class PluginProcessmakerCase extends CommonDBTM {
     * @param mixed $users_id_target
     * @return mixed
     */
-   function reassignCase($delIndex, $taskGuid, $delThread, $users_id_source, $users_id_target) {
+   function reassignCase($delIndex, $taskGuid, $delThread, $users_id_source, $users_id_target, $options) {
       global $PM_SOAP;
       $users_guid_source = ''; // by default
       if ($users_id_source !== 0) { // when task is not 'to be claimed'
@@ -253,7 +372,7 @@ class PluginProcessmakerCase extends CommonDBTM {
                break;
             }
          }
-         $this->reassignTask($delIndex, $newDelIndex, $delThread, $newDelThread, $users_id_target );
+         $this->reassignTask($delIndex, $newDelIndex, $delThread, $newDelThread, $users_id_target, $options);
          return true;
       }
       return false;
@@ -266,15 +385,15 @@ class PluginProcessmakerCase extends CommonDBTM {
     * @param mixed $newDelIndex
     * @param mixed $newTech
     */
-   public function reassignTask ($delIndex, $newDelIndex, $delThread, $newDelThread, $newTech) {
-      global $DB;
+   public function reassignTask ($delIndex, $newDelIndex, $delThread, $newDelThread, $newTech, $options) {
+      global $DB, $PM_SOAP;
 
       $dbu = new DbUtils;
       $pm_task_row = $dbu->getAllDataFromTable(PluginProcessmakerTask::getTable(), ['plugin_processmaker_cases_id' => $this->getID(), 'del_index' => $delIndex, 'del_thread' => $delThread]);
       if ($pm_task_row && count($pm_task_row) == 1) {
          $pm_task_row = array_shift($pm_task_row);
          $glpi_task = new $pm_task_row['itemtype'];
-         $glpi_task->getFromDB( $pm_task_row['items_id'] );
+         $glpi_task->getFromDB($pm_task_row['items_id']);
 
          $itilobject_itemtype = $this->fields['itemtype'];
          $foreignkey = getForeignKeyFieldForItemType( $itilobject_itemtype );
@@ -298,36 +417,67 @@ class PluginProcessmakerCase extends CommonDBTM {
                         ]
                      );
 
-         // Notification management
-         // search if at least one active notification is existing for that pm task with that event 'task_update_'.$glpi_task->fields['taskcategories_id']
-         $res = PluginProcessmakerNotificationTargetTask::getNotifications('task_update', $glpi_task->fields['taskcategories_id'], $this->fields['entities_id']);
-         if ($res['notifications'] && count($res['notifications']) > 0) {
-            $pm_task = new PluginProcessmakerTask($pm_task_row['itemtype']);
-            $pm_task->getFromDB($pm_task_row['items_id']);
-            NotificationEvent::raiseEvent($res['event'],
-                                          $pm_task,
-                                          ['plugin_processmaker_cases_id' => $this->getID(),
-                                           'itemtype'          => $pm_task_row['itemtype'],
-                                           'task_id'           => $glpi_task->getID(),
-                                           'old_users_id_tech' => $glpi_task->oldvalues['users_id_tech'],
-                                           'is_private'        => isset($glpi_task->fields['is_private']) ? $glpi_task->fields['is_private'] : 0,
-                                           'entities_id'       => $this->fields['entities_id'],
-                                           'case'              => $this
-                                          ]);
+         // send notification now!
+         $pm_task = new PluginProcessmakerTask($pm_task_row['itemtype']);
+         $pm_task->getFromDB($pm_task_row['items_id']);
+         $glpi_item = new $itilobject_itemtype;
+         $glpi_item->getFromDB($glpi_task->fields[$foreignkey]);
+         $pm_task->sendNotification('task_reassign', $glpi_task, $glpi_item, $this);
+
+         // create an information task and add comment
+         $pm_process = $this->getProcess();
+         $old_users_tech_id = isset($glpi_task->oldvalues['users_id_tech']) ? $glpi_task->oldvalues['users_id_tech'] : 0;
+         $taskCat = new TaskCategory;
+         $taskCat->getFromDB( $glpi_task->fields['taskcategories_id'] );
+         $task_name = DropdownTranslation::getTranslatedValue($glpi_task->fields['taskcategories_id'], 'TaskCategory', 'name', $_SESSION['glpilanguage'], $taskCat->fields['name']);
+         $new_tech_name = Html::clean($dbu->getUserName($newTech));
+         if ($old_users_tech_id) {
+            $info = __('<b>Task re-assigned!</b><br/><b>Case: </b>%s<br/><b>Task: </b>"%s" has been re-assigned from "%s" to "%s".<br/><b>Reason: </b>%s', 'processmaker');
+            $info = sprintf($info,
+                            $this->getNameID(['forceid' => true]),
+                            $task_name,
+                            Html::clean($dbu->getUserName(isset($glpi_task->oldvalues['users_id_tech']) ? $glpi_task->oldvalues['users_id_tech'] : 0)),
+                            $new_tech_name,
+                            $options['comment']
+                           );
          } else {
-            $item = new $itilobject_itemtype;
-            $item->getFromDB($glpi_task->fields[$foreignkey]);
-            NotificationEvent::raiseEvent('update_task',
-                                          $item,
-                                          ['plugin_processmaker_cases_id' => $this->getID(),
-                                           'itemtype'                     => $pm_task_row['itemtype'],
-                                           'task_id'                      => $glpi_task->getID(),
-                                           'is_private'                   => isset($glpi_task->fields['is_private']) ? $glpi_task->fields['is_private'] : 0
-                                          ]);
+            $info = __('<b>Task assigned!</b><br/><b>Case: </b>%s<br/><b>Task: </b>"%s" has been assigned to "%s".<br/><b>Reason: </b>%s', 'processmaker');
+            $info = sprintf($info,
+                            $this->getNameID(['forceid' => true]),
+                            $task_name,
+                            $new_tech_name,
+                            $options['comment']
+                           );
          }
+         $info .= "<input name='caseid' type='hidden' value='".$this->getID()."'><input name='taskid' type='hidden' value='".$pm_task->getID()."'>";
+
+         // unescape some chars and replace CRLF, CR or LF by <br/>
+         $info = str_replace(["\\'", '\\"', '\r\n', '\r', '\n'], ["'", '"', '<br>', '<br>', '<br>'], $info);
+
+         $glpi_task->add([$foreignkey         => $glpi_task->fields[$foreignkey],
+                          'is_private'        => 0, // a post-only user can't create private task
+                          'taskcategories_id' => $pm_process->fields['taskcategories_id'],
+                          'content'           => $DB->escape($info),
+                          'users_id'          => $PM_SOAP->taskWriter,
+                          'state'             => Planning::INFO,
+                          'users_id_tech'     => Session::getLoginUserID(),
+                          ]);
       }
    }
 
+
+   /**
+    * Summary of getProcess
+    * Returns process object
+    * @return bool|PluginProcessmakerProcess
+    */
+   function getProcess() {
+      $pm_process = new PluginProcessmakerProcess;
+      if (!$this->process && $pm_process->getFromDB($this->fields['plugin_processmaker_processes_id'])) {
+         $this->process = $pm_process;
+      }
+      return $this->process;
+   }
 
    /**
     * Summary of showCaseProperties
@@ -719,16 +869,13 @@ class PluginProcessmakerCase extends CommonDBTM {
          echo "<tr class='tab_bg_2'><td class='tab_bg_2'>";
          echo __('Select the process you want to add', 'processmaker');
          echo "</td><td class='tab_bg_2'>";
-         $condition[] = ['is_active' => 1];
-         if ($itemtype == 'Ticket') {
-            $condition[] = ['is_incident' => 1];
-            //$is_itemtype = "AND is_incident=1";
-            if ($item->fields['type'] == Ticket::DEMAND_TYPE) {
-               $condition[] = ['is_request' => 1];
-               //$is_itemtype = "AND is_request=1";
-            }
+         $condition['is_active'] = 1;
+         if ($itemtype == 'Ticket' && $item->fields['type'] == Ticket::INCIDENT_TYPE) {
+            $condition['is_incident'] =  1;
+         } else if ($itemtype == 'Ticket' && $item->fields['type'] == Ticket::DEMAND_TYPE) {
+            $condition['is_request'] = 1;
          } else {
-            $condition[] = ['is_'.strtolower($itemtype) => 1];
+            $condition['is_'.strtolower($itemtype)] =  1;
             //$is_itemtype = "AND is_".strtolower($itemtype)."=1";
          }
          PluginProcessmakerProcess::dropdown(['value' => 0,

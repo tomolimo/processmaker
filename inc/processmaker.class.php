@@ -84,7 +84,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    private $pmWorkspace = "";
    private $pmAdminSession = false;
 
-   private $taskWriter = 0;
+   var $taskWriter = 0;
    private $pm_group_guid = ''; // guid for default user group in Process Maker is used for all GLPI user synchronization into ProcessMaker
    var $lasterror;
    var $lang;
@@ -143,24 +143,24 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    public function addItemFollowup($itemtype, $itemId, $txtForFollowup, $users_id = null) {
       global $DB;
       $fu = new ITILFollowup();//new TicketFollowup();
-      $fu->getEmpty(); // to get default values
+      //$fu->getEmpty(); // to get default values
       $input = $fu->fields;
-      if (isset( $txtForFollowup['GLPI_TICKET_FOLLOWUP_CONTENT'] )) {
+      if (isset( $txtForFollowup['GLPI_TICKET_FOLLOWUP_CONTENT']) && $txtForFollowup['GLPI_TICKET_FOLLOWUP_CONTENT'] != "" ) {
          $input['content'] = $DB->escape($txtForFollowup['GLPI_TICKET_FOLLOWUP_CONTENT']);
       }
-      if (isset( $txtForFollowup['GLPI_ITEM_FOLLOWUP_CONTENT'] )) {
+      if (isset( $txtForFollowup['GLPI_ITEM_FOLLOWUP_CONTENT']) && $txtForFollowup['GLPI_ITEM_FOLLOWUP_CONTENT'] != "" ) {
          $input['content'] = $DB->escape($txtForFollowup['GLPI_ITEM_FOLLOWUP_CONTENT']);
       }
-      if (isset( $txtForFollowup['GLPI_TICKET_FOLLOWUP_IS_PRIVATE'] )) {
+      if (isset( $txtForFollowup['GLPI_TICKET_FOLLOWUP_IS_PRIVATE'] ) && $txtForFollowup['GLPI_TICKET_FOLLOWUP_IS_PRIVATE'] != "") {
          $input['is_private'] = $txtForFollowup['GLPI_TICKET_FOLLOWUP_IS_PRIVATE'];
       }
-      if (isset( $txtForFollowup['GLPI_ITEM_FOLLOWUP_IS_PRIVATE'] )) {
+      if (isset( $txtForFollowup['GLPI_ITEM_FOLLOWUP_IS_PRIVATE'] ) && $txtForFollowup['GLPI_TICKET_FOLLOWUP_IS_PRIVATE'] != "") {
          $input['is_private'] = $txtForFollowup['GLPI_ITEM_FOLLOWUP_IS_PRIVATE'];
       }
-      if (isset( $txtForFollowup['GLPI_TICKET_FOLLOWUP_REQUESTTYPES_ID'] )) {
+      if (isset( $txtForFollowup['GLPI_TICKET_FOLLOWUP_REQUESTTYPES_ID'] ) && $txtForFollowup['GLPI_TICKET_FOLLOWUP_REQUESTTYPES_ID'] != "") {
          $input['requesttypes_id'] = $txtForFollowup['GLPI_TICKET_FOLLOWUP_REQUESTTYPES_ID'];
       }
-      if (isset( $txtForFollowup['GLPI_ITEM_FOLLOWUP_REQUESTTYPES_ID'] )) {
+      if (isset( $txtForFollowup['GLPI_ITEM_FOLLOWUP_REQUESTTYPES_ID'] ) && $txtForFollowup['GLPI_ITEM_FOLLOWUP_REQUESTTYPES_ID'] != "") {
          $input['requesttypes_id'] = $txtForFollowup['GLPI_ITEM_FOLLOWUP_REQUESTTYPES_ID'];
       }
       $input['items_id'] = $itemId;//$input['tickets_id'] = $itemId;
@@ -1330,9 +1330,9 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                // insert into DB the link between glpi users and pm user
                $pmuser = new PluginProcessmakerUser;
                if ($pmuser->getFromDB( $user['id'] )) {
-                  $pmuser->update( [ 'id' => $user['id'], 'pm_users_id' => $pmResult->userUID, 'password' => md5( $pass ) ] );
+                  $pmuser->update( [ 'id' => $user['id'], 'pm_users_id' => $pmResult->userUID ] );
                } else {
-                  $pmuser->add( [ 'id' => $user['id'], 'pm_users_id' => $pmResult->userUID, 'password' => md5( $pass ) ] );
+                  $pmuser->add( [ 'id' => $user['id'], 'pm_users_id' => $pmResult->userUID ] );
                }
                $actionCode = 1;
 
@@ -1747,8 +1747,25 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
             $res = $PM_DB->request([
                            'SELECT'       => 'CONTENT.CON_VALUE',
                            'FROM'         => 'TASK_USER',
-                           'INNER JOIN'   => ['CONTENT' => ['AND' => ['FKEY' => ['CONTENT' => 'CON_ID', 'TASK_USER' => 'USR_UID'], ['CONTENT' => 'CON_CATEGORY', 'GRP_TITLE'], ['CONTENT' => 'CON_LANG', 'en']]]],
-                           'WHERE'        => ['AND' => ['TASK_USER.TAS_UID' => $pmTaskId, 'TASK_USER.TU_RELATION' => 2, 'TASK_USER.TU_TYPE' => 1]],
+                           'INNER JOIN'   => [
+                                             'CONTENT' => [
+                                                'AND' => [
+                                                   'FKEY' => [
+                                                      'CONTENT'   => 'CON_ID', 
+                                                      'TASK_USER' => 'USR_UID'
+                                                   ], 
+                                                   ['CONTENT.CON_CATEGORY' => 'GRP_TITLE'], 
+                                                   ['CONTENT.CON_LANG'     => 'en']
+                                                ]
+                                             ]
+                                          ],
+                           'WHERE'        => [
+                                             'AND' => [
+                                                'TASK_USER.TAS_UID' => $pmTaskId, 
+                                                'TASK_USER.TU_RELATION' => 2, 
+                                                'TASK_USER.TU_TYPE' => 1
+                                             ]
+                                          ],
                            'LIMIT'        => 1
                         ]);
             //$query = "SELECT CONTENT.CON_VALUE FROM TASK_USER
@@ -1758,7 +1775,13 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
             $res = $PM_DB->request([
                            'SELECT' => 'CON_VALUE',
                            'FROM'   => 'CONTENT',
-                           'WHERE'  => ['AND' => ['CONTENT.CON_ID' => $groupId, 'CONTENT.CON_CATEGORY' => 'GRP_TITLE', 'CONTENT.CON_LANG' => 'en']]
+                           'WHERE'  => [
+                                       'AND' => [
+                                          'CONTENT.CON_ID'        => $groupId, 
+                                          'CONTENT.CON_CATEGORY'  => 'GRP_TITLE', 
+                                          'CONTENT.CON_LANG'      => 'en'
+                                       ]
+                                    ]
                         ]);
             //$query = "SELECT CON_VALUE FROM CONTENT
             //                WHERE CONTENT.CON_ID='$groupId' AND CONTENT.CON_CATEGORY='GRP_TITLE' AND CONTENT.CON_LANG='en' ;";
@@ -1809,7 +1832,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
       $input['is_private'] = 0;
       $input['actiontime'] = 0;
-      $input['state'] = 1; // == TO_DO
+      $input['state'] = Planning::TODO; // == TO_DO
       $input['users_id_tech'] = 0; // by default as it can't be empty
       if ($techId) {
          $input['users_id_tech'] = $techId;
@@ -1890,6 +1913,24 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
 
    /**
+    * Summary of getGLPIGroupId
+    * returns GLPI group id from pm group name
+    * returns false when not found
+    * @param  string $pmGroupName 
+    * @return bool|integer
+    */
+   static function getGLPIGroupId(string $pmGroupName) {
+      global $DB;
+      $query = "SELECT id AS glpi_group_id FROM glpi_groups WHERE name LIKE '$pmGroupName';";
+      $res = $DB->query($query);
+      if ($DB->numrows($res) > 0) {
+         $row = $DB->fetch_array($res);
+         return $row['glpi_group_id'];
+      }
+      return false;
+   }
+
+   /**
    * Summary of add1stTask
    *      adds a GLPI task to ticket
    * @param $cases_id integer the GLPI id of the case
@@ -1958,10 +1999,12 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
     * @param mixed $newtitle
     */
    public function setItemTitle($itemtype, $itemId, $newtitle) {
+      global $DB;
+
       $dbu = new DbUtils;
       $item = $dbu->getItemForItemtype( $itemtype );
       if ($item->getFromDB( $itemId )) {
-         $item->update( ['id' => $itemId, 'name' => $newtitle] );
+         $item->update( ['id' => $itemId, 'name' => $DB->escape($newtitle)] );
       }
    }
 
@@ -1988,6 +2031,8 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
     * @param mixed $casevariablevalues
     */
    public function setItemSolution($itemType, $itemId, $casevariablevalues) {
+      global $DB;
+
       $dbu = new DbUtils;
       $item = $dbu->getItemForItemtype( $itemType );
       if ($item->getFromDB( $itemId )) {
@@ -2035,7 +2080,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
             if ($solution != '') {
                $solution .= "\n";
             }
-            $solution .= $casevariablevalues[ 'GLPI_ITEM_APPEND_TO_SOLUTION_DESCRIPTION' ];
+            $solution .= $DB->escape($casevariablevalues[ 'GLPI_ITEM_APPEND_TO_SOLUTION_DESCRIPTION' ]);
             $to_update = true;
          }
 
@@ -2078,7 +2123,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
     *                'begin'         => is the new begin date of the task
     *                'end'           => is the new end date of the task
     *                'toInformation' => is the new status of the task (usually set to INFORMATION)
-    *
+    * @return false|object the solved task, when found
    */
    public function solveTask($cases_id, $delIndex, $options = []) {
       global $DB;
@@ -2170,8 +2215,10 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
          // restore current glpi time
          $_SESSION["glpi_currenttime"] = $saved_date_time;
 
+         return $glpi_task;
       }
 
+      return false;
    }
 
    /**
@@ -2313,10 +2360,24 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    */
    public static function pre_show_item_processmaker($params) {
 
-      if (!is_array($params['item']) && is_subclass_of( $params['item'], 'CommonITILTask')) {
+      if (!is_array($params['item']) && is_subclass_of($params['item'], 'CommonITILTask')) {
          // must check if Task is bound to a PM task
          $pmTask = new PluginProcessmakerTask($params['item']->getType());
-         if ($pmTask->getFromDB($params['item']->getId())) {//$pmTask->getFromDBByQuery("WHERE itemtype='".$params['item']->getType()."' and items_id=".$params['item']->getId())) {
+         $is_pmtask = $pmTask->getFromDB($params['item']->getId());
+         if (!$is_pmtask && $params['item']->fields['state'] == Planning::INFO) {
+            // look if it is a meta task for this process
+            // means a re-assign or an un-claim task info
+            $pm_process = new PluginProcessmakerProcess;
+            if ($pm_process->getFromDBByQuery( " WHERE `taskcategories_id` = ".$params['item']->fields['taskcategories_id'])) {
+               // then look into content to get case id
+               $re = '/<input name=\'caseid\' type=\'hidden\' value=\'(?\'caseid\'\d+)\'><input name=\'taskid\' type=\'hidden\' value=\'(?\'taskid\'\d+)\'>/';
+               if (preg_match($re, $params['item']->fields['content'], $matches)) {
+                  // here we get the case id and the task id
+                  $is_pmtask = $pmTask->getFromDB($matches['taskid']);
+               }
+            }
+         }
+         if ($is_pmtask) {
             $params['item']->fields['can_edit'] = false; // to prevent task edition
 
             // replace ##ticket.url##_PluginProcessmakerCase$processmakercases by a setActiveTab to the Case panel
@@ -2329,7 +2390,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
             } else {
                $params['item']->fields['content'] = str_replace( '##processmaker.taskcomment##', $taskComment, $params['item']->fields['content'] );
             }
-            $taskJSId = "viewitem".$params['item']->getType().$params['item']->getId().$params['options']['rand'];
+            $taskJSId = strtolower("viewitem".$params['item']->getType().$params['item']->getId());
 
             // special case for <hr> which will provoke the rendering to be split into several <p>
             // add <p></p> which othervise will be missing
@@ -2602,7 +2663,10 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       // ###  2nd call to save Data POST ###
       curl_setopt($ch, CURLOPT_URL, $this->serverURL."/cases/cases_SaveData?UID=".$request['UID']."&APP_UID=".$request['APP_UID'] );
       $response = curl_exec ($ch);
-
+      if ($response === false) {
+         //throw new Exception(curl_error($ch), curl_errno($ch));
+         Toolbox::logInFile( "pmtrace", curl_error($ch).":".curl_errno($ch)."\n" );
+      }
       curl_close ($ch);
       if ($loggable) {
          Toolbox::logInFile( "pmtrace", "URL:\n".$this->serverURL."/cases/cases_SaveData?UID=".$request['UID']."&APP_UID=".$request['APP_UID']."\nData:\n".print_r($data, true )."\nResponse:\n".$response."\n\n\n" );
@@ -2924,7 +2988,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    */
    public function derivateCase($myCase, $request, $users_id = null) {
       //$cookies,
-      global $PM_DB, $CFG_GLPI;
+      global $PM_DB, $CFG_GLPI, $DB;
 
       $itemtype = $myCase->getField('itemtype');
       $items_id = $myCase->getField('items_id');
@@ -2975,11 +3039,17 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                         "GLPI_ITEM_APPEND_TO_SOLUTION_DESCRIPTION",
                         "GLPI_ITEM_INITIAL_DUE_DATE",
                         "GLPI_ITEM_DUE_DATE",
-                        "GLPI_SEND_EMAIL"
+                        "GLPI_SEND_EMAIL",
+                        "GLPI_ITEM_INFORMATION_TASK"
                        ];
 
       // now tries to get some variables to setup content for new task and to append text to solved task
       $casevariablevalues = $myCase->getVariables($casevariables);
+
+      $information_task = '';
+      if (array_key_exists( 'GLPI_ITEM_INFORMATION_TASK', $casevariablevalues ) && $casevariablevalues[ 'GLPI_ITEM_INFORMATION_TASK' ] != '') {
+         $information_task = $casevariablevalues[ 'GLPI_ITEM_INFORMATION_TASK' ];
+      }
 
       $sendemail = '';
       if (array_key_exists( 'GLPI_SEND_EMAIL', $casevariablevalues ) && $casevariablevalues[ 'GLPI_SEND_EMAIL' ] != '') {
@@ -3074,20 +3144,23 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       // reset those variables
       $resetcasevariables = [];
       foreach ($casevariables as $val) {
-         $resetcasevariables[$val] = '';
+         if (!empty($casevariablevalues[$val])) {
+            $resetcasevariables[$val] = '';
+         }
       }
       $resultSave = $myCase->sendVariables($resetcasevariables);
 
       // now manage tasks associated with item
       // switch own task to 'done' and create a new one
-      $this->solveTask($myCase->getID(),
-                       $request['DEL_INDEX'],
-                       ['txtToAppend'   => $txtToAppendToTask,
-                        'users_id_tech' => $users_id,
-                        'begin'         => $solvedTaskStartDate,
-                        'end'           => $solvedTaskEndDate,
-                        'toInformation' => $solvedTaskSetToInformation
-                        ] );
+      $glpi_task = $this->solveTask($myCase->getID(),
+                                    $request['DEL_INDEX'],
+                                    ['txtToAppend'   => $txtToAppendToTask,
+                                     'users_id_tech' => $users_id,
+                                     'begin'         => $solvedTaskStartDate,
+                                     'end'           => $solvedTaskEndDate,
+                                     'toInformation' => $solvedTaskSetToInformation
+                                    ]
+                                   );
 
       // create a followup if requested
       if ($createFollowup) { // && $itemtype == 'Ticket') {
@@ -3117,6 +3190,38 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
       // get the new case info
       $caseInfo = $myCase->getCaseInfo($request['DEL_INDEX']); // not sure that it should passed this
+
+      // create an information task if requested
+      if ($information_task != '' && $glpi_task) {
+         // create an information task and add comment
+         // $information_task is the content of the task
+         $pm_process = $myCase->getProcess();
+         $taskCat = new TaskCategory;
+         $taskCat->getFromDB($glpi_task->fields['taskcategories_id']);
+         // we may replace ##casename## by the name of the case, and ##taskname## by the task name
+         $search = ['##casename##', 
+                    '##taskname##'
+                   ];
+         $replace = [$caseInfo->caseName." (".$myCase->getID().")",
+                     DropdownTranslation::getTranslatedValue($glpi_task->fields['taskcategories_id'], 'TaskCategory', 'name', $_SESSION['glpilanguage'], $taskCat->fields['name'])
+                    ];
+         $info = str_replace($search, $replace, $information_task);
+
+         $info .= "<input name='caseid' type='hidden' value='".$myCase->getID()."'><input name='taskid' type='hidden' value='".$glpi_task->getID()."'>";
+
+         // unescape some chars and replace CRLF, CR or LF by <br/>
+         $info = str_replace(["\\'", '\\"', '\r\n', '\r', '\n'], ["'", '"', '<br>', '<br>', '<br>'], $info);
+
+         $foreignkey = getForeignKeyFieldForItemType($glpi_task->getItilObjectItemType());
+         $glpi_task->add([$foreignkey => $glpi_task->fields[$foreignkey],
+                          'is_private' => 1,
+                          'taskcategories_id' => $pm_process->fields['taskcategories_id'],
+                          'content' => $DB->escape($info),
+                          'users_id' => $this->taskWriter,
+                          'state' => Planning::INFO,
+                          'users_id_tech' => Session::getLoginUserID(),
+                          ]);
+      }
 
       // now create the new tasks if any
       if (property_exists( $pmRouteCaseResponse, 'routing' )) {
