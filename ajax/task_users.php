@@ -47,7 +47,7 @@ if ($PM_DB->numrows($res) > 0) {
 
 PluginProcessmakerUser::dropdown( ['name'   => 'users_id_recipient',
                                    'value'  => $_REQUEST['users_id'],
-                                   'used' => [$_REQUEST['users_id']],
+                                   'used' => $_REQUEST['used'],
                                    'entity' => 0, //$item->fields["entities_id"], // not used, as any user can be assigned to any tasks
                                    'entity_sons' => false, // not used, as any user can be assigned to any tasks
                                    'right'  => 'all',
