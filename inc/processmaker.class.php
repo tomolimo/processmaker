@@ -1984,7 +1984,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
     *                'begin'         => is the new begin date of the task
     *                'end'           => is the new end date of the task
     *                'toInformation' => is the new status of the task (usually set to INFORMATION)
-    *
+    * @return false|object the solved task, when found
    */
    public function solveTask($cases_id, $delIndex, $options = []) {
       global $DB;
@@ -2056,8 +2056,10 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
          // restore current glpi time
          $_SESSION["glpi_currenttime"] = $saved_date_time;
 
+         return $glpi_task;
       }
 
+      return false;
    }
 
    /**
@@ -2750,7 +2752,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    */
    public function derivateCase($myCase, $request, $users_id = null) {
       //$cookies,
-      global $PM_DB, $CFG_GLPI;
+      global $PM_DB, $CFG_GLPI, $DB;
 
       $itemtype = $myCase->getField('itemtype');
       $items_id = $myCase->getField('items_id');
@@ -2798,11 +2800,17 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                         "GLPI_ITEM_APPEND_TO_SOLUTION_DESCRIPTION",
                         "GLPI_ITEM_INITIAL_DUE_DATE",
                         "GLPI_ITEM_DUE_DATE",
-                        "GLPI_SEND_EMAIL"
+                        "GLPI_SEND_EMAIL",
+                        "GLPI_ITEM_INFORMATION_TASK"
                        ];
 
       // now tries to get some variables to setup content for new task and to append text to solved task
       $casevariablevalues = $myCase->getVariables($casevariables);
+
+      $information_task = '';
+      if (array_key_exists( 'GLPI_ITEM_INFORMATION_TASK', $casevariablevalues ) && $casevariablevalues[ 'GLPI_ITEM_INFORMATION_TASK' ] != '') {
+         $information_task = $casevariablevalues[ 'GLPI_ITEM_INFORMATION_TASK' ];
+      }
 
       $sendemail = '';
       if (array_key_exists( 'GLPI_SEND_EMAIL', $casevariablevalues ) && $casevariablevalues[ 'GLPI_SEND_EMAIL' ] != '') {
@@ -2904,14 +2912,15 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
       // now manage tasks associated with item
       // switch own task to 'done' and create a new one
-      $this->solveTask($myCase->getID(),
-                       $request['DEL_INDEX'],
-                       ['txtToAppend'   => $txtToAppendToTask,
-                        'users_id_tech' => $users_id,
-                        'begin'         => $solvedTaskStartDate,
-                        'end'           => $solvedTaskEndDate,
-                        'toInformation' => $solvedTaskSetToInformation
-                        ] );
+      $glpi_task = $this->solveTask($myCase->getID(),
+                                    $request['DEL_INDEX'],
+                                    ['txtToAppend'   => $txtToAppendToTask,
+                                     'users_id_tech' => $users_id,
+                                     'begin'         => $solvedTaskStartDate,
+                                     'end'           => $solvedTaskEndDate,
+                                     'toInformation' => $solvedTaskSetToInformation
+                                    ]
+                                   );
 
       // create a followup if requested
       if ($createFollowup && $itemtype == 'Ticket') {
@@ -2941,6 +2950,38 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
       // get the new case info
       $caseInfo = $myCase->getCaseInfo($request['DEL_INDEX']); // not sure that it should passed this
+
+      // create an information task if requested
+      if ($information_task != '' && $glpi_task) {
+         // create an information task and add comment
+         // $information_task is the content of the task
+         $pm_process = $myCase->getProcess();
+         $taskCat = new TaskCategory;
+         $taskCat->getFromDB($glpi_task->fields['taskcategories_id']);
+         // we may replace ##casename## by the name of the case, and ##taskname## by the task name
+         $search = ['##casename##', 
+                    '##taskname##'
+                   ];
+         $replace = [$caseInfo->caseName." (".$myCase->getID().")",
+                     DropdownTranslation::getTranslatedValue($glpi_task->fields['taskcategories_id'], 'TaskCategory', 'name', $_SESSION['glpilanguage'], $taskCat->fields['name'])
+                    ];
+         $info = str_replace($search, $replace, $information_task);
+
+         $info .= "<input name='caseid' type='hidden' value='".$myCase->getID()."'><input name='taskid' type='hidden' value='".$glpi_task->getID()."'>";
+
+         // unescape some chars and replace CRLF, CR or LF by <br/>
+         $info = str_replace(["\\'", '\\"', '\r\n', '\r', '\n'], ["'", '"', '<br>', '<br>', '<br>'], $info);
+
+         $foreignkey = getForeignKeyFieldForItemType($glpi_task->getItilObjectItemType());
+         $glpi_task->add([$foreignkey => $glpi_task->fields[$foreignkey],
+                          'is_private' => 1,
+                          'taskcategories_id' => $pm_process->fields['taskcategories_id'],
+                          'content' => $DB->escape($info),
+                          'users_id' => $this->taskWriter,
+                          'state' => Planning::INFO,
+                          'users_id_tech' => Session::getLoginUserID(),
+                          ]);
+      }
 
       // now create the new tasks if any
       if (property_exists( $pmRouteCaseResponse, 'routing' )) {

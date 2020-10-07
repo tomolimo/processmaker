@@ -224,7 +224,7 @@ class PluginProcessmakerCase extends CommonDBTM {
     * @return bool
     */
    function unassignCase($delIndex, $taskGuid, $tasktype, $tasks_id, $itemtype, $options) {
-      global $PM_DB, $PM_SOAP;
+      global $PM_DB, $PM_SOAP, $DB;
 
       // un-claim task
       // will unclaim the task
@@ -301,7 +301,7 @@ class PluginProcessmakerCase extends CommonDBTM {
          $pm_process = $this->getProcess();
          $dbu = new DbUtils;
          $info = __('<b>Task un-claimed!</b><br/><b>Case: </b>%s<br/><b>Task: </b>"%s" has been un-assigned from "%s" and assigned to "%s" group.<br/><b>Reason: </b>%s', 'processmaker');
-         $info .= "<input name=\'caseid\' type=\'hidden\' value=\'".$this->getID()."\'><input name=\'taskid\' type=\'hidden\' value=\'".$pm_task->getID()."\'>";
+         $info .= "<input name='caseid' type='hidden' value='".$this->getID()."'><input name='taskid' type='hidden' value='".$pm_task->getID()."'>";
          $taskCat = new TaskCategory;
          $taskCat->getFromDB( $glpi_task->fields['taskcategories_id'] );
          $info = sprintf($info,
@@ -311,11 +311,13 @@ class PluginProcessmakerCase extends CommonDBTM {
                          Html::clean($groupname),
                          $options['comment']
                         );
+         // unescape some chars and replace CRLF, CR or LF by <br/>
+         $info = str_replace(["\\'", '\\"', '\r\n', '\r', '\n'], ["'", '"', '<br>', '<br>', '<br>'], $info);
 
          $glpi_task->add([$foreignkey => $glpi_task->fields[$foreignkey],
                           'is_private' => 1,
                           'taskcategories_id' => $pm_process->fields['taskcategories_id'],
-                          'content' => $info,
+                          'content' => $DB->escape($info),
                           'users_id' => $PM_SOAP->taskWriter,
                           'state' => Planning::INFO,
                           'users_id_tech' => Session::getLoginUserID(),
@@ -432,12 +434,15 @@ class PluginProcessmakerCase extends CommonDBTM {
                             $options['comment']
                            );
          }
-         $info .= "<input name=\'caseid\' type=\'hidden\' value=\'".$this->getID()."\'><input name=\'taskid\' type=\'hidden\' value=\'".$pm_task->getID()."\'>";
+         $info .= "<input name='caseid' type='hidden' value='".$this->getID()."'><input name='taskid' type='hidden' value='".$pm_task->getID()."'>";
+
+         // unescape some chars and replace CRLF, CR or LF by <br/>
+         $info = str_replace(["\\'", '\\"', '\r\n', '\r', '\n'], ["'", '"', '<br>', '<br>', '<br>'], $info);
 
          $glpi_task->add([$foreignkey => $glpi_task->fields[$foreignkey],
                           'is_private' => 1,
                           'taskcategories_id' => $pm_process->fields['taskcategories_id'],
-                          'content' => $info,
+                          'content' => $DB->escape($info),
                           'users_id' => $PM_SOAP->taskWriter,
                           'state' => Planning::INFO,
                           'users_id_tech' => Session::getLoginUserID(),
