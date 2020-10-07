@@ -195,6 +195,33 @@ function plugin_item_update_processmaker_satisfaction($parm) {
 }
 
 
+/**
+ * Summary of plugin_item_update_processmaker_user
+ * When a user login is changed, then must change it in the PM tables
+ * @param User $param is the user being changed
+ */
+function plugin_item_update_processmaker_user(User $param) {
+   // Must test if user login has been changed
+   // if yes, must change the login in the PM tables:
+   // USERS and RBAC_USERS, othewise the link in the processmaker_users table will be invalid
+   if (in_array('name', $param->updates)) {
+      // check if user is in the processmaker_user table
+      $pm_user = PluginProcessmakerUser::getPMUserId($param->getID());
+      if ($pm_user) {
+         // must update the user in PM tables
+         global $PM_SOAP;
+         if ($param->fields['is_active'] == 0 || $param->fields['is_deleted'] == 1) {
+               $status = "INACTIVE";
+            } else {
+               $status = "ACTIVE";
+            }
+         $PM_SOAP->login(true);
+         $pmResult = $PM_SOAP->updateUser( $pm_user, $param->fields['name'], $param->fields['firstname'], $param->fields['realname'], $status );
+      }
+   }
+}
+
+
 function plugin_processmaker_post_init() {
    global $PM_DB, $PM_SOAP;
    if (!isset($PM_DB)) {
