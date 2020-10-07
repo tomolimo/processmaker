@@ -249,6 +249,16 @@ class PluginProcessmakerCaselink extends CommonDBTM {
       return $tab;
    }
 
+
+   function prepareInputForUpdate($input) {
+      return Toolbox::unclean_cross_side_scripting_deep($input);
+   }
+
+
+   function prepareInputForAdd($input) {
+      return Toolbox::unclean_cross_side_scripting_deep($input);
+   }
+
    //static function getMenuContent() {
 
    //   if (!Session::haveRight('entity', READ)) {
