@@ -1864,10 +1864,12 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
     * @param mixed $newtitle
     */
    public function setItemTitle($itemtype, $itemId, $newtitle) {
+      global $DB;
+
       $dbu = new DbUtils;
       $item = $dbu->getItemForItemtype( $itemtype );
       if ($item->getFromDB( $itemId )) {
-         $item->update( ['id' => $itemId, 'name' => $newtitle] );
+         $item->update( ['id' => $itemId, 'name' => $DB->escape($newtitle)] );
       }
    }
 
@@ -1894,6 +1896,8 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
     * @param mixed $casevariablevalues
     */
    public function setItemSolution($itemType, $itemId, $casevariablevalues) {
+      global $DB;
+
       $dbu = new DbUtils;
       $item = $dbu->getItemForItemtype( $itemType );
       if ($item->getFromDB( $itemId )) {
@@ -1941,7 +1945,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
             if ($solution != '') {
                $solution .= "\n";
             }
-            $solution .= $casevariablevalues[ 'GLPI_ITEM_APPEND_TO_SOLUTION_DESCRIPTION' ];
+            $solution .= $DB->escape($casevariablevalues[ 'GLPI_ITEM_APPEND_TO_SOLUTION_DESCRIPTION' ]);
             $to_update = true;
          }
 

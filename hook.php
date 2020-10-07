@@ -406,15 +406,26 @@ function plugin_item_update_processmaker_tasks($parm) {
                   curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'Content-Length: ' . strlen($externalapplicationparams), 'Expect:']);
                   curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1 );
                   curl_setopt($ch, CURLOPT_VERBOSE, 1);
-                  curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, $pmconfig->fields['ssl_verify']);
-                  curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, $pmconfig->fields['ssl_verify']);
+
+                  //curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, $pmconfig->fields['ssl_verify']);
+                  //curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, $pmconfig->fields['ssl_verify']);
+                  if (isset($externalapplication['ssl_verify'])) {
+                     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, $externalapplication['ssl_verify']);
+                     curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, $externalapplication['ssl_verify']);
+                  }
 
                   //curl_setopt($ch, CURLOPT_HTTPPROXYTUNNEL, 1 ) ;
-                  //curl_setopt($ch, CURLOPT_PROXY, "localhost:8889");
+                  //curl_setopt($ch, CURLOPT_PROXY, "localhost:8888");
+                  if (isset($externalapplication['proxy'])) {
+                     curl_setopt($ch, CURLOPT_HTTPPROXYTUNNEL, 1 ) ;
+                     curl_setopt($ch, CURLOPT_PROXY, $externalapplication['proxy']);
+                  }
 
                   $response = curl_exec ($ch);
 
-                  //Toolbox::logDebug( $response ) ;
+                  if (!$response) {
+                     Toolbox::logDebug($response);
+                  }
 
                   curl_close ($ch);
                }
