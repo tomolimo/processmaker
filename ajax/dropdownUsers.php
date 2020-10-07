@@ -77,11 +77,6 @@ if ($DB->numrows($result)) {
    }
 }
 
-if (!function_exists('dpuser_cmp')) {
-   function dpuser_cmp($a, $b) {
-      return strcasecmp($a, $b);
-   }
-}
 
 $datas = [];
 

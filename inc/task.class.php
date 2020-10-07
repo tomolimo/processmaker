@@ -332,17 +332,49 @@ class PluginProcessmakerTask extends CommonITILTask
             // to load users for task re-assign only when task is not a sub-case
 
             echo "<div class='tab_bg_2' id='divUsers-".$currentUser->delIndex."'><div class='loadingindicator'>".__('Loading...')."</div></div>";
-            echo "<script>$('#divUsers-{$task[$tabnum]['del_index']}').load( '".$CFG_GLPI["root_doc"]."/plugins/processmaker/ajax/task_users.php?"
-                     ."cases_id=".$case->getID()
-                     ."&items_id=".$case->fields['items_id']
-                     ."&itemtype=".$case->fields['itemtype']
-                     ."&tasktype=".$task[$tabnum]['itemtype']
-                     ."&tasks_id=".$task[$tabnum]['items_id']
-                     ."&users_id=".PluginProcessmakerUser::getGLPIUserId($currentUser->userId)
-                     ."&taskGuid=".$currentUser->taskId
-                     ."&delIndex={$task[$tabnum]['del_index']}"
-                     ."&delThread={$currentUser->delThread}"
-                     ."&rand=$rand' ); </script>";
+
+            // try to get users whom can't be assigned to this task
+            // already assigned user can't be assigned again to this task
+            $current_assigned_user = PluginProcessmakerUser::getGLPIUserId($currentUser->userId);
+            // and then any forbiden users defined from the case itself
+            $casevariablevalues = $case->getVariables(['GLPI_TASK_PREVENT_REASSIGN']);
+            $prevent_assign = [];
+            if (array_key_exists( 'GLPI_TASK_PREVENT_REASSIGN', $casevariablevalues ) && $casevariablevalues[ 'GLPI_TASK_PREVENT_REASSIGN' ] != '') {
+               $prevent_assign = json_decode($casevariablevalues[ 'GLPI_TASK_PREVENT_REASSIGN' ], true);
+            }
+
+
+            $used_users = [];
+            $used_users[] = $current_assigned_user;
+            if (array_key_exists($currentUser->taskId, $prevent_assign)) {
+               if (is_array($prevent_assign[$currentUser->taskId])) {
+                  foreach ($prevent_assign[$currentUser->taskId] as $pmuser) {
+                     $usr_id = PluginProcessmakerUser::getGlpiIdFromAny($pmuser);
+                     if ($usr_id) {
+                        $used_users[] = $usr_id;
+                     }
+                  }
+               } else {
+                  $usr_id = PluginProcessmakerUser::getGlpiIdFromAny($prevent_assign[$currentUser->taskId]);
+                  if ($usr_id) {
+                     $used_users[] = $usr_id;
+                  }
+               }
+            }
+
+            $data = "{
+                     cases_id  : {$case->getID()},
+                     items_id  : {$case->fields['items_id']},
+                     itemtype  : '{$case->fields['itemtype']}',
+                     tasktype  : '{$task[$tabnum]['itemtype']}',
+                     tasks_id  : {$task[$tabnum]['items_id']},
+                     users_id  : {$current_assigned_user},
+                     taskGuid  : '{$currentUser->taskId}',
+                     delIndex  : {$task[$tabnum]['del_index']},
+                     delThread : {$currentUser->delThread},
+                     used      : [".join(',', array_unique($used_users))."]
+                     }";
+            echo html::scriptBlock("$('#divUsers-{$task[$tabnum]['del_index']}').load('".$CFG_GLPI["root_doc"]."/plugins/processmaker/ajax/task_users.php', $data);");
          }
 
          if (!$currentUser->userId || !$task[$tabnum]['del_index']) {

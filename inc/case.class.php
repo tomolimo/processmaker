@@ -314,13 +314,13 @@ class PluginProcessmakerCase extends CommonDBTM {
          // unescape some chars and replace CRLF, CR or LF by <br/>
          $info = str_replace(["\\'", '\\"', '\r\n', '\r', '\n'], ["'", '"', '<br>', '<br>', '<br>'], $info);
 
-         $glpi_task->add([$foreignkey => $glpi_task->fields[$foreignkey],
-                          'is_private' => 1,
+         $glpi_task->add([$foreignkey         => $glpi_task->fields[$foreignkey],
+                          'is_private'        => 0, // a post-only user can't create private task
                           'taskcategories_id' => $pm_process->fields['taskcategories_id'],
-                          'content' => $DB->escape($info),
-                          'users_id' => $PM_SOAP->taskWriter,
-                          'state' => Planning::INFO,
-                          'users_id_tech' => Session::getLoginUserID(),
+                          'content'           => $DB->escape($info),
+                          'users_id'          => $PM_SOAP->taskWriter,
+                          'state'             => Planning::INFO,
+                          'users_id_tech'     => Session::getLoginUserID(),
                           ]);
 
          return true;
@@ -439,13 +439,13 @@ class PluginProcessmakerCase extends CommonDBTM {
          // unescape some chars and replace CRLF, CR or LF by <br/>
          $info = str_replace(["\\'", '\\"', '\r\n', '\r', '\n'], ["'", '"', '<br>', '<br>', '<br>'], $info);
 
-         $glpi_task->add([$foreignkey => $glpi_task->fields[$foreignkey],
-                          'is_private' => 1,
+         $glpi_task->add([$foreignkey         => $glpi_task->fields[$foreignkey],
+                          'is_private'        => 0, // a post-only user can't create private task
                           'taskcategories_id' => $pm_process->fields['taskcategories_id'],
-                          'content' => $DB->escape($info),
-                          'users_id' => $PM_SOAP->taskWriter,
-                          'state' => Planning::INFO,
-                          'users_id_tech' => Session::getLoginUserID(),
+                          'content'           => $DB->escape($info),
+                          'users_id'          => $PM_SOAP->taskWriter,
+                          'state'             => Planning::INFO,
+                          'users_id_tech'     => Session::getLoginUserID(),
                           ]);
       }
    }
