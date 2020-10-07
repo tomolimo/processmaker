@@ -44,6 +44,10 @@ function processmaker_update() {
          // will upgrade 3.3.8 to 3.4.9
          include_once(GLPI_ROOT."/plugins/processmaker/install/update_3_3_8_to_3_4_9.php");
          $new_version = update_3_3_8_to_3_4_9();
+      case '3.4.9' :
+         // will upgrade 3.4.9 to 3.4.10
+         include_once(GLPI_ROOT."/plugins/processmaker/install/update_3_4_9_to_3_4_10.php");
+         $new_version = update_3_4_9_to_3_4_10();
    }
 
    if (isset($new_version)) {

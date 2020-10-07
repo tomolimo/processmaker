@@ -1,6 +1,6 @@
 <?php
 
-define('PROCESSMAKER_VERSION', '3.4.19');
+define('PROCESSMAKER_VERSION', '3.4.20');
 
 // used for case cancellation
 define("CANCEL", 256);
