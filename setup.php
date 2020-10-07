@@ -92,6 +92,7 @@ function plugin_init_processmaker() {
    }
    $PLUGIN_HOOKS['item_get_pdfdatas']['processmaker'] = $hooks;
 
+   // Javascript
    $plugin = new Plugin();
    if ($plugin->isActivated('processmaker')
         && Session::getLoginUserID() ) {
