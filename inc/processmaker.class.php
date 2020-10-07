@@ -1296,9 +1296,9 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                // insert into DB the link between glpi users and pm user
                $pmuser = new PluginProcessmakerUser;
                if ($pmuser->getFromDB( $user['id'] )) {
-                  $pmuser->update( [ 'id' => $user['id'], 'pm_users_id' => $pmResult->userUID, 'password' => md5( $pass ) ] );
+                  $pmuser->update( [ 'id' => $user['id'], 'pm_users_id' => $pmResult->userUID ] );
                } else {
-                  $pmuser->add( [ 'id' => $user['id'], 'pm_users_id' => $pmResult->userUID, 'password' => md5( $pass ) ] );
+                  $pmuser->add( [ 'id' => $user['id'], 'pm_users_id' => $pmResult->userUID ] );
                }
                $actionCode = 1;
 
