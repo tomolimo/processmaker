@@ -198,9 +198,11 @@ class PluginProcessmakerUser extends CommonDBTM {
      * @return string which is the uid of user in Processmaker database, or false if not found
      */
    public static function getPMUserId($glpiUserId) {
-      $obj = new self;
-      if ($obj->getFromDB( Toolbox::cleanInteger($glpiUserId) )) {
-         return $obj->fields['pm_users_id'];
+      if (is_numeric($glpiUserId)) {
+         $obj = new self;
+         if ($obj->getFromDB($glpiUserId)) {
+            return $obj->fields['pm_users_id'];
+         }
       }
       return false;
    }
@@ -211,7 +213,7 @@ class PluginProcessmakerUser extends CommonDBTM {
     * Returns the GLPI id of the user or false if not found
     * Accept either PM GUID, GLPI logon, or GLPI ID
     * @param  $any 
-    * @return mixed GLPI ID of the user or fasle if not found
+    * @return mixed GLPI ID of the user or false if not found
     */
    public static function getGlpiIdFromAny($any) {
       $ret = self::getGLPIUserId($any);

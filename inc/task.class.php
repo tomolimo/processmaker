@@ -357,15 +357,11 @@ class PluginProcessmakerTask extends CommonITILTask
             $used_users = [];
             $used_users[] = $current_assigned_user;
             if (array_key_exists($currentUser->taskId, $prevent_assign)) {
-               if (is_array($prevent_assign[$currentUser->taskId])) {
-                  foreach ($prevent_assign[$currentUser->taskId] as $pmuser) {
-                     $usr_id = PluginProcessmakerUser::getGlpiIdFromAny($pmuser);
-                     if ($usr_id) {
-                        $used_users[] = $usr_id;
-                     }
-                  }
-               } else {
-                  $usr_id = PluginProcessmakerUser::getGlpiIdFromAny($prevent_assign[$currentUser->taskId]);
+               if (!is_array($prevent_assign[$currentUser->taskId])) {
+                  $prevent_assign[$currentUser->taskId] = [$prevent_assign[$currentUser->taskId]];
+               }
+               foreach ($prevent_assign[$currentUser->taskId] as $pmuser) {
+                  $usr_id = PluginProcessmakerUser::getGlpiIdFromAny($pmuser);
                   if ($usr_id) {
                      $used_users[] = $usr_id;
                   }
