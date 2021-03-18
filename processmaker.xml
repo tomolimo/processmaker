@@ -29,17 +29,21 @@
        <compatibility>9.1</compatibility>
      </version>
      <version>
-       <num>3.4.26</num>
+       <num>3.4.30</num>
        <compatibility>9.2</compatibility>
      </version>
       <version>
-         <num>3.5.11</num>
+         <num>3.5.15</num>
          <compatibility>9.3</compatibility>
       </version>
-     <version>
-       <num>3.6.17</num>
-       <compatibility>9.4</compatibility>
-     </version>
+      <version>
+         <num>3.6.21</num>
+         <compatibility>9.4</compatibility>
+      </version>
+      <version>
+         <num>4.0.0</num>
+         <compatibility>9.5</compatibility>
+      </version>
    </versions>
    <langs>
       <lang>en_gb</lang>

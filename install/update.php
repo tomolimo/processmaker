@@ -48,9 +48,13 @@ function processmaker_update() {
          // will upgrade 3.4.9 to 3.4.10
          include_once(GLPI_ROOT."/plugins/processmaker/install/update_3_4_9_to_3_4_10.php");
          $new_version = update_3_4_9_to_3_4_10();
+      case '3.4.10' :
+         // will upgrade 3.4.10 to 4.0.0
+         include_once(GLPI_ROOT."/plugins/processmaker/install/update_3_4_10_to_4_0_0.php");
+         $new_version = update_3_4_10_to_4_0_0();
    }
 
-   if (isset($new_version)) {
+   if (isset($new_version) && $new_version !== false) {
       // end update by updating the db version number
       $query = "UPDATE `glpi_plugin_processmaker_configs` SET `db_version` = '$new_version' WHERE `id` = 1;";
 

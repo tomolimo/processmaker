@@ -60,8 +60,7 @@ class PluginProcessmakerProcess_Profile extends CommonDBTM
          echo "</div>";
       }
       $res = $DB->request([
-                     'SELECT DISTINCT' => 'gpp.id AS linkID',
-                     'FIELDS' => [
+                     'SELECT' => [
                         'gpp.id AS linkID',
                         'glpi_profiles.id',
                         'glpi_profiles.name',
@@ -69,6 +68,7 @@ class PluginProcessmakerProcess_Profile extends CommonDBTM
                         'glpi_entities.completename',
                         'gpp.entities_id'
                         ],
+                     'DISTINCT' => true,
                      'FROM'   => self::getTable() .' AS gpp',
                      'LEFT JOIN' => [
                         'glpi_profiles' => [
@@ -87,21 +87,6 @@ class PluginProcessmakerProcess_Profile extends CommonDBTM
                      'WHERE'  => [ 'gpp.plugin_processmaker_processes_id' => $ID ],
                      'ORDER'  => [ 'glpi_profiles.name', 'glpi_entities.completename' ]
          ]);
-      //$query = "SELECT DISTINCT gpp.`id` AS linkID,
-      //                 `glpi_profiles`.`id`,
-      //                 `glpi_profiles`.`name`,
-      //                 `gpp`.`is_recursive`,
-      //                 `glpi_entities`.`completename`,
-      //                 `gpp`.`entities_id`
-      //          FROM `". self::getTable() ."` as gpp
-      //          LEFT JOIN `glpi_profiles`
-      //               ON (`gpp`.`profiles_id` = `glpi_profiles`.`id`)
-      //          LEFT JOIN `glpi_entities`
-      //               ON (`gpp`.`entities_id` = `glpi_entities`.`id`)
-      //          WHERE `gpp`.`plugin_processmaker_processes_id` = '$ID'
-      //          ORDER BY `glpi_profiles`.`name`, `glpi_entities`.`completename`";
-      //$result = $DB->query($query);
-      //$num = $DB->numrows($result);
       $num = $res->numrows();
       echo "<div class='spaced'>";
       Html::openMassiveActionsForm('mass'.__CLASS__.$rand);

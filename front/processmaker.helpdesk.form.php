@@ -41,10 +41,10 @@ function processMakerShowProcessList ($ID, $from_helpdesk) {
 
 /**
  * Summary of processMakerShowCase
- * @param mixed $ID
+ * @param mixed $users_id
  * @param mixed $from_helpdesk
  */
-function processMakerShowCase($ID, $from_helpdesk) {
+function processMakerShowCase($users_id, $from_helpdesk) {
    global $CFG_GLPI, $PM_SOAP;
 
    $caseInfo = $PM_SOAP->getCaseInfo( $_REQUEST['case_guid'] );
@@ -62,19 +62,19 @@ function processMakerShowCase($ID, $from_helpdesk) {
       // as showFormHelpdesk uses $_POST, we must set it
       $_POST = $_REQUEST;
 
-      // must be using bare text
-      $save_rich_text = $CFG_GLPI["use_rich_text"];
-      $CFG_GLPI["use_rich_text"] = false;
+      //// must be using bare text
+      //$save_rich_text = $CFG_GLPI["use_rich_text"];
+      //$CFG_GLPI["use_rich_text"] = false;
 
       // to get the HTML code for the helpdesk form
       $saved_ob_level = ob_get_level();
       ob_start();
 
-      $tkt->showFormHelpdesk($ID);
+      $tkt->showFormHelpdesk($users_id);
 
       $buffer = ob_get_clean();
 
-      $CFG_GLPI["use_rich_text"] = $save_rich_text;
+      //$CFG_GLPI["use_rich_text"] = $save_rich_text;
 
       // 9.1 only: hack to fix an issue with the initEditorSystem which calls scriptStart without calling scriptEnd
       if (ob_get_level() > $saved_ob_level) {
@@ -93,7 +93,8 @@ function processMakerShowCase($ID, $from_helpdesk) {
       // so that only the already escaped entites will get the double encoding
       // will also change </b> end of bold into a local identifier
       $endOfBold = 'end_of_bold'.rand();
-      $buffer = str_replace(['&lt;', '&gt;', '</b>'], ['<', '>', $endOfBold], $buffer);
+      $endOfSpan = 'end_of_span'.rand();
+      $buffer = str_replace(['&lt;', '&gt;', '</b>', '</span>'], ['<', '>', $endOfBold, $endOfSpan], $buffer);
 
       // will convert any UTF-8 char that can't be expressed in ASCII into an HTML entity
       $buffer = mb_convert_encoding($buffer, 'HTML-ENTITIES');
@@ -155,15 +156,15 @@ function processMakerShowCase($ID, $from_helpdesk) {
       $iframe->setAttribute('style', 'border:none;' );
       $iframe->setAttribute('src', "{$PM_SOAP->serverURL}/cases/cases_Open?sid={$PM_SOAP->getPMSessionID()}&APP_UID={$caseInfo->caseId}&{$paramsURL}&rand=$rand&glpi_domain={$PM_SOAP->config->fields['domain']}" );
 
-      // set the width and the title of the  first table th
+      // set the width and the title of the first table th
       $th = $xpath->query('//*[@name="add"]/ancestor::table[1]/*/th[1]');
       $th->item(0)->setAttribute('width', '30%');
       $th->item(0)->nodeValue = $caseInfo->processName;
 
       $buffer = $dom->saveHTML();
 
-      // revert back </b>
-      $buffer = str_replace($endOfBold, '</b>', $buffer);
+      // revert back </b> and </span>
+      $buffer = str_replace([$endOfSpan, $endOfBold], ['</span>', '</b>'], $buffer);
 
       // will revert back any char converted above
       $buffer = mb_convert_encoding($buffer, 'UTF-8', 'HTML-ENTITIES');
@@ -245,11 +246,8 @@ Html::helpHeader(__('New ticket'), $_SERVER['PHP_SELF'], $_SESSION["glpiname"]);
 
 
 if (isset($_REQUEST['case_guid'])) {
-   $res = $DB->request(
-                  'glpi_plugin_processmaker_cases', [
-                  'case_guid'=>$_REQUEST['case_guid']
-                  ]);
-   $query = "SELECT * FROM glpi_plugin_processmaker_cases WHERE case_guid='".$_REQUEST['case_guid']."'";
+   $res = $DB->request('glpi_plugin_processmaker_cases', ['case_guid' => $_REQUEST['case_guid']]);
+   //$query = "SELECT * FROM glpi_plugin_processmaker_cases WHERE case_guid='".$_REQUEST['case_guid']."'";
    //$res = $DB->query( $query );
    //if ($DB->numrows( $res )) { // a ticket already exists for this case, then show new cases
    if ($res->numrows()) { // a ticket already exists for this case, then show new cases

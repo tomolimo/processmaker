@@ -98,10 +98,11 @@ class PluginProcessmakerCase extends CommonDBTM {
 
          // count how many cases are on this item
          $cnt = count(self::getIDsFromItem($itemtype, $items_id));
-         if ($cnt == 0) {
-            return ['processmakercases' => __('Process case', 'processmaker')];
+         $tab = self::getTypeName(2); // to force plurial for tab name
+         if ($cnt) {
+            $tab .= "<sup class='tab_nb'>$cnt</sup>";
          }
-         return ['processmakercases' => _n('Process case', 'Process cases', $cnt, 'processmaker')."<sup class='tab_nb'>$cnt</sup>"];
+         return ['processmakercases' => $tab];
       }
    }
 
@@ -240,49 +241,10 @@ class PluginProcessmakerCase extends CommonDBTM {
       // will unclaim the task
       // to unclaim a task, we must un-assign the task in the APP_DELEGATION table
       // and un-assign the task in glpi_itemtypeTask table
-      $groupname = '';
 
-      // should get the group that is assigned to the task in SELF_SERVICE assign type
-      $query = "SELECT TAS_GROUP_VARIABLE FROM TASK WHERE TAS_UID='".$taskGuid."' AND TAS_ASSIGN_TYPE='SELF_SERVICE' LIMIT 1;";
-      foreach($PM_DB->request($query) as $pmGroup) {
-         // should have only one record
-         if ($pmGroup['TAS_GROUP_VARIABLE'] == '') {
-            // then we are in the self-service with a group in the TASK_USER table
-            // TU_RELATION=2 is groups and TU_TYPE=1 means normal (= not adhoc)
-            // then get the group name from the CONTENT table
-            $query = "SELECT CONTENT.CON_VALUE FROM TASK_USER
-                           JOIN CONTENT ON CONTENT.CON_ID=TASK_USER.USR_UID AND CONTENT.CON_CATEGORY='GRP_TITLE' AND CONTENT.CON_LANG = 'en'
-                           WHERE TASK_USER.TAS_UID='".$taskGuid."' AND TASK_USER.TU_RELATION=2 AND TASK_USER.TU_TYPE=1 LIMIT 1;";
-
-            foreach ($PM_DB->request($query) as $onlyrec) {
-               $groupname = $onlyrec['CON_VALUE'];
-            }
-
-
-         } else {
-            // then we are in the self-service with a case variable that contains either a group either an array of users
-            // array of users is not yet supported by PM plugin, as GLPI tasks have one and only one users_id_tech.
-            // group guid (in the case variable) must be retrieved from APP DATA
-
-            // TODO
-            ////////////////////////////////////////////////////////////////
-            // Currently this case is not manageable by GLPI
-            // as GLPI needs at least a user or a group to be assigned to a task
-            // and when using the self-service value based assignment, there 
-            // is a case variable that contains a list of users. This list of users cannot be mapped to a group in GLI
-            // OR may be we may create an artificial group in GLPI that would contains the list of users
-            ////////////////////////////////////////////////////////////////
-
-            // and then we get the name of the group from the CONTENT table
-            //$query = "SELECT CON_VALUE FROM CONTENT
-            //               WHERE CONTENT.CON_ID='$groupId' AND CONTENT.CON_CATEGORY='GRP_TITLE' AND CONTENT.CON_LANG='en' ;";
-
-         }
-      }
-
-      $groups_id_tech = PluginProcessmakerProcessmaker::getGLPIGroupId($groupname);
-
-      if ($groups_id_tech) {
+      $groups_id_tech = $PM_SOAP->getGLPIGroupIdForSelfServiceTask($this->fields['case_guid'], $taskGuid);
+      
+      if ($groups_id_tech !== false) {
          // unclaim the case only when a GLPI group can be found
 
          $query = "UPDATE APP_DELEGATION SET USR_UID='', DEL_INIT_DATE=NULL, USR_ID=0 WHERE APP_NUMBER=".$this->getID()." AND DEL_INDEX=$delIndex;";
@@ -296,7 +258,7 @@ class PluginProcessmakerCase extends CommonDBTM {
          $glpi_task->update( ['id'              => $glpi_task->getID(),
                               $foreignkey       => $glpi_task->fields[$foreignkey],
                               'users_id_tech'   => 0,
-                              'groups_id_tech'  => $groups_id_tech,
+                              'groups_id_tech'  => $groups_id_tech['id'],
                               'update'          => true] );
          PluginProcessmakerNotificationTargetProcessmaker::restoreNotificationState($donotif);
 
@@ -318,7 +280,7 @@ class PluginProcessmakerCase extends CommonDBTM {
                          $this->getNameID(['forceid' => true]),
                          DropdownTranslation::getTranslatedValue($glpi_task->fields['taskcategories_id'], 'TaskCategory', 'name', $_SESSION['glpilanguage'], $taskCat->fields['name']),
                          Html::clean($dbu->getUserName(isset($glpi_task->oldvalues['users_id_tech']) ? $glpi_task->oldvalues['users_id_tech'] : 0)),
-                         Html::clean($groupname),
+                         Html::clean($groups_id_tech['name']),
                          $options['comment']
                         );
          // unescape some chars and replace CRLF, CR or LF by <br/>
@@ -784,11 +746,7 @@ class PluginProcessmakerCase extends CommonDBTM {
 
       $items_id = $item->getField('id');
       $itemtype = $item->getType();
-      //if (!Session::haveRight("problem", Problem::READALL)
-      //    || !$item->can($ID, READ)) {
 
-      //   return false;
-      //}
 
       $canupdate = $item->can($items_id, UPDATE);
 
@@ -810,13 +768,6 @@ class PluginProcessmakerCase extends CommonDBTM {
                         ]
                      ]
                   ]);
-      //$query = "SELECT gppc.`id` AS assocID, gppc.`id` as id, gppp.id as pid, gppp.name as pname, gppc.`case_status`, gppc.`plugin_processmaker_cases_id`
-      //          FROM `glpi_plugin_processmaker_cases` as gppc
-      //          LEFT JOIN `glpi_plugin_processmaker_processes` AS gppp ON gppp.`id`=gppc.`plugin_processmaker_processes_id`
-      //          WHERE gppc.`itemtype` = '$itemtype'
-      //            AND gppc.`items_id` = $items_id
-      //          ";
-      //$result = $DB->query($query);
 
       $cases = [];
       $used  = [];
@@ -832,17 +783,6 @@ class PluginProcessmakerCase extends CommonDBTM {
             }
          }
       }
-      //if ($numrows = $DB->numrows($result)) {
-      //   while ($data = $DB->fetch_assoc($result)) {
-      //      $cases[$data['id']] = $data;
-      //      $used[$data['id']]  = $data['id'];
-      //      if (isset($pid[$data['pid']])) {
-      //         $pid[$data['pid']] += 1;
-      //      } else {
-      //         $pid[$data['pid']] = 1;
-      //      }
-      //   }
-      //}
 
       $columns = ['pname'  => __('Process', 'processmaker'),
                   'name'   => __('Title', 'processmaker'),
@@ -922,11 +862,11 @@ class PluginProcessmakerCase extends CommonDBTM {
          $header_end .= "</tr>";
          echo $header_begin.$header_top.$header_end;
 
-         //Session::initNavigateListItems('PluginProcessmakerCase',
-         //                     //TRANS : %1$s is the itemtype name,
-         //                     //        %2$s is the name of the item (used for headings of a list)
-         //                               sprintf(__('%1$s = %2$s'),
-         //                                       $itemtype::getTypeName(1), $item->fields["name"]));
+         Session::initNavigateListItems('PluginProcessmakerCase',
+                              //TRANS : %1$s is the itemtype name,
+                              //        %2$s is the name of the item (used for headings of a list)
+                                        sprintf(__('%1$s = %2$s'),
+                                                $itemtype::getTypeName(1), $item->fields["name"]));
 
          $i = 0;
          foreach ($cases as $data) {
@@ -940,7 +880,7 @@ class PluginProcessmakerCase extends CommonDBTM {
             echo "<tr class='tab_bg_1'>";
             if ($canupdate) {
                echo "<td width='10'>";
-               // prevent massiveaction on subprocess
+               // show massive action only for main cases (not for subcases)
                if ($data['plugin_processmaker_cases_id'] == 0) {
                   Html::showMassiveActionCheckBox(__CLASS__, $data["assocID"]);
                }
@@ -951,7 +891,7 @@ class PluginProcessmakerCase extends CommonDBTM {
             echo "<td class='center'>".self::getStatus($data['case_status'])."</td>";
             echo "<td class='center'>";
             if ($data['plugin_processmaker_cases_id'] > 0) {
-               // then this is a subprocess of
+               // then this is a subcase of
                $maincase = new self;
                if ($maincase->getFromDB($data['plugin_processmaker_cases_id'])) {
                   echo $maincase->getLink();
@@ -960,12 +900,11 @@ class PluginProcessmakerCase extends CommonDBTM {
                echo '-';
             }
             echo "</td>";
-            //echo "<td class='center'>".Html::convDateTime($data["date_creation"])."</td>";
             echo "</tr>";
 
             $i++;
          }
-         echo $header_begin.$header_top.$header_end;
+         echo $header_begin.$header_bottom.$header_end;
 
       }
 
@@ -1148,20 +1087,29 @@ class PluginProcessmakerCase extends CommonDBTM {
    }
 
 
+   //static function getIcon() {
+   //   //      return "fas fa-code-branch fa-rotate-90";
+   //   return "fas fa-blog fa-flip-vertical";
+   //   //      return "fas fa-cogs fa-flip-vertical";
+   //}
+
+
    /**
     * Summary of getMenuContent
     * @return array
     */
    static function getMenuContent() {
 
-      //if (!Session::haveRightsOr('plugin_processmaker_config', [READ, UPDATE])) {
-      //   return;
-      //}
+      if (!Session::haveRightsOr('plugin_processmaker_case', [READ, DELETE, CANCEL, ADHOC_REASSIGN])) {
+         return [];
+      }
 
       $front_page = "/plugins/processmaker/front";
       $menu = [];
       $menu['title'] = self::getTypeName(Session::getPluralNumber());
       $menu['page']  = "$front_page/case.php";
+      $menu['icon'] = "'></i><img src=\"/plugins/processmaker/pics/processmaker-xxs.png\" style=\"vertical-align: middle;\"/><i class='";
+
       $menu['links']['search'] = PluginProcessmakerCase::getSearchURL(false);
       if (Session::haveRightsOr("config", [READ, UPDATE])) {
          $menu['links']['config'] = PluginProcessmakerConfig::getFormURL(false);
@@ -1547,7 +1495,7 @@ class PluginProcessmakerCase extends CommonDBTM {
    }
 
 
-   function showForm ($ID, $options = ['candel'=>false]) {
+   function showForm($ID, $options = []) {
       $options['colspan'] = 6;
       $options['formtitle'] = sprintf( __('Case status is \'%s\'', 'processmaker'), self::getStatus($this->fields['case_status']));
 
@@ -1564,7 +1512,9 @@ class PluginProcessmakerCase extends CommonDBTM {
       //echo '</div>' ;
 
       Html::closeForm();
-      $options['candel'] = true;
+
+      $options['candel'] = $options['candel'] ?? $this->canPurgeItem($ID);
+
       $this->showFormButtons($options);
 
       echo Html::scriptBlock("
