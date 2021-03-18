@@ -9,7 +9,7 @@ class PluginProcessmakerMenu extends CommonGLPI {
    static function getMenuContent() {
 
       if (!Session::haveRightsOr('plugin_processmaker_config', [READ, UPDATE])) {
-         return;
+         return [];
       }
 
       $front_page = "/plugins/processmaker/front";
@@ -20,6 +20,7 @@ class PluginProcessmakerMenu extends CommonGLPI {
       if (Session::haveRightsOr("config", [READ, UPDATE])) {
          $menu['links']['config'] = PluginProcessmakerConfig::getFormURL(false);
       }
+      $menu['icon'] = "'></i><img src=\"/plugins/processmaker/pics/processmaker-xxs.png\" style=\"vertical-align: middle;\"/><i class='";
 
       $itemtypes = ['PluginProcessmakerProcess' => 'processes',
                     'PluginProcessmakerCaselink' => 'caselinks'

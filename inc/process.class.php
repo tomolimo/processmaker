@@ -45,6 +45,13 @@ class PluginProcessmakerProcess extends CommonDBTM {
    }
 
 
+//   static function getIcon() {
+////      return "fas fa-code-branch fa-rotate-90";
+//      return "fas fa-blog fa-flip-vertical";
+////      return "fas fa-cogs fa-flip-vertical";
+//   }
+
+
    /**
     * Get default values to search engine to override
     **/
@@ -525,7 +532,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
          'id'                 => '14',
          'table'              => 'glpi_itilcategories',
          'field'              => 'completename',
-         'name'               => __('Category'),
+         'name'               => __('Category (self-service)', 'processmaker'),
          'datatype'           => 'dropdown',
          'massiveaction'      => false
       ];
@@ -732,50 +739,53 @@ class PluginProcessmakerProcess extends CommonDBTM {
       echo "</td></tr>";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td >".__('ITIL Category for Self-service interface (left empty to disable)', 'processmaker')."</td><td>";
-      if (true) { // $canupdate || !$ID || $canupdate_descr
-          $opt = ['value'  => $this->fields["itilcategories_id"]];
-
-         switch ($this->fields['type']) {
-            case Ticket::INCIDENT_TYPE :
-               $opt['condition'] = "`is_incident`='1'";
-                break;
-
-            case Ticket::DEMAND_TYPE :
-               $opt['condition'] = "`is_request`='1'";
-                break;
-
-            default :
-                break;
-         }
-
-          echo "<span id='show_category_by_type'>";
-         if (isset($idticketcategorysearch)) {
-            $opt['rand'] = $idticketcategorysearch;
-         }
-          Dropdown::show('ITILCategory', $opt);
-          echo "</span>";
-      } else {
-          echo Dropdown::getDropdownName("glpi_itilcategories", $this->fields["itilcategories_id"]);
-      }
-
+      echo "<td rowspan=2>".__('Visible for Self-service interface (change ITIL Category for Self-service to enable / disable)', 'processmaker')."</td>";
+      echo "<td rowspan=2>".Dropdown::getYesNo($this->fields["itilcategories_id"])."</td>";
       echo "<td >".__('Type for Self-service interface', 'processmaker')."</td><td>";
       if (true) { // $canupdate || !$ID
-         $idticketcategorysearch = mt_rand(); $opt = ['value' => $this->fields["type"]];
-         $rand = Ticket::dropdownType('type', $opt, [], ['toupdate' => "search_".$idticketcategorysearch ]);
-         $opt = ['value' => $this->fields["type"]];
+
+         $rand = Ticket::dropdownType('type',
+                              ['value' => $this->fields["type"],
+                              ]);
          $params = ['type'            => '__VALUE__',
-                         //'entity_restrict' => -1, //$this->fields['entities_id'],
-                         'value'           => $this->fields['itilcategories_id'],
-                         'currenttype'     => $this->fields['type']];
+                    'value'           => $this->fields['itilcategories_id'],
+                    'currenttype'     => $this->fields['type'],
+                    'condition'       => ['is_helpdeskvisible' => '1']
+                    ];
 
          Ajax::updateItemOnSelectEvent("dropdown_type$rand", "show_category_by_type",
-                                         $CFG_GLPI["root_doc"]."/ajax/dropdownTicketCategories.php",
+                                         $CFG_GLPI["root_doc"]."/plugins/processmaker/ajax/dropdownTicketCategories.php",
                                          $params);
       } else {
          echo Ticket::getTicketTypeName($this->fields["type"]);
       }
-      echo "</td>";
+      echo "</td></tr>";
+
+      echo "<tr class='tab_bg_1'>";
+      echo "<td >".__('ITIL Category for Self-service interface (left empty to disable)', 'processmaker')."</td><td>";
+      if (true) { // $canupdate || !$ID || $canupdate_descr
+         $opt['value'] = $this->fields["itilcategories_id"];
+         $opt['condition']['is_helpdeskvisible'] = '1';
+         switch ($this->fields['type']) {
+            case Ticket::INCIDENT_TYPE :
+               $opt['condition']['is_incident'] = '1';
+               break;
+
+            case Ticket::DEMAND_TYPE :
+               $opt['condition']['is_request'] = '1';
+               break;
+
+            default :
+               break;
+         }
+
+         echo "<span id='show_category_by_type'>";
+         Dropdown::show('ITILCategory', $opt);
+         echo "</span>";
+      } else {
+          echo Dropdown::getDropdownName("glpi_itilcategories", $this->fields["itilcategories_id"]);
+      }
+
       echo "</tr>";
 
       echo "<tr class='tab_bg_1'>";

@@ -124,9 +124,20 @@ function plugin_processmaker_addLeftJoin($type, $ref_table, $new_table, $linkfie
  * @return void
  */
 function plugin_pre_item_update_processmaker(CommonITILObject $parm) {
-   global $DB;//, $PM_SOAP;
+   //global $DB;//, $PM_SOAP;
 
-   if (isset($_SESSION['glpiname'])) { // && $parm->getType() == 'Ticket') {
+   // look at previous status
+   if (isset($parm->input['status']) 
+      && $parm->input['status'] == CommonITILObject::SOLVED
+      && !in_array($parm->fields['status'], [CommonITILObject::SOLVED, CommonITILObject::CLOSED])
+      && !PluginProcessmakerCase::canSolve(['item' => $parm])) {
+      $parm->input = []; // empty array... to prevent item update
+      Session::addMessageAfterRedirect(__('At least one \'Process case\' is running!<br/>Solving is currently disabled!', 'processmaker'), false, ERROR);
+      return;
+   }
+
+
+   if (isset($_SESSION['glpiname'])) {
       $locVar = [ ];
       foreach ($parm->input as $key => $val) {
          switch ($key) {
@@ -161,7 +172,7 @@ function plugin_pre_item_update_processmaker(CommonITILObject $parm) {
       $itemType = $parm->getType();
 
       $locCase = new PluginProcessmakerCase;
-      foreach (PluginProcessmakerCase::getIDsFromItem($itemType, $itemId ) as $cases_id) {
+      foreach (PluginProcessmakerCase::getIDsFromItem($itemType, $itemId) as $cases_id) {
          $locCase->getFromDB($cases_id);
          $locCase->sendVariables($locVar);
 
@@ -241,6 +252,7 @@ function plugin_processmaker_giveItem($itemtype, $ID, $data, $num) {
 
    return;
 }
+
 
 function plugin_processmaker_change_profile() {
    if ($_SESSION['glpiactiveprofile']['interface'] == "helpdesk") {

@@ -8,6 +8,8 @@ version 3.5.x is compatible with GLPI 9.3 and needs ProcessMaker 3.3.0-RE-1.x (h
 
 version 3.6.x is compatible with GLPI 9.4 and needs ProcessMaker 3.3.0-RE-1.x (https://github.com/tomolimo/processmaker-server/releases/latest)
 
+version 4.0.0 is compatible with GLPI 9.5 and needs ProcessMaker 3.3.0-RE-1.x (https://github.com/tomolimo/processmaker-server/releases/latest)
+
 This plugin can run classic and bpmn processes
 
 An IRC channel is available: #processmaker-glpi on https://webchat.freenode.net/

@@ -2,7 +2,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: processmaker-plugin\n"
 "POT-Creation-Date: 2018-08-06 14:32+0200\n"
-"PO-Revision-Date: 2018-08-06 14:43+0200\n"
+"PO-Revision-Date: 2021-02-15 14:25\n"
 "Last-Translator: tomolimo\n"
 "Language-Team: Czech\n"
 "Language: cs_CZ\n"
@@ -12,11 +12,7 @@ msgstr ""
 "X-Generator: Poedit 2.1.1\n"
 "X-Poedit-Basepath: ..\n"
 "Plural-Forms: nplurals=4; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 3;\n"
-"X-Poedit-KeywordsList: ;__:1,2t;_e:1,2t;_x:1c,2,3t;_n:1,2,4t;__s:1,2t;"
-"_ex:1c,2,3t;_sx:1c,2,3t;_nx:1c,2,3,5t\n"
-"X-Crowdin-Project: processmaker-plugin\n"
-"X-Crowdin-Language: cs\n"
-"X-Crowdin-File: /3.3.0/source.po\n"
+"X-Poedit-KeywordsList: ;__:1,2t;_e:1,2t;_x:1c,2,3t;_n:1,2,4t;__s:1,2t;_ex:1c,2,3t;_sx:1c,2,3t;_nx:1c,2,3,5t\n"
 "X-Poedit-SearchPath-0: ajax\n"
 "X-Poedit-SearchPath-1: front\n"
 "X-Poedit-SearchPath-2: inc\n"
@@ -24,6 +20,11 @@ msgstr ""
 "X-Poedit-SearchPath-4: js\n"
 "X-Poedit-SearchPath-5: hook.php\n"
 "X-Poedit-SearchPath-6: setup.php\n"
+"X-Crowdin-Project: processmaker-plugin\n"
+"X-Crowdin-Project-ID: 310131\n"
+"X-Crowdin-Language: cs\n"
+"X-Crowdin-File: /3.3.0/source.po\n"
+"X-Crowdin-File-ID: 15\n"
 
 #: ajax/task_users.php:25
 msgid "Re-assign task to"
@@ -102,7 +103,7 @@ msgstr[3] "Případy procesu"
 
 #: inc/case.class.php:80
 msgid "Sub-case"
-msgstr ""
+msgstr "Dílčí případ"
 
 #: inc/case.class.php:312
 msgid "Current task(s) properties"
@@ -130,11 +131,11 @@ msgstr "Chcete-li uplatnit"
 
 #: inc/case.class.php:377
 msgid "Sub-case properties"
-msgstr ""
+msgstr "Vlastnosti dílčího případu"
 
 #: inc/case.class.php:380
 msgid "Parent case properties"
-msgstr ""
+msgstr "Vlastnosti nadřazeného případu"
 
 #: inc/case.class.php:382
 msgid "Case properties"
@@ -176,12 +177,12 @@ msgstr "Poslední úprava"
 #: inc/case.class.php:479
 #, php-format
 msgid "Case is linked to a %1s"
-msgstr ""
+msgstr "Případ je propojen s %1s"
 
 #: inc/case.class.php:481
 #, php-format
 msgid "Sub-case is linked to a %1s"
-msgstr ""
+msgstr "Dílčí případ je propojen s %1s"
 
 #: inc/case.class.php:506
 msgid "Case cancellation"
@@ -213,7 +214,7 @@ msgstr "Titulek"
 
 #: inc/case.class.php:587 inc/case.class.php:1070
 msgid "Sub-case of"
-msgstr ""
+msgstr "Dílčí případ z"
 
 #: inc/case.class.php:602
 msgid "Add a new case"
@@ -433,11 +434,11 @@ msgstr "Nikde se neopakující identif. procesu"
 
 #: inc/process.class.php:433
 msgid "Process type"
-msgstr ""
+msgstr "Typ procesu"
 
 #: inc/process.class.php:439
 msgid "Hide case num. & title"
-msgstr ""
+msgstr "Skrýt číslo případu a nadpis"
 
 #: inc/process.class.php:445
 msgid "Insert Task Category"
@@ -449,19 +450,19 @@ msgstr "Typ požadavku (samoobslužné)"
 
 #: inc/process.class.php:464 inc/process.class.php:609
 msgid "Visible in Incident for Central interface"
-msgstr ""
+msgstr "Viditelné v incidentu pro ústřední rozhraní"
 
 #: inc/process.class.php:470 inc/process.class.php:614
 msgid "Visible in Request for Central interface"
-msgstr ""
+msgstr "Viditelné v požadavku pro ústřední rozhraní"
 
 #: inc/process.class.php:476 inc/process.class.php:666
 msgid "Visible in Change"
-msgstr ""
+msgstr "Viditelné ve změně"
 
 #: inc/process.class.php:482 inc/process.class.php:671
 msgid "Visible in Problem"
-msgstr ""
+msgstr "Viditelné v problému"
 
 #: inc/process.class.php:519
 msgctxt "process_type"
@@ -487,15 +488,15 @@ msgstr "Vložit komentáře kategorie úkolu do jeho popisu"
 
 #: inc/process.class.php:619
 msgid "ITIL Category for Self-service interface (left empty to disable)"
-msgstr ""
+msgstr "ITIL kategorie pro samoobslužné rozhraní (ponecháním nevyplněného bude vypnuto)"
 
 #: inc/process.class.php:646
 msgid "Type for Self-service interface"
-msgstr ""
+msgstr "Typ samoobslužného rozhraní"
 
 #: inc/process.class.php:676
 msgid "Process type (to be changed only if not up-to-date)"
-msgstr ""
+msgstr "Typ procesu (který má být změněno pouze pokud není aktuální)"
 
 #: inc/process_profile.class.php:26 inc/process_profile.class.php:45
 msgid "Authorizations"
@@ -544,11 +545,8 @@ msgid "You must manage it first (see 'Process - Case' tab)!"
 msgstr "Nejprve je třeba toto spravovat (viz panel „Proces – případ“)!"
 
 #: inc/processmaker.class.php:3038
-msgid ""
-"ProcessMaker plugin is under maintenance, please retry later, thank you."
-msgstr ""
-"Na zásuvném modulu ProcessMaker probíhá údržba, zkuste to prosím později – "
-"děkujeme."
+msgid "ProcessMaker plugin is under maintenance, please retry later, thank you."
+msgstr "Na zásuvném modulu ProcessMaker probíhá údržba, zkuste to prosím později – děkujeme."
 
 #: inc/profile.class.php:17
 msgid "Process configuration"
@@ -568,7 +566,7 @@ msgstr[3] "Process case tasks"
 
 #: inc/task.class.php:258
 msgid "Sub-case task(s)"
-msgstr ""
+msgstr "Úkoly dílčího případu"
 
 #: inc/taskcategory.class.php:21 inc/taskcategory.class.php:31
 msgid "Task List"
@@ -610,3 +608,4 @@ msgstr "Dílčí proces"
 
 #~ msgid "Plugin is under maintenance, please retry later, thank you."
 #~ msgstr "Plugin is under maintenance, please retry later, thank you."
+

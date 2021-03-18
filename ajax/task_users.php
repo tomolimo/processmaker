@@ -28,7 +28,7 @@ $commoninputs = "<input type='hidden' name='items_id' value='".$_REQUEST['items_
                 "<input type='hidden' name='tasktype' value='".$_REQUEST['tasktype']."'>".
                 "<input type='hidden' name='tasks_id' value='".$_REQUEST['tasks_id']."'>";
 
-$PM_SOAP = new PluginProcessmakerProcessmaker; // not used in this context, just here to define the type of $PM_SOAP
+$PM_SOAP = new PluginProcessmakerProcessmaker;
 $PM_DB = new PluginProcessmakerDB;
 $rand = rand();
 
@@ -39,10 +39,16 @@ echo "<input type='hidden' name='comment' value=''>";
 echo $commoninputs;
 
 $can_unclaim = false; // by default
+$grp = false;
 $query = "SELECT TAS_GROUP_VARIABLE FROM TASK WHERE TAS_UID='".$_REQUEST['taskGuid']."' AND TAS_ASSIGN_TYPE='SELF_SERVICE';";
 $res = $PM_DB->query($query);
-if ($PM_DB->numrows($res) > 0) {
+if ($PM_DB->numrows($res) > 0 && $row = $PM_DB->fetch_assoc($res)) {
    $can_unclaim = true;
+   if ($row['TAS_GROUP_VARIABLE'] != '') {
+      //self-service value based assignment
+      $PM_SOAP->login(true); // needs to be logged in to be able to call SOAP
+      $grp = $PM_SOAP->getGLPIGroupIdForSelfServiceTask($_REQUEST['caseGuid'], $_REQUEST['taskGuid']);
+   }
 }
 
 PluginProcessmakerUser::dropdown( ['name'   => 'users_id_recipient',
@@ -51,14 +57,15 @@ PluginProcessmakerUser::dropdown( ['name'   => 'users_id_recipient',
                                    'entity' => 0, //$item->fields["entities_id"], // not used, as any user can be assigned to any tasks
                                    'entity_sons' => false, // not used, as any user can be assigned to any tasks
                                    'right'  => 'all',
+                                   'all'    => ($can_unclaim ? 0 : -1),
                                    'rand'  => $rand,
                                    'width' => '',
-                                   'specific_tags' => ['taskGuid' => $_REQUEST['taskGuid']]
+                                   'specific_tags' => ['taskGuid' => $_REQUEST['taskGuid'], 'grpGuid' => ($grp !== false ? $grp['uid'] : 0)]
                                   ]);
 
 echo "&nbsp;&nbsp;";
-echo "<input type='submit' name='reassign$rand' value='".__('Re-assign', 'processmaker')."' class='submit'>";
-echo "<input type='submit' name='reassign' value='".__('Re-assign', 'processmaker')."' class='submit' style='display:none'>";
+echo "<input type='submit' name='reassign$rand' value='".__s('Re-assign', 'processmaker')."' class='submit'>";
+echo "<input type='submit' name='reassign' value='".__s('Re-assign', 'processmaker')."' class='submit' style='display:none'>";
 
 echo HTML::scriptBlock("
       $(function () {
@@ -90,7 +97,7 @@ echo HTML::scriptBlock("
                hide: true
             }
             $('<div id=reassign$rand></div>').appendTo($('#processmaker_form_task$rand-".$_REQUEST['delIndex']."'));
-            var locDlg = $('#reassign$rand').html(content + '<p><textarea id=comment$rand rows=6 cols=60></textarea></p><font color=red>Input at least 10 words in English to justify.</font>').dialog(dlgContents);
+            var locDlg = $('#reassign$rand').html(content + '<p><textarea id=comment$rand rows=6 cols=60></textarea></p><font color=red>".addslashes(__('Input at least 10 words in English to justify.','processmaker'))."</font>').dialog(dlgContents);
             $('#comment$rand').focus();
             $('#comment$rand').on('keydown keyup', function(e) {
                if ($('#comment$rand').val().split(/\W+/).length > 10) {
@@ -107,21 +114,25 @@ echo HTML::scriptBlock("
             e.preventDefault();
             if ($('input[name=users_id]').val() == $('input[name=users_id_recipient]').val()) {
                // task is already assigned to this user
-               alert('".__('Task is already assigned to this user or group!', 'processmaker')."', '".__('Re-assign task', 'processmaker')."');
+               if ($('input[name=users_id]').val() == 0) {
+                  alert('".addslashes(__('Task is already un-assigned!', 'processmaker'))."', '".addslashes(__('Re-assign task', 'processmaker'))."');
+               } else {
+                  alert('".addslashes(__('Task is already assigned to this user!', 'processmaker'))."', '".addslashes(__('Re-assign task', 'processmaker'))."');
+               }
             } else if ($('input[name=users_id_recipient]').val() == 0) {
                // un-claim               
                if (".($can_unclaim ? 1 : 0)." && $('input[name=users_id]').val() != 0) {
-                  showCommentDlg('".__('Un-claim task', 'processmaker')."',
-                                 '".__('Please input reason to un-claim<br/>(task will be re-assigned to former group):', 'processmaker')."',
-                                 '".__('Un-claim', 'processmaker')."');
+                  showCommentDlg('".addslashes(__('Un-claim task', 'processmaker'))."',
+                                 '".addslashes(__('Please input reason to un-claim<br/>(task will be re-assigned to former group):', 'processmaker'))."',
+                                 '".addslashes(__('Un-claim', 'processmaker'))."');
                } else {
                   // task can't be unclaim because it isn't SELF_SERVICE
-                  alert('".__('Can\\\'t un-assign Task!', 'processmaker')."', '".__('Un-claim task', 'processmaker')."');
+                  alert('".addslashes(__("Can't un-assign task!", 'processmaker'))."', '".addslashes(__('Un-claim task', 'processmaker'))."');
                }
             } else {
-               showCommentDlg('".__('Re-assign task', 'processmaker')."',
-                              '".__('Please input reason to re-assign:', 'processmaker')."',
-                              '".__('Re-assign', 'processmaker')."');
+               showCommentDlg('".addslashes(__('Re-assign task', 'processmaker'))."',
+                              '".addslashes(__('Please input reason to re-assign:', 'processmaker'))."',
+                              '".addslashes(__('Re-assign', 'processmaker'))."');
             }
             return false;
          });
@@ -131,7 +142,7 @@ echo HTML::scriptBlock("
 
 if (Session::getLoginUserID() != $_REQUEST['users_id']) {
    echo "&nbsp;&nbsp;";
-   echo "<input type='submit' name='reminder' value='".__('Send reminder', 'processmaker')."' class='submit'>";
+   echo "<input type='submit' name='reminder' value='".__s('Send reminder', 'processmaker')."' class='submit'>";
 }
 
 Html::closeForm(true);

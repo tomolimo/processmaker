@@ -36,11 +36,11 @@ class PluginProcessmakerTaskCategory extends CommonDBTM
       self::title($item);
 
       echo "<div class='center'><br><table class='tab_cadre_fixehov'>";
-      echo "<tr><th colspan='7'>".__('Task List', 'processmaker')."</th></tr>";
+      echo "<tr><th colspan='7'>".__('Task list', 'processmaker')."</th></tr>";
       echo "<tr><th>".__('Task name', 'processmaker')."</th>".
       "<th>".__('Complete name')."</th>" .
       "<th>".__('Start', 'processmaker')."</th>" .
-      "<th>".__('Task GUID', 'processmaker')."</th>" .
+      "<th>".__('Task guid', 'processmaker')."</th>" .
       "<th>".__('Comments')."</th>" .
       "<th>".__('Active')."</th>" .
       "<th>".__('Sub-process', 'processmaker')."</th>" .
@@ -144,7 +144,7 @@ class PluginProcessmakerTaskCategory extends CommonDBTM
 
       echo "<th>".__('Complete name')."</th>" .
       "<th>".__('Start', 'processmaker')."</th>" .
-      "<th>".__('Task GUID', 'processmaker')."</th>" .
+      "<th>".__('Task guid', 'processmaker')."</th>" .
       "<th>".__('Comments')."</th>" .
       "<th>".__('Active')."</th>" .
       "<th>".__('Sub-process', 'processmaker')."</th>" .

@@ -115,7 +115,7 @@ class PluginProcessmakerTask extends CommonITILTask
       return true;
    }
 
-   static function populatePlanning($params) {
+   static function populatePlanning($params = []) :array {
       //global $CFG_GLPI;
 
       $events = [];
@@ -423,6 +423,7 @@ class PluginProcessmakerTask extends CommonITILTask
                      tasktype  : '{$task[$tabnum]['itemtype']}',
                      tasks_id  : {$task[$tabnum]['items_id']},
                      users_id  : {$current_assigned_user},
+                     caseGuid  : '{$case->fields['case_guid']}',
                      taskGuid  : '{$currentUser->taskId}',
                      delIndex  : {$task[$tabnum]['del_index']},
                      delThread : {$currentUser->delThread},

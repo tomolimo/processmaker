@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS `glpi_plugin_processmaker_configs` (
   `domain` varchar(50) DEFAULT '',
   `maintenance` tinyint(1) NOT NULL DEFAULT '0',
   `ssl_verify` tinyint(1) NOT NULL DEFAULT '0',
-  `db_version` varchar(10) NOT NULL DEFAULT '3.4.10',
+  `db_version` varchar(10) NOT NULL DEFAULT '4.0.0',
   `max_cases_per_item` int(11) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
