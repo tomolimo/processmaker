@@ -1736,7 +1736,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       $input['end'] = $options['end_date']->format("Y-m-d H:i:s");
       $input['plan']['begin'] = $input['begin'];
       $temp = $options['start_date']->diff( $options['end_date'] );
-      $input['plan']['_duration'] = $temp->d * DAY_TIMESTAMP + $temp->h * HOUR_TIMESTAMP + $temp->i * MINUTE_TIMESTAMP + $temp->s;
+      $input['plan']['_duration'] = $temp->days * DAY_TIMESTAMP + $temp->h * HOUR_TIMESTAMP + $temp->i * MINUTE_TIMESTAMP + $temp->s;
       if ($input['plan']['_duration'] == 0) {
          $input['plan']['_duration'] = 60; // at least
       }
