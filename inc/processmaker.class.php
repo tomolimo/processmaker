@@ -271,17 +271,12 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                   // get user from glpi_plugin_processmaker_users table
                   $pmusr = new PluginProcessmakerUser;
                   $pmusr->getFromDB($gusr->getID());
-                  //if (!isset($pmusr->fields['password']) || $pmusr->fields['password'] == "") {
                   if (is_object($pmusr) && array_key_exists('pm_users_id', $pmusr->fields)) {
                      $pass = md5(Toolbox::sodiumEncrypt($gusr->getID().$gusr->getName().time()));
-                     //$pmusr->update( array('id' => $pmusr->getID(), 'password' => $pass) );
                      // and must be updated also in PM db
                      $PM_DB->update('RBAC_USERS', ['USR_PASSWORD' => $pass], ['USR_UID' => $pmusr->fields['pm_users_id']]);
-                     //$PM_DB->query("UPDATE RBAC_USERS SET USR_PASSWORD='".$pass."' WHERE USR_UID='".$pmusr->fields['pm_users_id']."' ");
                      $PM_DB->update('USERS', ['USR_PASSWORD' => $pass], ['USR_UID' => $pmusr->fields['pm_users_id']]);
-                     //$PM_DB->query("UPDATE USERS SET USR_PASSWORD='".$pass."' WHERE USR_UID='".$pmusr->fields['pm_users_id']."' ");
-                     //}
-                     //$locSession = $this->pmSoapClient->login( array( 'userid' => $gusr->fields['name'], 'password' => 'md5:'.$pmusr->fields['password']) );
+                     // and then login with this user/password
                      $locSession = $this->pmSoapClient->login( ['userid' => $gusr->fields['name'], 'password' => 'md5:'.$pass] );
                      if (is_object( $locSession ) && $locSession->status_code == 0) {
                         $_SESSION["pluginprocessmaker"]["session"]["id"] = $locSession->message;
@@ -1313,7 +1308,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
          if ($user['is_active'] != 0 && $user['is_deleted'] != 1) {
             $status = "ACTIVE";
             $task->addVolume(1);
-            $pass = md5(Toolbox::sodiumEncrypt($user['id'].$user['name'].time()));
+            $pass = substr(Toolbox::sodiumEncrypt($user['id'].$user['name'].time()), 0, 20); // must keep only 20 chars as the web service is limited to 20 for the password
             $pmResult = $PM_SOAP->createUser($user['name'], $user['firstname'], $user['realname'], "", "PROCESSMAKER_OPERATOR", $pass, $status);
             if ($pmResult->status_code == 0) {
                $task->log( "Added user: '".$user['name']."'" );
