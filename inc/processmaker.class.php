@@ -3467,7 +3467,7 @@ debugger;
       //             AND TAS_ASSIGN_TYPE='SELF_SERVICE';";
       $query = ['SELECT' => 'TAS_GROUP_VARIABLE',
                 'FROM'   => 'TASK',
-                'WHERE'  => ['TAS_UID'         => '$pmTaskId',
+                'WHERE'  => ['TAS_UID'         => $pmTaskId,
                              'TAS_ASSIGN_TYPE' => 'SELF_SERVICE']];
       //$req = $PM_DB->query($query);
       //$row = $PM_DB->fetchAssoc($req);
