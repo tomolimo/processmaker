@@ -12,34 +12,34 @@ $PM_REQUEST = $_REQUEST;
 $PM_GET = $_GET;
 include( "../../../inc/includes.php" );
 
-if (empty($_POST["_type"])
-    || ($_POST["_type"] != "Helpdesk")
+if (empty($_REQUEST["_type"])
+    || ($_REQUEST["_type"] != "Helpdesk")
     || !$CFG_GLPI["use_anonymous_helpdesk"]) {
    Session::checkRight("ticket", CREATE);
 }
 
 // Security check
-if (empty($_POST) || count($_POST) == 0) {
+if (empty($_REQUEST) || count($_REQUEST) == 0) {
    Html::redirect($CFG_GLPI["root_doc"]."/front/helpdesk.public.php");
 }
 
 // here we are going to test if we must start a process
-if (isset($_POST["_from_helpdesk"]) && $_POST["_from_helpdesk"] == 1
-    && isset($_POST["type"]) //&& $_POST["type"] == Ticket::DEMAND_TYPE
-    && isset($_POST["itilcategories_id"])
-    && isset($_POST["entities_id"])) {
+if (isset($_REQUEST["_from_helpdesk"]) && $_REQUEST["_from_helpdesk"] == 1
+    && isset($_REQUEST["type"]) //&& $_REQUEST["type"] == Ticket::DEMAND_TYPE
+    && isset($_REQUEST["itilcategories_id"])
+    && isset($_REQUEST["entities_id"])) {
    // here we have to check if there is an existing process in the entity and with the category
    // if yes we will start it
    // if not we will continue
    // special case if RUMT plugin is enabled and no process is available and category is 'User Management' then must start RUMT.
 
-   $processList = PluginProcessmakerProcessmaker::getProcessesWithCategoryAndProfile( $_POST["itilcategories_id"], $_POST["type"], $_SESSION['glpiactiveprofile']['id'], $_POST["entities_id"] );
+   $processList = PluginProcessmakerProcessmaker::getProcessesWithCategoryAndProfile( $_REQUEST["itilcategories_id"], $_REQUEST["type"], $_SESSION['glpiactiveprofile']['id'], $_REQUEST["entities_id"] );
 
    // currently only one process should be assigned to this itilcategory so this array should contain only one row
    $processQt = count( $processList );
    if ($processQt == 1) {
-      $_POST['action']='newcase';
-      $_POST['plugin_processmaker_processes_id'] = $processList[0]['id'];
+      $_REQUEST['action']='newcase';
+      $_REQUEST['plugin_processmaker_processes_id'] = $processList[0]['id'];
       include (GLPI_ROOT . "/plugins/processmaker/front/processmaker.form.php");
       die();
    } else if ($processQt > 1) {
@@ -52,7 +52,7 @@ if (isset($_POST["_from_helpdesk"]) && $_POST["_from_helpdesk"] == 1
       // could be done via ARBehviours or RUMT itself
       $userManagementCat = [ 100556, 100557, 100558 ];
       $plug = new Plugin;
-      if ($processQt == 0 && in_array( $_POST["itilcategories_id"], $userManagementCat) && $plug->isActivated('rayusermanagementticket' )) {
+      if ($processQt == 0 && in_array( $_REQUEST["itilcategories_id"], $userManagementCat) && $plug->isActivated('rayusermanagementticket' )) {
          Html::redirect($CFG_GLPI['root_doc']."/plugins/rayusermanagementticket/front/rayusermanagementticket.helpdesk.public.php");
       }
    }

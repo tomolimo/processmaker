@@ -2674,9 +2674,21 @@ debugger;
       global $DB;
       $dbu = new DbUtils;
       $processList = [ ];
-      //$entityAncestors = implode( ", ", $dbu->getAncestorsOf( $dbu->getTableForItemType( 'Entity' ), $entity ) );
       $entityAncestors = $dbu->getAncestorsOf( $dbu->getTableForItemType( 'Entity' ), $entity );
-      //if (strlen( $entityAncestors ) > 0) {
+
+      $entities = ['entities_id' => $entity];
+      if (count( $entityAncestors ) > 0) {
+         $entities = [
+            'OR' => [
+               'entities_id' => $entity,
+               'AND' => [
+                  'entities_id' => $entityAncestors,
+                  'is_recursive' => 1
+                  ]
+               ]
+            ];
+      }
+
       if ($category > 0) {
          $query = [
                   'FIELDS'       => ['glpi_plugin_processmaker_processes.id', 'glpi_plugin_processmaker_processes.name'],
@@ -2696,30 +2708,21 @@ debugger;
                   ],
                   'WHERE'        => [
                      'AND' => [
+                        'is_active'         => 1,
                         'itilcategories_id' => $category,
                         'type'              => $type,
                         'profiles_id'       => $profile,
-                        'entities_id'       => $entity
+                        $entities
                      ]
                   ]
             ];
-         if (count( $entityAncestors ) > 0) {
-            //$entityAncestors = " OR (entities_id IN ($entityAncestors) AND is_recursive = 1) ";
-            $entityAncestors[] = $entity;
-            $query['WHERE']['AND']['entities_id'] =  $entityAncestors;
-            $query['WHERE']['AND']['is_recursive'] = 1;
-         }
+
          $res = $DB->request($query);
          foreach ($res as $row) {
             $processList[] = $row;
          }
          $processList = array_map("unserialize", array_unique(array_map("serialize", $processList)));
       }
-      //$query ="SELECT DISTINCT glpi_plugin_processmaker_processes.id, glpi_plugin_processmaker_processes.name FROM glpi_plugin_processmaker_processes
-      //      INNER JOIN glpi_plugin_processmaker_processes_profiles ON glpi_plugin_processmaker_processes_profiles.plugin_processmaker_processes_id=glpi_plugin_processmaker_processes.id
-      //      WHERE is_active = 1 AND itilcategories_id = $category AND `type` = $type AND profiles_id = $profile  AND (entities_id = $entity $entityAncestors)";
-
-      //foreach ($DB->request( $query ) as $row) {
 
       return $processList;
 
