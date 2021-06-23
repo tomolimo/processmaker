@@ -42,7 +42,7 @@ $can_unclaim = false; // by default
 $grp = false;
 $query = "SELECT TAS_GROUP_VARIABLE FROM TASK WHERE TAS_UID='".$_REQUEST['taskGuid']."' AND TAS_ASSIGN_TYPE='SELF_SERVICE';";
 $res = $PM_DB->query($query);
-if ($PM_DB->numrows($res) > 0 && $row = $PM_DB->fetch_assoc($res)) {
+if ($PM_DB->numrows($res) > 0 && $row = $PM_DB->fetchAssoc($res)) {
    $can_unclaim = true;
    if ($row['TAS_GROUP_VARIABLE'] != '') {
       //self-service value based assignment
