@@ -75,7 +75,7 @@ class PluginProcessmakerNotificationTargetCase extends PluginProcessmakerNotific
 
 
    /**
-    * Add users from $options['glpi_send_email']['to']
+    * Add users from $email_param['recipients']
     *
     * @param array $email_param should contain 'recipients'
     *
@@ -98,13 +98,30 @@ class PluginProcessmakerNotificationTargetCase extends PluginProcessmakerNotific
             }
          }
 
-         $query = $this->getDistinctUserSql()."
-                  FROM `glpi_users` ".
-                  $this->getProfileJoinSql()."
-                  WHERE `glpi_users`.`id` IN (".implode(',', $id_list).")";
+         $user = new User();
+         foreach ($id_list as $users_id) {
+            if ($user->getFromDB($users_id)) {
 
-         foreach ($DB->request($query) as $data) {
-            $this->addToRecipientsList($data);
+               $author_email = UserEmail::getDefaultForUser($user->fields['id']);
+               $author_lang  = $user->fields["language"];
+               $author_id    = $user->fields['id'];
+
+               if (empty($author_lang)) {
+                  $author_lang = $CFG_GLPI["language"];
+               }
+               if (empty($author_id)) {
+                  $author_id = -1;
+               }
+
+               $user = [
+                  'language' => $author_lang,
+                  'users_id' => $author_id
+               ];
+               if ($this->isMailMode()) {
+                  $user['email'] = $author_email;
+               }
+               $this->addToRecipientsList($user);
+            }
          }
 
          foreach($email_list as $email){

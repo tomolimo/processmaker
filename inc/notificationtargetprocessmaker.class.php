@@ -124,7 +124,7 @@ class PluginProcessmakerNotificationTargetProcessmaker extends NotificationTarge
       $res = $PM_DB->query("SELECT APP_DATA, APP_TITLE, APP_DESCRIPTION FROM APPLICATION WHERE APP_NUMBER = ".$options['case']->fields['id']);
       if ($res && $PM_DB->numrows($res) == 1) {
          // get all the case variables from $PM_DB
-         $caserow = $PM_DB->fetch_assoc($res);
+         $caserow = $PM_DB->fetchAssoc($res);
          $case_variables = unserialize($caserow['APP_DATA']);
          $excluded_re = '/^(' . implode('|', $excluded) . ')$/u';
          foreach ($case_variables as $key => $val) {
@@ -197,7 +197,8 @@ class PluginProcessmakerNotificationTargetProcessmaker extends NotificationTarge
    function getContentHeader() {
 
       if ($this->getMode() == \Notification_NotificationTemplate::MODE_MAIL
-         && MailCollector::getNumberOfActiveMailCollectors()
+         && MailCollector::countActiveCollectors()
+         && $this->allowResponse()
       ) {
          return NotificationTargetTicket::HEADERTAG.' '.__('To answer by email, write above this line').' '.
                 NotificationTargetTicket::HEADERTAG;
@@ -213,7 +214,8 @@ class PluginProcessmakerNotificationTargetProcessmaker extends NotificationTarge
    function getContentFooter() {
 
       if ($this->getMode() == \Notification_NotificationTemplate::MODE_MAIL
-         && MailCollector::getNumberOfActiveMailCollectors()
+         && MailCollector::countActiveCollectors()
+         && $this->allowResponse()
       ) {
          return NotificationTargetTicket::FOOTERTAG.' '.__('To answer by email, write under this line').' '.
                 NotificationTargetTicket::FOOTERTAG;

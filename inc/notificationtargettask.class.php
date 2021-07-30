@@ -149,14 +149,14 @@ class PluginProcessmakerNotificationTargetTask extends PluginProcessmakerNotific
       $this->data['##task.user##'] = '';
       $this->data['##task.user.login##'] = ''; // by default
       $tech = new User;
-      if ($taskobj->fields['users_id_tech'] > 0 
+      if ($taskobj->fields['users_id_tech'] > 0
           && $tech->getFromDB($taskobj->fields['users_id_tech'])) {
          $this->data['##task.user##'] = Html::clean($dbu->getUserName($taskobj->fields['users_id_tech']));
          $this->data['##task.user.login##'] = $tech->fields['name'];
       }
       $oldtech = new User;
-      if (isset($options['old_users_id_tech']) 
-          && $options['old_users_id_tech'] > 0 
+      if (isset($options['old_users_id_tech'])
+          && $options['old_users_id_tech'] > 0
           && $oldtech->getFromDB($options['old_users_id_tech'])) {
          $this->data['##task.former.user##'] = Html::clean($dbu->getUserName($options['old_users_id_tech']));
          $this->data['##task.former.user.login##'] = $oldtech->fields['name'];
@@ -238,7 +238,7 @@ class PluginProcessmakerNotificationTargetTask extends PluginProcessmakerNotific
 
       $this->addTarget(Notification::AUTHOR, __('Requester'), PluginProcessmakerNotificationTargetProcessmaker::PM_USER_TYPE);
 
-      if (strpos($event, 'task_update_') === 0) {
+      if (strpos($event, 'task_reassign_') === 0) {
          $this->addTarget(Notification::OLD_TECH_IN_CHARGE,
                           __('Former technician in charge of the task'));
       }
@@ -309,17 +309,33 @@ class PluginProcessmakerNotificationTargetTask extends PluginProcessmakerNotific
     * @param  $options
     */
    function addOldAssignTechnician($options = []) {
-      global $DB;
+      //global $DB;
+      global $CFG_GLPI;
 
-      // In case of delete task pass user id
       if (isset($options['old_users_id_tech'])) {
-         $query = $this->getDistinctUserSql()."
-                  FROM `glpi_users` ".
-                  $this->getProfileJoinSql()."
-                  WHERE `glpi_users`.`id` = '".$options['old_users_id_tech']."'";
 
-         foreach ($DB->request($query) as $data) {
-            $this->addToRecipientsList($data);
+         $user = new User();
+         if ($user->getFromDB($options['old_users_id_tech'])) {
+
+            $author_email = UserEmail::getDefaultForUser($user->fields['id']);
+            $author_lang  = $user->fields["language"];
+            $author_id    = $user->fields['id'];
+
+            if (empty($author_lang)) {
+               $author_lang = $CFG_GLPI["language"];
+            }
+            if (empty($author_id)) {
+               $author_id = -1;
+            }
+
+            $user = [
+               'language' => $author_lang,
+               'users_id' => $author_id
+            ];
+            if ($this->isMailMode()) {
+               $user['email'] = $author_email;
+            }
+            $this->addToRecipientsList($user);
          }
       }
    }
