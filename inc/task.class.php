@@ -121,7 +121,7 @@ class PluginProcessmakerTask extends CommonITILTask
       $events = [];
 
       if (isset($params['start'])) {
-         $params['begin'] = '2000-01-01 00:00:00';
+         $params['begin'] = $params['start']; //'2000-01-01 00:00:00';
          if ($params['type'] == 'group') {
             $params['who_group'] = $params['who'];
             $params['whogroup'] = $params['who'];
