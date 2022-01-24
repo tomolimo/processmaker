@@ -127,7 +127,7 @@ function plugin_pre_item_update_processmaker(CommonITILObject $parm) {
    //global $DB;//, $PM_SOAP;
 
    // look at previous status
-   if (isset($parm->input['status']) 
+   if (isset($parm->input['status'])
       && $parm->input['status'] == CommonITILObject::SOLVED
       && !in_array($parm->fields['status'], [CommonITILObject::SOLVED, CommonITILObject::CLOSED])
       && !PluginProcessmakerCase::canSolve(['item' => $parm])) {
@@ -194,7 +194,7 @@ function plugin_item_update_processmaker_satisfaction($parm) {
    global $PM_SOAP;
    if (Session::isCron()) { // Task cron log with user admin
       $PM_SOAP->login(true);
-   } 
+   }
    $cases = PluginProcessmakerCase::getIDsFromItem('Ticket', $parm->fields['tickets_id']);
    foreach ($cases as $cases_id) {
       $locCase = new PluginProcessmakerCase;
@@ -282,7 +282,6 @@ function plugin_item_update_processmaker_tasks($parm) {
       $locCase = new PluginProcessmakerCase;
       $locCase->getFromDB($pmTask->fields['plugin_processmaker_cases_id']);
       $srccase_guid = $locCase->fields['case_guid'];
-
       //$msg  =  Toolbox::backtrace(false);
       //$msg .= ' $locCase: '.str_replace("\n", "\n  ", print_r($locCase, true))."\n";
       //$msg .= ' $task: '.str_replace("\n", "\n  ", print_r($parm, true))."\n";
@@ -320,6 +319,15 @@ function plugin_item_update_processmaker_tasks($parm) {
                   $casevariables = array_merge( $casevariables, $matches[1] );
                }
             }
+            if (preg_match_all( "/@@(\w+)/u", $externalapplication['url'], $matches  )) {
+                $casevariables = array_merge( $casevariables, $matches[1] );
+            }
+            if(isset($externalapplication['headers']) && $externalapplication['headers'] != "") {
+                if (preg_match_all( "/@@(\w+)/u", $externalapplication['headers'], $matches  )) {
+                    $casevariables = array_merge( $casevariables, $matches[1] );
+                }
+            }
+
          }
 
          // ask for those case variables
@@ -327,8 +335,10 @@ function plugin_item_update_processmaker_tasks($parm) {
          //$PM_SOAP->login( );
          // now tries to get the variables to check condition
          $infoForTasks = $locCase->getVariables($casevariables);
+         $infoForURL = [];
          foreach ($infoForTasks as $casevar => $varval) {
             $infoForTasks[ "@@$casevar" ] = "'$varval'";
+            $infoForURL[ "@@$casevar" ] = $varval;
             unset( $infoForTasks[ $casevar ] );
          }
 
@@ -336,9 +346,7 @@ function plugin_item_update_processmaker_tasks($parm) {
          //$msg .= ' $targetTask: '.str_replace("\n", "\n  ", print_r($targetTask, true))."\n";
 
          $targetTask['sourcecondition'] = str_replace( array_keys($infoForTasks), $infoForTasks, $targetTask['sourcecondition'] );
-
          $eval = eval( "return (".$targetTask['sourcecondition']." ? 1 : 0);" );
-
          //$msg .= ' $infoForTasks: '.str_replace("\n", "\n  ", print_r($infoForTasks, true))."\n";
          //$msg .= ' $targetTask[\'sourcecondition\']: '.str_replace("\n", "\n  ", print_r($targetTask['sourcecondition'], true))."\n";
          //$msg .= ' $result: '."$eval\n";
@@ -366,7 +374,8 @@ function plugin_item_update_processmaker_tasks($parm) {
                }
                $externalapplicationparams['callback'] = $CFG_GLPI["url_base"]."/plugins/processmaker/ajax/asynchronousdatas.php";
                $ch = curl_init();
-               $externalapplication['url'] = eval( "return '".str_replace( array_keys($infoForTasks), $infoForTasks, $externalapplication['url'])."' ;" ); // '???
+
+               $externalapplication['url'] = str_replace( array_keys($infoForURL), $infoForURL, $externalapplication['url']);
                curl_setopt($ch, CURLOPT_URL, $externalapplication['url'] );
                if (isset($externalapplication['method']) && $externalapplication['method'] == 'POST') {
                   curl_setopt($ch, CURLOPT_POST, 1);
@@ -391,18 +400,17 @@ function plugin_item_update_processmaker_tasks($parm) {
                $pmconfig = $PM_SOAP->config; //PluginProcessmakerConfig::getInstance();
 
                $cronaction = new PluginProcessmakerCrontaskaction;
-               $cronaction->add( [ 'plugin_processmaker_caselinks_id' => $targetTask['id'],
-                                        'plugin_processmaker_cases_id' => $locCase->getID(),
-                                          //'itemtype'         => $itemtype,
-                                          //'items_id'         => $parm->fields['tickets_id'],
-                                          'users_id'         => $pmconfig->fields['users_id'],
-                                          'is_targettoclaim' => $targetTask['is_targettoclaim'],
-                                          'state'            => ($targetTask['is_externaldata'] ? PluginProcessmakerCrontaskaction::WAITING_DATA : PluginProcessmakerCrontaskaction::DATA_READY),
-                                          'postdata'         => json_encode( $postdata, JSON_HEX_APOS | JSON_HEX_QUOT),
-                                          'logs_out'         => json_encode( $externalapplicationparams, JSON_HEX_APOS | JSON_HEX_QUOT)
-                                          ],
-                                 null,
-                                 false);
+               $cronaction->add([
+                     'plugin_processmaker_caselinks_id' => $targetTask['id'],
+                     'plugin_processmaker_cases_id'     => $locCase->getID(),
+                     //'itemtype'                       => $itemtype,
+                     //'items_id'                       => $parm->fields['tickets_id'],
+                     'users_id'                         => $pmconfig->fields['users_id'],
+                     'is_targettoclaim'                 => $targetTask['is_targettoclaim'],
+                     'state'                            => ($targetTask['is_externaldata'] ? PluginProcessmakerCrontaskaction::WAITING_DATA : PluginProcessmakerCrontaskaction::DATA_READY),
+                     'postdata'                         => json_encode( $postdata, JSON_HEX_APOS | JSON_HEX_QUOT),
+                     'logs_out'                         => json_encode( $externalapplicationparams, JSON_HEX_APOS | JSON_HEX_QUOT)
+                  ], [], false);
 
                if ($externalapplication) {
                   // must call external application in order to get the needed data asynchroneously
@@ -415,12 +423,26 @@ function plugin_item_update_processmaker_tasks($parm) {
                   $externalapplicationparams = json_encode( $externalapplicationparams, JSON_HEX_APOS | JSON_HEX_QUOT);
 
                   curl_setopt($ch, CURLOPT_POSTFIELDS, $externalapplicationparams);
-                  curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'Content-Length: ' . strlen($externalapplicationparams), 'Expect:']);
+                  $headers = [
+                      'Content-Type: application/json',
+                      'Content-Length: ' . strlen($externalapplicationparams),
+                      'Expect:'];
+                  if(isset($externalapplication['headers']) && $externalapplication['headers'] != "") {
+                      $externalapplication['headers'] = eval( "return ".str_replace( array_keys($infoForTasks), $infoForTasks, $externalapplication['headers'])." ;" ); // '???
+                      //Can't add an assoicative array in curlopt_httpheader
+                      foreach($externalapplication['headers'] as $key => $h) {
+                          array_push($headers, $key.": ".$h);
+                      }
+                  }
+                  //$headers = array_merge($headers, $externalapplication['headers']);
+
+                  curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
                   curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1 );
                   curl_setopt($ch, CURLOPT_VERBOSE, 1);
 
-                  if (isset($externalapplication['ssl_verify'])) {
-                     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, $externalapplication['ssl_verify']);
+                  if (isset($externalapplication['ssl_verify']) && $externalapplication['ssl_verify'] > 0) {
+                     //curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, $externalapplication['ssl_verify']);
+                     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 1);
                      curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, $externalapplication['ssl_verify']);
                   }
 
@@ -432,7 +454,9 @@ function plugin_item_update_processmaker_tasks($parm) {
                   $response = curl_exec ($ch);
                   if ($response === false) {
                      //throw new Exception(curl_error($ch), curl_errno($ch));
-                     Toolbox::logDebug( curl_error($ch).":".curl_errno($ch) );
+                     Toolbox::logDebug(curl_error($ch) . ":" . curl_errno($ch));
+                     // Set 0 to the crontask action status
+                     $cronaction->update(['id ' => $cronaction->getID(), 'state' => PluginProcessmakerCrontaskaction::CURL_ERROR]);
                   }
 
                   curl_close ($ch);

@@ -1569,7 +1569,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                        'itemtype' => $itemtype,
                        'items_id' => $items_id,
                        'entities_id' => $parm->fields['entities_id'],
-                       'name' => $caseInfo->caseName,
+                       'name' => $DB->escape($caseInfo->caseName),
                        'case_guid' => $case_guid,
                        'case_status' => $caseInfo->caseStatus,
                        'plugin_processmaker_processes_id' => $parm->input['processmaker_processes_id']
@@ -1831,7 +1831,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
     * Summary of getGLPIGroupId
     * returns GLPI group id from pm group name
     * returns false when not found
-    * @param  string $pmGroupName 
+    * @param  string $pmGroupName
     * @return bool|integer
     */
    static function getGLPIGroupId(string $pmGroupName) {
@@ -1840,7 +1840,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
          $query = "SELECT id AS glpi_group_id FROM glpi_groups WHERE name LIKE '$pmGroupName';";
          $res = $DB->query($query);
          if ($DB->numrows($res) > 0) {
-            $row = $DB->fetch_array($res);
+            $row = $DB->fetchArray($res);
             return $row['glpi_group_id'];
          }
       }
@@ -1950,13 +1950,12 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       global $DB;
 
       $dbu = new DbUtils;
-      $item = $dbu->getItemForItemtype( $itemType );
-      if ($item->getFromDB( $itemId )) {
+      $item = $dbu->getItemForItemtype($itemType);
+      if ($item->getFromDB($itemId)) {
          // default values
-         $solutiontemplates_id = 0;
          $solutiontypes_id = 0;
-         $solution = '';
-         $to_update = false;
+         $solution_content = '';
+         $to_add = false;
 
          // check solution template
          if (array_key_exists( 'GLPI_ITEM_SET_SOLUTION_TEMPLATE_ID', $casevariablevalues )
@@ -1968,10 +1967,9 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
             $entities = $template->isRecursive() ? $dbu->getSonsOf(Entity::getTable(), $template->getEntityID()) : [$template->getEntityID()];
             // and check entities
             if (in_array($item->getEntityID(), $entities)) {
-               $solutiontemplates_id = $template->getID();
                $solutiontypes_id = $template->fields['solutiontypes_id'];
-               $solution = $template->fields['content'];
-               $to_update = true;
+               $solution_content = $template->fields['content'];
+               $to_add = true;
             }
          }
 
@@ -1986,22 +1984,28 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
             // and check entities
             if (in_array($item->getEntityID(), $entities)) {
                $solutiontypes_id = $type->getID();
-               $to_update = true;
+               $to_add = true;
             }
          }
 
          // Check solution description
          if (array_key_exists( 'GLPI_ITEM_APPEND_TO_SOLUTION_DESCRIPTION', $casevariablevalues )
             && $casevariablevalues[ 'GLPI_ITEM_APPEND_TO_SOLUTION_DESCRIPTION' ] != '') {
-            if ($solution != '') {
-               $solution .= "\n";
+            if ($solution_content != '') {
+               $solution_content .= "\n";
             }
-            $solution .= $DB->escape($casevariablevalues[ 'GLPI_ITEM_APPEND_TO_SOLUTION_DESCRIPTION' ]);
-            $to_update = true;
+            $solution_content .= $DB->escape($casevariablevalues[ 'GLPI_ITEM_APPEND_TO_SOLUTION_DESCRIPTION' ]);
+            $to_add = true;
          }
 
-         if ($to_update) {
-            $item->update( ['id' => $itemId, 'solutiontemplates_id' => $solutiontemplates_id, 'solutiontypes_id' => $solutiontypes_id, 'solution' => $solution] );
+         if ($to_add) {
+            $solution = new ITILSolution();
+            $solution->add([
+               'itemtype'           => $itemType,
+               'items_id'           => $itemId,
+               'solutiontypes_id'   => $solutiontypes_id,
+               'content'            => $solution_content
+            ]);
          }
       }
    }
@@ -2335,8 +2339,8 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       //global $pmHideSolution;
       $plugin = new Plugin();
       $itemtype = $params['item']->getType();
-      if (in_array($itemtype, ['Ticket', 'Problem', 'Change']) 
-         && $params['options']['id'] 
+      if (in_array($itemtype, ['Ticket', 'Problem', 'Change'])
+         && $params['options']['id']
          && $params['options']['itemtype'] == $itemtype
          && $params['options']['tabnum'] == 1
          && !PluginProcessmakerCase::canSolve($params)
@@ -2347,7 +2351,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
          // don't display message if arbehaviours is install and activated
          $itemtype = strtolower($itemtype);
-         if ((!$plugin->isInstalled('arbehaviours') || !$plugin->isActivated('arbehaviours')) 
+         if ((!$plugin->isInstalled('arbehaviours') || !$plugin->isActivated('arbehaviours'))
             && isset($_SESSION['glpiactiveprofile'][$itemtype.'_status'])) {
 
             echo Html::scriptBlock("
@@ -2452,10 +2456,10 @@ debugger;
          fflush($curl_log);
          curl_setopt($ch, CURLOPT_STDERR, $curl_log);
       }
-      
+
       curl_setopt($ch, CURLOPT_HTTPHEADER, ["Expect:"]);
       curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, $this->config->fields['ssl_verify']);
-      curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, $this->config->fields['ssl_verify']);
+      curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, ($this->config->fields['ssl_verify'] > 0 ? 2 : 0));
 
       //curl_setopt($ch, CURLOPT_HEADERFUNCTION, "HandleHeaderLine");
       // to store cookies in memory
@@ -3039,7 +3043,7 @@ debugger;
       }
 
       if ($itemSetStatus != '') {
-         $this->setItemStatus($itemtype, $items_id, $itemSetStatus );
+         $this->setItemStatus($itemtype, $items_id, $itemSetStatus);
       }
 
       // get the new case info
@@ -3053,7 +3057,7 @@ debugger;
          $taskCat = new TaskCategory;
          $taskCat->getFromDB($glpi_task->fields['taskcategories_id']);
          // we may replace ##casename## by the name of the case, and ##taskname## by the task name
-         $search = ['##casename##', 
+         $search = ['##casename##',
                     '##taskname##'
                    ];
          $replace = [$caseInfo->caseName." (".$myCase->getID().")",
@@ -3465,7 +3469,7 @@ debugger;
 
       // we must differentiate if rule assignement is self-service or self-service value based
       //$query = "SELECT TAS_GROUP_VARIABLE
-      //          FROM TASK 
+      //          FROM TASK
       //          WHERE TAS_UID='$pmTaskId'
       //             AND TAS_ASSIGN_TYPE='SELF_SERVICE';";
       $query = ['SELECT' => 'TAS_GROUP_VARIABLE',
@@ -3483,8 +3487,8 @@ debugger;
             // TU_RELATION=2 is groups and TU_TYPE=1 means normal (= not adhoc)
             $queryname = "SELECT GROUPWF.GRP_TITLE AS 'GRP_TITLE', GROUPWF.GRP_UID AS 'GRP_UID' FROM TASK_USER
                        JOIN GROUPWF ON GROUPWF.GRP_UID = TASK_USER.USR_UID
-                       WHERE TASK_USER.TAS_UID = '$pmTaskId' 
-                          AND TASK_USER.TU_RELATION = 2 
+                       WHERE TASK_USER.TAS_UID = '$pmTaskId'
+                          AND TASK_USER.TU_RELATION = 2
                           AND TASK_USER.TU_TYPE = 1
                        LIMIT 1;";
          } else {
@@ -3507,13 +3511,15 @@ debugger;
       // or
       // as there is only one group per guid
       // then we should have at maximun 1 record
-      foreach ($PM_DB->request($queryname) as $onlyrec) {
-         $groupname = $onlyrec;
+      if (isset($queryname)) {
+         foreach ($PM_DB->request($queryname) as $onlyrec) {
+            $groupname = $onlyrec;
+         }
       }
 
       if (isset($groupname)) {
-         return ['name' => $groupname['GRP_TITLE'], 
-                 'id'   => self::getGLPIGroupId($groupname['GRP_TITLE']), 
+         return ['name' => $groupname['GRP_TITLE'],
+                 'id'   => self::getGLPIGroupId($groupname['GRP_TITLE']),
                  'uid'  => $groupname['GRP_UID']
                 ];
       }

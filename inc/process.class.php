@@ -151,16 +151,16 @@ class PluginProcessmakerProcess extends CommonDBTM {
                $countElt += $dbu->countElementsInTable( $dbu->getTableForItemType($obj), "taskcategories_id = ".$task['taskcategories_id'] );
                if ($countElt != 0) {
                   // just set 'is_active' to 0
-                  $pmtask->Update( [ 'id' => $task['id'], 'is_start' => 0, 'is_active' => 0 ] );
+                  $pmtask->Update(['id' => $task['id'], 'is_start' => 0, 'is_active' => 0]);
                   break;
                }
             }
             if ($countElt == 0) {
                // purge this category as it is not used anywhere
                $taskCat = new TaskCategory;
-               $taskCat->delete([ 'id' => $task['taskcategories_id'] ], 1);
+               $taskCat->delete(['id' => $task['taskcategories_id']], 1);
                $pmTaskCat = new PluginProcessmakerTaskCategory;
-               $pmTaskCat->delete([ 'id' => $task['id'] ], 1);
+               $pmTaskCat->delete(['id' => $task['id']], 1);
             }
          }
 
@@ -169,32 +169,52 @@ class PluginProcessmakerProcess extends CommonDBTM {
             $taskCat = new TaskCategory;
             if ($pmTaskCat->getFromGUID( $taskGUID )) {
                // got it then check names, and if != update
-               if ($taskCat->getFromDB( $pmTaskCat->fields['taskcategories_id'] )) {
+               if ($taskCat->getFromDB($pmTaskCat->fields['taskcategories_id'])) {
                   // found it must test if should be updated
-                  if ($taskCat->fields['name'] != $task['TAS_TITLE'] || $taskCat->fields['comment'] != $task['TAS_DESCRIPTION']) {
-                     $taskCat->update( [ 'id' => $taskCat->getID(), 'name' => $PM_DB->escape($task['TAS_TITLE']), 'comment' => $PM_DB->escape($task['TAS_DESCRIPTION']), 'taskcategories_id' => $this->fields['taskcategories_id'] ] );
+                  if ($taskCat->fields['name'] != $task['TAS_TITLE'] 
+                     || $taskCat->fields['comment'] != $task['TAS_DESCRIPTION']) {
+                     $taskCat->update([
+                        'id'                => $taskCat->getID(),
+                        'name'              => $PM_DB->escape($task['TAS_TITLE']),
+                        'comment'           => $PM_DB->escape($task['TAS_DESCRIPTION']),
+                        'taskcategories_id' => $this->fields['taskcategories_id'],
+                        'is_active'         => 0 // to prevent use of this task cat in manual tasks
+                        ] );
                   }
                   if ($pmTaskCat->fields['is_start'] != $task['is_start']) {
-                         $pmTaskCat->update( [ 'id' =>  $pmTaskCat->getID(), 'is_start' => $task['is_start'] ] );
+                         $pmTaskCat->update(['id' =>  $pmTaskCat->getID(), 'is_start' => $task['is_start']]);
                   }
                } else {
                   // taskcat must be created
-                  $taskCat->add( [ 'is_recursive' => true, 'name' => $PM_DB->escape($task['TAS_TITLE']), 'comment' => $PM_DB->escape($task['TAS_DESCRIPTION']), 'taskcategories_id' => $this->fields['taskcategories_id'] ] );
+                  $taskCat->add([
+                     'is_recursive'      => true,
+                     'name'              => $PM_DB->escape($task['TAS_TITLE']),
+                     'comment'           => $PM_DB->escape($task['TAS_DESCRIPTION']),
+                     'taskcategories_id' => $this->fields['taskcategories_id'],
+                     'is_active'         => 0 // to prevent use of this task cat in manual tasks
+                     ] );
                   // update pmTaskCat
-                  $pmTaskCat->update( [ 'id' => $pmTaskCat->getID(), 'taskcategories_id' => $taskCat->getID(), 'is_start' => $task['is_start'] ] );
+                  $pmTaskCat->update(['id' => $pmTaskCat->getID(), 'taskcategories_id' => $taskCat->getID(), 'is_start' => $task['is_start']]);
                }
             } else {
                // should create a new one
                // taskcat must be created
-               $taskCat->add( [ 'is_recursive' => true, 'name' => $PM_DB->escape($task['TAS_TITLE']), 'comment' => $PM_DB->escape($task['TAS_DESCRIPTION']), 'taskcategories_id' => $this->fields['taskcategories_id'] ] );
+               $taskCat->add([
+                  'is_recursive'      => true,
+                  'name'              => $PM_DB->escape($task['TAS_TITLE']),
+                  'comment'           => $PM_DB->escape($task['TAS_DESCRIPTION']),
+                  'taskcategories_id' => $this->fields['taskcategories_id'],
+                  'is_active'         => 0 // to prevent use of this task cat in manual tasks
+                  ] );
                // pmTaskCat must be created too
-               $pmTaskCat->add( ['plugin_processmaker_processes_id' => $this->getID(),
-                                 'pm_task_guid' => $taskGUID,
-                                 'taskcategories_id' => $taskCat->getID(),
-                                 'is_start' => $task['is_start'],
-                                 'is_active' => 1,
-                                 'is_subprocess' => $task['is_subprocess']
-                                 ] );
+               $pmTaskCat->add([
+                  'plugin_processmaker_processes_id' => $this->getID(),
+                  'pm_task_guid'                     => $taskGUID,
+                  'taskcategories_id'                => $taskCat->getID(),
+                  'is_start'                         => $task['is_start'],
+                  'is_active'                        => 1,
+                  'is_subprocess'                    => $task['is_subprocess']
+                  ]);
             }
             // here we should take into account translations if any
             if (isset($taskArray[ $taskGUID ])) {
@@ -371,7 +391,12 @@ class PluginProcessmakerProcess extends CommonDBTM {
       global $PM_DB;
       $taskCat = new TaskCategory;
       if ($taskCat->getFromDB( $this->fields['taskcategories_id'] ) && $taskCat->fields['name'] != $this->fields['name']) {
-         return $taskCat->update( [ 'id' => $taskCat->getID(), 'taskcategories_id' => $pmMainTaskCat, 'name' => $PM_DB->escape($this->fields['name'])] );
+         return $taskCat->update([
+            'id'                => $taskCat->getID(),
+            'taskcategories_id' => $pmMainTaskCat,
+            'name'              => $PM_DB->escape($this->fields['name']),
+            'is_active'         => 0 // to prevent use of this task cat in a manual task
+            ] );
       }
       return false;
    }
@@ -385,7 +410,12 @@ class PluginProcessmakerProcess extends CommonDBTM {
    function addTaskCategory($pmMainTaskCat) {
       global $PM_DB;
       $taskCat = new TaskCategory;
-      if ($taskCat->add( [ 'is_recursive' => true, 'taskcategories_id' => $pmMainTaskCat, 'name' => $PM_DB->escape($this->fields['name'])] )) {
+      if ($taskCat->add([
+            'is_recursive'      => true,
+            'taskcategories_id' => $pmMainTaskCat,
+            'name'              => $PM_DB->escape($this->fields['name']),
+            'is_active'         => 0 // to prevent use of this task cat in a manual task
+            ])) {
          return $this->update( [ 'id' => $this->getID(), 'taskcategories_id' => $taskCat->getID() ] );
       }
       return false;
