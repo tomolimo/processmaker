@@ -83,7 +83,7 @@ class PluginProcessmakerUser extends CommonDBTM {
                        'WHERE'  =>  ['GROUP_USER.GRP_UID' => $tags['grpGuid']]
 
             ]);
-         
+
          $subqueries[] = $res3;
       }
 
@@ -110,6 +110,9 @@ class PluginProcessmakerUser extends CommonDBTM {
              break;
       }
 
+      if (count($pmUsers) == 0) { // to prevent add of empty array in where clause
+         $pmUsers = 0;
+      }
       $query['WHERE']['AND']['glpi_plugin_processmaker_users.pm_users_id'] = $pmUsers;
       $query['WHERE']['AND']['glpi_users.is_deleted'] = 0;
       $query['WHERE']['AND']['glpi_users.is_active']  = 1;
@@ -132,7 +135,7 @@ class PluginProcessmakerUser extends CommonDBTM {
          $query['DISTINCT'] = true;
 
       }
-      $query['FROM'] = 'glpi_plugin_processmaker_users';
+
       $query['FROM'] = 'glpi_plugin_processmaker_users';
       $query['INNER JOIN'] = [
                                  'glpi_users' => [
@@ -296,7 +299,7 @@ class PluginProcessmakerUser extends CommonDBTM {
     * Summary of getGlpiIdFromAny
     * Returns the GLPI id of the user or false if not found
     * Accept either PM GUID, GLPI logon, or GLPI ID
-    * @param  $any 
+    * @param  $any
     * @return mixed GLPI ID of the user or false if not found
     */
    public static function getGlpiIdFromAny($any) {

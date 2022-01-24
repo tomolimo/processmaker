@@ -53,7 +53,7 @@ function update_to_3_2_8() {
                ";
       $DB->query($query) or die("error adding column processes_id into glpi_plugin_processmaker_cases" . $DB->error());
    } else {
-      $flds = $DB->list_fields('glpi_plugin_processmaker_cases');
+      $flds = $DB->listFields('glpi_plugin_processmaker_cases');
       if (strcasecmp( $flds['processes_id']['Type'], 'varchar(32)' ) == 0) {
          // required because autoload doesn't work for unactive plugin'
          include_once(GLPI_ROOT."/plugins/processmaker/inc/process.class.php");

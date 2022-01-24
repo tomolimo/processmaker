@@ -1,6 +1,6 @@
 <?php
 
-define('PROCESSMAKER_VERSION', '4.0.8');
+define('PROCESSMAKER_VERSION', '4.0.11');
 
 // used for case cancellation
 define("CANCEL", 256);
@@ -130,7 +130,7 @@ function plugin_init_processmaker() {
          // in order to manage the password encryption
          $pmglpikey = new PluginProcessmakerGlpikey;
          foreach ($pmglpikey->getFields() as $fld) {
-            $PLUGIN_HOOKS['secured_fields'][] = $fld;
+            $PLUGIN_HOOKS['secured_fields'][] = [$fld];
          }
       //}
    }
