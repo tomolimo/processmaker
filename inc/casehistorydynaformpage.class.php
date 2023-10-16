@@ -26,46 +26,49 @@ along with this plugin. If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------
  */
 /**
- * casehistory short summary.
+ * PluginProcessmakerCasemap short summary.
  *
- * casehistory description.
+ * casemap description.
  *
  * @version 1.0
  * @author MoronO
  */
-class PluginProcessmakerCasehistory extends CommonDBTM {
+class PluginProcessmakerCasehistorydynaformpage extends CommonDBTM {
+
    static function displayTabContentForItem(CommonGLPI $case, $tabnum = 1, $withtemplate = 0) {
       global $CFG_GLPI, $PM_SOAP;
 
       $rand = rand();
-      $iframeId = "caseiframe-caseHistory-{$rand}";
+      $iframeId = "caseiframe-historyDynaformPage-{$rand}";
 
       $proj = new PluginProcessmakerProcess;
       $proj->getFromDB($case->fields['plugin_processmaker_processes_id']);
 
       $glpi_data = urlencode(json_encode([
-          'glpi_url'          => $CFG_GLPI['url_base'],
-          'glpi_tabtype'      => 'history',
-          'glpi_tabpanelname' => 'caseHistory',
-          'glpi_iframeid'     => $iframeId,
-          'glpi_elttagname'   => 'body',
+          'glpi_url'           => $CFG_GLPI['url_base'],
+          'glpi_tabtype'       => 'historydynaform',
+          'glpi_tabpanelname'  => 'historyDynaformPage',
+          'glpi_iframeid'      => $iframeId,
+          'glpi_elttagname'    => 'body',
+          'glpi_pm_server_URL' => $PM_SOAP->serverURL,
+          'glpi_preview'       => __('Preview', 'processmaker'),
           'glpi_sid'          => $PM_SOAP->getPMSessionID(),
           'glpi_app_uid'      => $case->fields['case_guid'],
           'glpi_pro_uid'      => $proj->fields['process_guid'],
           ]));
 
-
       $url = $PM_SOAP->serverURL
-         ."/cases/ajaxListener"
-         ."?action=caseHistory"
-         ."&sid=" . $PM_SOAP->getPMSessionID()
-         ."&glpi_data=$glpi_data";
+          ."/cases/casesHistoryDynaformPage_Ajax"
+          ."?actionAjax=historyDynaformPage"
+          ."&sid=" . $PM_SOAP->getPMSessionID()
+          ."&glpi_data=$glpi_data";
 
      echo "<iframe id='$iframeId' name='$iframeId' style='border:none;' class='tab_bg_2' width='100%' src='$url'></iframe>";
 
    }
 
    function getTabNameForItem(CommonGLPI $case, $withtemplate = 0) {
-      return __('History', 'processmaker');
+      return __('Dynaforms', 'processmaker');
    }
+
 }

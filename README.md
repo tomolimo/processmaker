@@ -10,5 +10,9 @@ version 3.6.x is compatible with GLPI 9.4 and needs ProcessMaker 3.3.0-RE-1.x (h
 
 version 4.0.x is compatible with GLPI 9.5 and needs ProcessMaker 3.3.0-RE-1.x (https://github.com/tomolimo/processmaker-server/releases/latest)
 
+version 4.3.x is compatible with GLPI 9.5 and needs ProcessMaker 3.3.0-RE-1.13 (https://github.com/tomolimo/processmaker-server/releases/latest)
+
+version 4.4.x is compatible with GLPI 9.5 and needs ProcessMaker 3.3.0-RE-2.0 (https://github.com/tomolimo/processmaker-server/releases/latest)
+
 This plugin can run classic (ProcessMaker server v2) and BPMN (ProcessMaker server v3 and later) processes
 

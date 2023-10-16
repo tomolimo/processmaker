@@ -24,14 +24,14 @@
       <author>Olivier Moron</author>
    </authors>
    <versions>
-     <version>
-       <num>3.3.8</num>
-       <compatibility>9.1</compatibility>
-     </version>
-     <version>
-       <num>3.4.30</num>
-       <compatibility>9.2</compatibility>
-     </version>
+      <version>
+         <num>3.3.8</num>
+         <compatibility>9.1</compatibility>
+      </version>
+      <version>
+         <num>3.4.30</num>
+         <compatibility>9.2</compatibility>
+      </version>
       <version>
          <num>3.5.15</num>
          <compatibility>9.3</compatibility>
@@ -41,7 +41,7 @@
          <compatibility>9.4</compatibility>
       </version>
       <version>
-         <num>4.0.11</num>
+         <num>4.4.0</num>
          <compatibility>9.5</compatibility>
       </version>
    </versions>
@@ -55,9 +55,11 @@
       <fr>
          <tag>Processus</tag>
          <tag>BPMN 2.0</tag>
-         <tag>Workflow</tag>
+         <tag>Workflows</tag>
          <tag>Helpdesk</tag>
          <tag>Ticket</tag>
+         <tag>Change</tag>
+         <tag>Problem</tag>
       </fr>
       <en>
          <tag>Processes</tag>
@@ -65,6 +67,17 @@
          <tag>Helpdesk</tag>
          <tag>Workflows</tag>
          <tag>Ticket</tag>
+         <tag>Change</tag>
+         <tag>Problem</tag>
       </en>
+      <cs>
+         <tag>Processes</tag>
+         <tag>BPMN 2.0</tag>
+         <tag>Helpdesk</tag>
+         <tag>Workflows</tag>
+         <tag>Ticket</tag>
+         <tag>Change</tag>
+         <tag>Problem</tag>
+      </cs>
    </tags>
 </root>

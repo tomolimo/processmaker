@@ -1,10 +1,35 @@
 <?php
+/*
+-------------------------------------------------------------------------
+ProcessMaker plugin for GLPI
+Copyright (C) 2014-2022 by Raynet SAS a company of A.Raymond Network.
 
-function update_3_2_9_to_3_3_0() {
+https://www.araymond.com/
+-------------------------------------------------------------------------
+
+LICENSE
+
+This file is part of ProcessMaker plugin for GLPI.
+
+This file is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This plugin is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this plugin. If not, see <http://www.gnu.org/licenses/>.
+--------------------------------------------------------------------------
+ */
+function update_3_2_9_to_3_3_0($config) {
    global $DB, $PM_DB; //, $PM_SOAP;
 
    // to be sure
-   $PM_DB = new PluginProcessmakerDB;
+   $PM_DB = new PluginProcessmakerDB($config);
 
    // Alter table plugin_processmaker_cases
    if (!$DB->fieldExists("glpi_plugin_processmaker_cases", "plugin_processmaker_processes_id" )) {
@@ -17,12 +42,12 @@ function update_3_2_9_to_3_3_0() {
       $DB->query($query) or die("error normalizing glpi_plugin_processmaker_cases table step 2" . $DB->error());
 
       $query = "ALTER TABLE `glpi_plugin_processmaker_cases`
-	               CHANGE COLUMN `case_num` `id` INT(11) NOT NULL FIRST,
+	               CHANGE COLUMN `case_num` `id` INT UNSIGNED NOT NULL FIRST,
 	               CHANGE COLUMN `itemtype` `itemtype` VARCHAR(10) NOT NULL DEFAULT 'Ticket' AFTER `id`,
-	               ADD COLUMN `entities_id` INT(11) NOT NULL DEFAULT '0' AFTER `items_id`,
-	               ADD COLUMN `name` MEDIUMTEXT NOT NULL DEFAULT '' AFTER `entities_id`,
-                  CHANGE COLUMN `processes_id` `plugin_processmaker_processes_id` INT(11) NULL DEFAULT NULL AFTER `case_status`,
-                  ADD COLUMN `plugin_processmaker_cases_id` INT(11) NOT NULL DEFAULT '0' AFTER `plugin_processmaker_processes_id`,
+	               ADD COLUMN `entities_id` INT UNSIGNED NOT NULL DEFAULT '0' AFTER `items_id`,
+	               ADD COLUMN `name` MEDIUMTEXT NOT NULL AFTER `entities_id`,
+                  CHANGE COLUMN `processes_id` `plugin_processmaker_processes_id` INT UNSIGNED NULL DEFAULT NULL AFTER `case_status`,
+                  ADD COLUMN `plugin_processmaker_cases_id` INT UNSIGNED NOT NULL DEFAULT '0' AFTER `plugin_processmaker_processes_id`,
 	               DROP INDEX `items`,
 	               ADD INDEX `items` (`itemtype`, `items_id`),
 	               ADD PRIMARY KEY (`id`),
@@ -43,7 +68,7 @@ function update_3_2_9_to_3_3_0() {
          foreach ($PM_DB->request("SELECT CON_VALUE FROM CONTENT WHERE CON_CATEGORY='APP_TITLE' AND CON_LANG='en' AND CON_ID='{$row['case_guid']}'") as $name) {
             // there is only one record :)
             $name = $PM_DB->escape($name['CON_VALUE']);
-            $query = "UPDATE ".PluginProcessmakerCase::getTable()." SET `name` = '{$name}', `entities_id` = $entities_id WHERE `id` = {$row['id']};";
+            $query = "UPDATE " . PluginProcessmakerCase::getTable() . " SET `name` = '{$name}', `entities_id` = $entities_id WHERE `id` = {$row['id']};";
             $DB->query($query) or die("error normalizing glpi_plugin_processmaker_cases table step 4 " . $DB->error());
          }
       }
@@ -51,7 +76,7 @@ function update_3_2_9_to_3_3_0() {
 
    if (!$DB->fieldExists("glpi_plugin_processmaker_processes_profiles", "plugin_processmaker_processes_id")) {
       $query = "ALTER TABLE `glpi_plugin_processmaker_processes_profiles`
-	               CHANGE COLUMN `processes_id` `plugin_processmaker_processes_id` INT(11) NOT NULL DEFAULT '0' AFTER `id`,
+	               CHANGE COLUMN `processes_id` `plugin_processmaker_processes_id` INT UNSIGNED NOT NULL DEFAULT '0' AFTER `id`,
                   DROP INDEX `processes_id`,
 	               ADD INDEX `plugin_processmaker_processes_id` (`plugin_processmaker_processes_id`);";
       $DB->query($query) or die("error on glpi_plugin_processmaker_processes_profiles table when renaming processes_id into plugin_processmaker_processes_id " . $DB->error());
@@ -87,9 +112,9 @@ function update_3_2_9_to_3_3_0() {
 
       $query = "ALTER TABLE `glpi_plugin_processmaker_tasks`
 	               CHANGE COLUMN `itemtype` `itemtype` VARCHAR(32) NOT NULL AFTER `id`,
-	               ADD COLUMN `plugin_processmaker_cases_id` INT(11) NULL AFTER `case_id`,
-	               ADD COLUMN `plugin_processmaker_taskcategories_id` INT(11) NULL AFTER `plugin_processmaker_cases_id`,
-	               ADD COLUMN `del_thread` INT(11) NOT NULL AFTER `del_index`,
+	               ADD COLUMN `plugin_processmaker_cases_id` INT UNSIGNED NULL AFTER `case_id`,
+	               ADD COLUMN `plugin_processmaker_taskcategories_id` INT UNSIGNED NULL AFTER `plugin_processmaker_cases_id`,
+	               ADD COLUMN `del_thread` INT UNSIGNED NOT NULL AFTER `del_index`,
                	ADD COLUMN `del_thread_status` VARCHAR(32) NOT NULL DEFAULT 'OPEN' AFTER `del_thread`,
 	               DROP INDEX `case_id`,
 	               ADD UNIQUE INDEX `tasks` (`plugin_processmaker_cases_id`, `del_index`),
@@ -160,7 +185,7 @@ function update_3_2_9_to_3_3_0() {
       $DB->query($query) or die("error normalizing glpi_plugin_processmaker_taskcategories step 1" . $DB->error());
 
       $query = "ALTER TABLE `glpi_plugin_processmaker_taskcategories`
-                  CHANGE COLUMN `processes_id` `plugin_processmaker_processes_id` INT(11) NOT NULL AFTER `id`,
+                  CHANGE COLUMN `processes_id` `plugin_processmaker_processes_id` INT UNSIGNED NOT NULL AFTER `id`,
                   CHANGE COLUMN `start` `is_start` TINYINT(1) NOT NULL DEFAULT '0' AFTER `taskcategories_id`,
 	               ADD COLUMN `is_subprocess` TINYINT(1) NOT NULL DEFAULT '0' AFTER `is_active`,
 	               DROP INDEX `processes_id`,
@@ -177,7 +202,7 @@ function update_3_2_9_to_3_3_0() {
 
    if (!$DB->fieldExists("glpi_plugin_processmaker_crontaskactions", "plugin_processmaker_cases_id" )) {
       $query = "ALTER TABLE `glpi_plugin_processmaker_crontaskactions`
-	               ADD COLUMN `plugin_processmaker_cases_id` INT(11) DEFAULT '0' AFTER `plugin_processmaker_caselinks_id`;";
+	               ADD COLUMN `plugin_processmaker_cases_id` INT UNSIGNED DEFAULT '0' AFTER `plugin_processmaker_caselinks_id`;";
       $DB->query($query) or die("error adding plugin_processmaker_cases_id col into glpi_plugin_processmaker_crontaskactions" . $DB->error());
 
       // data migration

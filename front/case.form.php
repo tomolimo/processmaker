@@ -1,30 +1,43 @@
 <?php
+/*
+-------------------------------------------------------------------------
+ProcessMaker plugin for GLPI
+Copyright (C) 2014-2022 by Raynet SAS a company of A.Raymond Network.
 
+https://www.araymond.com/
+-------------------------------------------------------------------------
+
+LICENSE
+
+This file is part of ProcessMaker plugin for GLPI.
+
+This file is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This plugin is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this plugin. If not, see <http://www.gnu.org/licenses/>.
+--------------------------------------------------------------------------
+ */
 include_once ("../../../inc/includes.php");
 
 Session::checkLoginUser();
 
 $locCase = new PluginProcessmakerCase();
 
-function glpi_processmaker_case_reload_page() {
-   global $PM_SOAP;
-   // now redirect to item form page
-   $config = $PM_SOAP->config;
-   echo "<html><body><script>";
-   if (isset($config->fields['domain']) && $config->fields['domain'] != '') {
-      echo "document.domain='{$config->fields['domain']}';";
-   }
-   echo "</script><input id='GLPI_FORCE_RELOAD' type='hidden' value='GLPI_FORCE_RELOAD'/></body></html>";
-}
-
-
-// check if it is from PM pages
-if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'route' && isset( $_REQUEST['UID'] ) && isset( $_REQUEST['APP_UID'] ) && isset( $_REQUEST['__DynaformName__'] )) {
+if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'route' && isset($_REQUEST['APP_UID']) && isset($_REQUEST['DEL_INDEX'])) {
    // then get item id from DB
    if ($locCase->getFromGUID($_REQUEST['APP_UID'])) {
       $PM_SOAP->derivateCase($locCase, $_REQUEST);
    }
-   glpi_processmaker_case_reload_page();
+   //glpi_processmaker_case_reload_page();
+   Html::back();
 
 } else if (isset($_REQUEST['purge'])) {
    // delete case from case table, this will also delete the tasks
@@ -46,23 +59,25 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'route' && isset( $_REQ
          Session::addMessageAfterRedirect(__('Case has been cancelled!', 'processmaker'), true, INFO);
       } else {
          Session::addMessageAfterRedirect(__('Unable to cancel case!', 'processmaker'), true, ERROR);
+         Toolbox::logError(__('Unable to cancel tasks in case!', 'processmaker') . "\n" . print_r($resultPM, true));
       }
    } else {
       Session::addMessageAfterRedirect(__('Unable to cancel case!', 'processmaker'), true, ERROR);
+      Toolbox::logError(__('Unable to cancel case!', 'processmaker') . "\n" . print_r($resultPM, true));
    }
    Html::back();
-} else if (isset( $_REQUEST['form'] ) && isset( $_REQUEST['form']['BTN_CATCH'] ) && isset( $_REQUEST['form']['APP_UID'])) {
+
+} else if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'claim' && isset($_REQUEST['APP_UID']) && isset($_REQUEST['DEL_INDEX'])) {
    // Claim task management
    // here we are in a Claim request
    $myCase = new PluginProcessmakerCase;
-   if ($myCase->getFromGUID( $_REQUEST['form']['APP_UID'] )) {
+   $myCase->getFromGUID($_REQUEST['APP_UID']);
 
-      $pmClaimCase = $PM_SOAP->claimCase($myCase->fields['case_guid'], $_REQUEST['DEL_INDEX'] );
+   $pmClaimCase = $PM_SOAP->claimCase($myCase->fields['case_guid'], $_REQUEST['DEL_INDEX'] );
+   // now manage tasks associated with item
+   $PM_SOAP->claimTask($myCase->getID(), $_REQUEST['DEL_INDEX']);
 
-      // now manage tasks associated with item
-      $PM_SOAP->claimTask($myCase->getID(), $_REQUEST['DEL_INDEX']);
-   }
-   glpi_processmaker_case_reload_page();
+   Html::back();
 
 } else if (isset($_REQUEST['id']) && $_REQUEST['id'] > 0) {
 
@@ -72,7 +87,7 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'route' && isset( $_REQ
       Html::header(__('Process cases', 'processmaker'), $_SERVER['PHP_SELF'], "helpdesk", "PluginProcessmakerCase", "cases");
    }
 
-   if (!$PM_SOAP->config->fields['maintenance']) {
+   if (!$PM_SOAP->config['maintenance']) {
       if ($locCase->getFromDB($_REQUEST['id'])) {
          $locCase->display($_REQUEST);
       }

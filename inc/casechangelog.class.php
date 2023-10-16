@@ -1,5 +1,30 @@
 <?php
+/*
+-------------------------------------------------------------------------
+ProcessMaker plugin for GLPI
+Copyright (C) 2014-2022 by Raynet SAS a company of A.Raymond Network.
 
+https://www.araymond.com/
+-------------------------------------------------------------------------
+
+LICENSE
+
+This file is part of ProcessMaker plugin for GLPI.
+
+This file is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This plugin is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this plugin. If not, see <http://www.gnu.org/licenses/>.
+--------------------------------------------------------------------------
+ */
 /**
  * casechangelog short summary.
  *
@@ -14,23 +39,32 @@ class PluginProcessmakerCasechangelog extends CommonDBTM {
       global $CFG_GLPI, $PM_SOAP;
 
       $rand = rand();
+      $iframeId = "caseiframe-caseChangeLogHistory-{$rand}";
 
-      $caseHistoryURL = $PM_SOAP->serverURL."/cases/ajaxListener?action=changeLogHistory&rand=$rand";
+      $proj = new PluginProcessmakerProcess;
+      $proj->getFromDB($case->fields['plugin_processmaker_processes_id']);
 
-      $PM_SOAP->echoDomain();
-      echo "<script type='text/javascript' src='".$CFG_GLPI["root_doc"]."/plugins/processmaker/js/cases.js'></script>"; //?rand=$rand'
+      $glpi_data = urlencode(json_encode([
+          'glpi_url'          => $CFG_GLPI['url_base'],
+          'glpi_tabtype'      => 'changeloghistory',
+          'glpi_tabpanelname' => 'caseChangeLogHistory',
+          'glpi_iframeid'     => $iframeId,
+          'glpi_elttagname'   => 'body',          
+          'glpi_sid'          => $PM_SOAP->getPMSessionID(),
+          'glpi_app_uid'      => $case->fields['case_guid'],
+          'glpi_pro_uid'      => $proj->fields['process_guid'],
+          ]));
 
-      $iframe = "<iframe
-                  id='caseiframe-caseChangeLogHistory'
-                  style='border: none;'
-                  width='100%'
-                  src='$caseHistoryURL'
-                  onload=\"onOtherFrameLoad( 'caseChangeLogHistory', 'caseiframe-caseChangeLogHistory', 'body', 0 );\">
-                 </iframe>";
+      $url = $PM_SOAP->serverURL
+          ."/cases/ajaxListener"
+          ."?action=changeLogHistory"
+          ."&sid=" . $PM_SOAP->getPMSessionID()
+          ."&glpi_data=$glpi_data";
 
-      $PM_SOAP->initCaseAndShowTab(['APP_UID' => $case->fields['case_guid'], 'DEL_INDEX' => 1], $iframe, $rand);
+     echo "<iframe id='$iframeId' name='$iframeId' style='border:none;' class='tab_bg_2' width='100%' src='$url'></iframe>";
 
    }
+
 
    function getTabNameForItem(CommonGLPI $case, $withtemplate = 0) {
       return __('Change log', 'processmaker');

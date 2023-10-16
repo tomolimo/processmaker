@@ -1,4 +1,32 @@
 <?php
+/*
+-------------------------------------------------------------------------
+ProcessMaker plugin for GLPI
+Copyright (C) 2014-2022 by Raynet SAS a company of A.Raymond Network.
+
+https://www.araymond.com/
+-------------------------------------------------------------------------
+
+LICENSE
+
+This file is part of ProcessMaker plugin for GLPI.
+
+This file is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This plugin is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this plugin. If not, see <http://www.gnu.org/licenses/>.
+--------------------------------------------------------------------------
+
+*/
+
 
 /**
  * PluginProcessmakerCase short summary.
@@ -10,9 +38,7 @@
  */
 class PluginProcessmakerCase extends CommonDBTM {
 
-   //static public $itemtype = 'itemtype'; // Class name or field name (start with itemtype) for link to Parent
-   //static public $items_id = 'items_id'; // Field name
-   static $rightname                           = 'plugin_processmaker_case';
+   static $rightname = 'plugin_processmaker_case';
 
    private $process = null;
 
@@ -20,6 +46,7 @@ class PluginProcessmakerCase extends CommonDBTM {
    const TO_DO     = 'TO_DO';
    const COMPLETED = 'COMPLETED';
    const CANCELLED = 'CANCELLED';
+   //const ALL       = 'all';
 
    static function getTypeName($nb = 0) {
       return _n('Process case', 'Process cases', $nb, 'processmaker');
@@ -46,9 +73,9 @@ class PluginProcessmakerCase extends CommonDBTM {
    //   return Session::haveRight('plugin_processmaker_config', UPDATE);
    //}
 
-   //function canEdit($ID) {
-   //   return parent::canDelete();
-   //}
+   function canEdit($ID) {
+      return $this->canPurgeItem() || self::canCancel();
+   }
 
    function maybeDeleted() {
       return false;
@@ -69,11 +96,15 @@ class PluginProcessmakerCase extends CommonDBTM {
    function canPurgeItem() {
       return $_SESSION['glpiactiveprofile']['interface'] == 'central'
          && $this->fields['plugin_processmaker_cases_id'] == 0
-         &&  $this->canDeleteItem()
-         && (self::canDelete() || $this->fields['case_status'] == PluginProcessmakerCase::DRAFT);
+         && $this->canDeleteItem()
+         && (self::canDelete() || $this->fields['case_status'] == self::DRAFT);
    }
 
    static function canCancel() {
+      return plugin_processmaker_haveRight('case', CANCEL);
+   }
+
+   function canCancelItem() {
       return plugin_processmaker_haveRight('case', CANCEL);
    }
 
@@ -118,21 +149,6 @@ class PluginProcessmakerCase extends CommonDBTM {
 
 
    /**
-    * Summary of getIDFromItem
-    * @param string $itemtype is the item type
-    * @param integer $items_id   is the item id
-    * @return integer cases_id
-    */
-   //static function getIDFromItem($itemtype, $items_id) {
-   //   $tmp = New self;
-   //   if ($tmp->getFromDBByQuery(" WHERE items_id=$items_id and itemtype='$itemtype'")) {
-   //      return $tmp->getID();
-   //   }
-   //   return false;
-   //}
-
-
-   /**
     * Summary of getIDsFromItem
     * returns an array of the case ids linked to the item
     * @param string $itemtype is the item type of the item (Ticket, Problem, Change)
@@ -144,24 +160,14 @@ class PluginProcessmakerCase extends CommonDBTM {
       $dbu = new DbUtils;
       $restrict = [
           "items_id" => $items_id,
-          "itemtype" => $itemtype,];
+          "itemtype" => $itemtype,
+          ];
 
-      //foreach ($dbu->getAllDataFromTable( self::getTable(), "items_id=$items_id AND itemtype='$itemtype'") as $case)
       foreach ($dbu->getAllDataFromTable( self::getTable(), $restrict) as $case) {
          $ret[] = $case['id'];
       }
       return $ret;
    }
-
-   /**
-    * Summary of getFromItem
-    * @param mixed $itemtype is the item type
-    * @param mixed $items_id   is the item id
-    * @return mixed: returns false when there is no case associated with the item, else fills in the item fields from DB, and returns true
-    */
-   //function getFromItem($itemtype, $items_id) {
-   //   return $this->getFromDBByQuery(" WHERE items_id=$items_id and itemtype='$itemtype'");
-   //}
 
 
    /**
@@ -170,11 +176,11 @@ class PluginProcessmakerCase extends CommonDBTM {
     * @return boolean
     */
    function getFromGUID($case_guid) {
-       $restrict=[
-                              'WHERE'  => [
-                              'case_guid'  => $case_guid,
-                              ],
-                    ];
+       $restrict = [
+          'WHERE' => [
+            'case_guid' => $case_guid,
+          ],
+       ];
        return $this->getFromDBByRequest($restrict);
    }
 
@@ -243,7 +249,7 @@ class PluginProcessmakerCase extends CommonDBTM {
       // and un-assign the task in glpi_itemtypeTask table
 
       $groups_id_tech = $PM_SOAP->getGLPIGroupIdForSelfServiceTask($this->fields['case_guid'], $taskGuid);
-      
+
       if ($groups_id_tech !== false) {
          // unclaim the case only when a GLPI group can be found
 
@@ -335,9 +341,9 @@ class PluginProcessmakerCase extends CommonDBTM {
             }
          }
          $this->reassignTask($delIndex, $newDelIndex, $delThread, $newDelThread, $users_id_target, $options);
-         return true;
+         $this->update(['id' => $this->getID(), 'date_mod' => $_SESSION["glpi_currenttime"]]);
       }
-      return false;
+      return $pmResponse;
    }
 
 
@@ -358,26 +364,26 @@ class PluginProcessmakerCase extends CommonDBTM {
          $glpi_task->getFromDB($pm_task_row['items_id']);
 
          $itilobject_itemtype = $this->fields['itemtype'];
-         $foreignkey = getForeignKeyFieldForItemType( $itilobject_itemtype );
+         $foreignkey = getForeignKeyFieldForItemType($itilobject_itemtype);
 
-         PluginProcessmakerProcessmaker::addWatcher( $itilobject_itemtype, $glpi_task->fields[ $foreignkey ], $newTech );
+         PluginProcessmakerProcessmaker::addWatcher($itilobject_itemtype, $glpi_task->fields[ $foreignkey ], $newTech);
 
          $donotif = PluginProcessmakerNotificationTargetProcessmaker::saveNotificationState(false); // do not send notification yet
-         $glpi_task->update( ['id'              => $glpi_task->getID(),
-                              $foreignkey       => $glpi_task->fields[$foreignkey],
-                              'users_id_tech'   => $newTech,
-                              'groups_id_tech'  => 0,
-                              'update'          => true] );
+         $glpi_task->update(['id'              => $glpi_task->getID(),
+                             $foreignkey       => $glpi_task->fields[$foreignkey],
+                             'users_id_tech'   => $newTech,
+                             'groups_id_tech'  => 0,
+                             'update'          => true]);
          PluginProcessmakerNotificationTargetProcessmaker::restoreNotificationState($donotif);
 
          // then update the delIndex and delThread
-         $DB->Update( 'glpi_plugin_processmaker_tasks', [
-                        'del_index'   => $newDelIndex,
-                        'del_thread'  => $newDelThread
-                        ], [
-                        'id' => $pm_task_row['id']
-                        ]
-                     );
+         $DB->Update('glpi_plugin_processmaker_tasks', [
+            'del_index'   => $newDelIndex,
+            'del_thread'  => $newDelThread
+            ], [
+            'id' => $pm_task_row['id']
+            ]
+         );
 
          // send notification now!
          $pm_task = new PluginProcessmakerTask($pm_task_row['itemtype']);
@@ -388,7 +394,7 @@ class PluginProcessmakerCase extends CommonDBTM {
 
          // create an information task and add comment
          $pm_process = $this->getProcess();
-         $old_users_tech_id = isset($glpi_task->oldvalues['users_id_tech']) ? $glpi_task->oldvalues['users_id_tech'] : 0;
+         $old_users_tech_id = $glpi_task->oldvalues['users_id_tech'] ?? $glpi_task->oldvalues['users_id_tech'];
          $taskCat = new TaskCategory;
          $taskCat->getFromDB( $glpi_task->fields['taskcategories_id'] );
          $task_name = DropdownTranslation::getTranslatedValue($glpi_task->fields['taskcategories_id'], 'TaskCategory', 'name', $_SESSION['glpilanguage'], $taskCat->fields['name']);
@@ -417,6 +423,7 @@ class PluginProcessmakerCase extends CommonDBTM {
          $info = str_replace(["\\'", '\\"', '\r\n', '\r', '\n'], ["'", '"', '<br>', '<br>', '<br>'], $info);
 
          $glpi_task->add([$foreignkey         => $glpi_task->fields[$foreignkey],
+                          'date'              => $glpi_task->fields['date'],
                           'is_private'        => 0, // a post-only user can't create private task
                           'taskcategories_id' => $pm_process->fields['taskcategories_id'],
                           'content'           => $DB->escape($info),
@@ -424,6 +431,18 @@ class PluginProcessmakerCase extends CommonDBTM {
                           'state'             => Planning::INFO,
                           'users_id_tech'     => Session::getLoginUserID(),
                           ]);
+
+         //// and add a fake pm_task in the glpi_plugin_processmaker_tasks table
+         //$DB->insert(PluginProcessmakerTask::getTable(), [
+         //   'itemtype'                              => $pm_task_row['itemtype'],
+         //   'items_id'                              => $glpi_task->getID(),
+         //   'plugin_processmaker_cases_id'          => $this->getID(),
+         //   'plugin_processmaker_taskcategories_id' => $pm_process->fields['taskcategories_id'],
+         //   'del_index'                             => $delIndex,
+         //   'del_thread'                            => $delThread,
+         //   'del_thread_status'                     => PluginProcessmakerTask::INFO
+         //   ]
+         //);
       }
    }
 
@@ -452,17 +471,13 @@ class PluginProcessmakerCase extends CommonDBTM {
       $res = $DB->request('glpi_plugin_processmaker_tasks', [
                      'AND' => [
                         'plugin_processmaker_cases_id' => $this->getID(),
-                        'del_thread_status' => 'OPEN'
+                        'del_thread_status' => PluginProcessmakerTask::OPEN
                      ]
                      ]);
       foreach ($res as $task) {
          $case_tasks[$task['del_index']] = $task;
       }
-      //$query = "SELECT `glpi_plugin_processmaker_tasks`.*  FROM `glpi_plugin_processmaker_tasks`
-      //            WHERE `glpi_plugin_processmaker_tasks`.`plugin_processmaker_cases_id`={$this->getID()} AND `del_thread_status`='OPEN'";
-      //foreach ($DB->request($query) as $task) {
-      //   $case_tasks[$task['del_index']] = $task;
-      //}
+
 
       //// get all tasks that are OPEN for any sub-case of this case
       //$sub_cases = [];
@@ -785,7 +800,7 @@ class PluginProcessmakerCase extends CommonDBTM {
       }
 
       $columns = ['pname'  => __('Process', 'processmaker'),
-                  'name'   => __('Title', 'processmaker'),
+                  'name'   => __('Case title', 'processmaker'),
                   'status' => __('Status', 'processmaker'),
                   'sub'    => __('Sub-case of', 'processmaker')
            ];
@@ -795,8 +810,8 @@ class PluginProcessmakerCase extends CommonDBTM {
             && $item->fields['status'] != CommonITILObject::SOLVED
             && $item->fields['status'] != CommonITILObject::CLOSED
             && $_SESSION['glpiactiveprofile']['interface'] != 'helpdesk'
-            && ($numrows < $PM_SOAP->config->fields['max_cases_per_item']
-               || $PM_SOAP->config->fields['max_cases_per_item'] == 0)) {
+            && ($numrows < $PM_SOAP->config['max_cases_per_item']
+               || $PM_SOAP->config['max_cases_per_item'] == 0)) {
          echo "<div class='firstbloc'>";
          echo "<form style='margin-bottom: 0px' name='processmaker_form$rand' id='processmaker_form$rand' method='post' action='".Toolbox::getItemTypeFormURL("PluginProcessmakerProcessmaker")."'>";
          echo "<input type='hidden' name='action' value='newcase'>";
@@ -819,11 +834,13 @@ class PluginProcessmakerCase extends CommonDBTM {
             //$is_itemtype = "AND is_".strtolower($itemtype)."=1";
          }
          PluginProcessmakerProcess::dropdown(['value' => 0,
-                                              'entity' => $item->fields['entities_id'],
-                                              'name' => 'plugin_processmaker_processes_id',
-                                              //'condition' => "is_active=1 $is_itemtype",
-                                              'condition'   => $condition,
-                                              'specific_tags' => ['count_cases_per_item' => $pid]
+                                              'entity'        => $item->fields['entities_id'],
+                                              'name'          => 'plugin_processmaker_processes_id',
+                                              'condition'     => $condition,
+                                              'specific_tags' => [
+                                                    'count_cases_per_item' => $pid,
+                                                    'process_restrict'     => 1
+                                                    ]
                                               ]);
          echo "</td><td class='tab_bg_2'>";
          echo "<input type='submit' name='additem' value='"._sx('button', 'Add')."' class='submit'>";
@@ -886,10 +903,10 @@ class PluginProcessmakerCase extends CommonDBTM {
                }
                echo "</td>";
             }
-            echo "<td class='center'>".$data['pname']."</td>";
-            echo "<td class='center'>".$link."</td>";
-            echo "<td class='center'>".self::getStatus($data['case_status'])."</td>";
-            echo "<td class='center'>";
+            echo "<td >".$data['pname']."</td>";
+            echo "<td >".$link."</td>";
+            echo "<td >".self::getStatus($data['case_status'])."</td>";
+            echo "<td >";
             if ($data['plugin_processmaker_cases_id'] > 0) {
                // then this is a subcase of
                $maincase = new self;
@@ -934,7 +951,7 @@ class PluginProcessmakerCase extends CommonDBTM {
       } else {
 
          // show the list of cases attached to the $item ITIL object
-         if (!$PM_SOAP->config->fields['maintenance']) {
+         if (!$PM_SOAP->config['maintenance']) {
             self::showForItem($item);
          } else {
             PluginProcessmakerProcessmaker::showUnderMaintenance();
@@ -956,11 +973,11 @@ class PluginProcessmakerCase extends CommonDBTM {
                      'FROM'   => 'glpi_plugin_processmaker_tasks',
                      'WHERE'  => ['plugin_processmaker_cases_id' => $this->fields['id']]
                   ]);
-
-      if ($DB->delete('glpi_'.strtolower($this->fields['itemtype']).'tasks', ['id' => $sub ])) {
-         if ($DB->delete('glpi_plugin_processmaker_tasks', ['plugin_processmaker_cases_id' => $this->fields['id']])) {
-            $ret = true;
-         }
+      $re = "<input name=\'caseid\' type=\'hidden\' value=\'".$this->fields['id']."\'><input name=\'taskid\' type=\'hidden\' value=\'[1-9][0-9]*\'>";
+      if ($DB->delete('glpi_'.strtolower($this->fields['itemtype']).'tasks', ['id' => $sub])
+          && $DB->delete('glpi_'.strtolower($this->fields['itemtype']).'tasks', ['content' => ['REGEXP', $re]])
+          && $DB->delete('glpi_plugin_processmaker_tasks', ['plugin_processmaker_cases_id' => $this->fields['id']])) {
+         $ret = true;
       }
       //$query = "DELETE FROM glpi_".strtolower($this->fields['itemtype'])."tasks WHERE id IN (SELECT items_id FROM glpi_plugin_processmaker_tasks WHERE plugin_processmaker_cases_id='".$this->fields['id']."')";
       //if ($DB->query( $query )) {
@@ -1034,12 +1051,10 @@ class PluginProcessmakerCase extends CommonDBTM {
       global $DB;
       $ret = false;
 
-      if (isset($this->fields['case_status']) && $this->fields['case_status'] == "TO_DO") {
-         if ($this->cancelTasks()) {
-            if ($this->update( [ 'id' => $this->getID(), 'case_status' => 'CANCELLED' ] )) {
-                $ret=true;
-            }
-         }
+      if (isset($this->fields['case_status'])
+          && $this->fields['case_status'] == self::TO_DO
+          && $this->cancelTasks()) {
+         $ret = $this->update(['id' => $this->getID(), 'case_status' => self::CANCELLED]);
       }
 
       return $ret;
@@ -1104,11 +1119,12 @@ class PluginProcessmakerCase extends CommonDBTM {
          return [];
       }
 
-      $front_page = "/plugins/processmaker/front";
+      $pm_plugin_url = Plugin::getWebDir('processmaker');
+      $front_page = "$pm_plugin_url/front";
       $menu = [];
       $menu['title'] = self::getTypeName(Session::getPluralNumber());
       $menu['page']  = "$front_page/case.php";
-      $menu['icon'] = "'></i><img src=\"/plugins/processmaker/pics/processmaker-xxs.png\" style=\"vertical-align: middle;\"/><i class='";
+      $menu['icon'] = "'></i><img src=\"$pm_plugin_url/pics/processmaker-xxs.png\" style=\"vertical-align: middle;\"/><i class='";
 
       $menu['links']['search'] = PluginProcessmakerCase::getSearchURL(false);
       if (Session::haveRightsOr("config", [READ, UPDATE])) {
@@ -1154,64 +1170,17 @@ class PluginProcessmakerCase extends CommonDBTM {
          $values = [$field => $values];
       }
       switch ($field) {
-         case 'id':
-            if (isset($options['searchopt']['processmaker_cases'])) {
-               switch ($options['searchopt']['processmaker_cases']) {
-                  case 'creation_date':
-                     $res = $PM_DB->request('APPLICATION', [
-                                       'APP_NUMBER' => $values['id']
-                                       ]
-                                    );
-                     if ($row = $res->next()) {
-                        return Html::convDateTime($row['APP_CREATE_DATE']);
-                     }
-                     //$res = $PM_DB->query('SELECT * FROM APPLICATION WHERE APP_NUMBER = '.$values['id']);
-                     //if ($res->num_rows > 0) {
-                     //   $row = $PM_DB->fetch_assoc($res);
-                     //   return Html::convDateTime($row['APP_CREATE_DATE']);
-                     //}
-                     //$locCase = new self;
-                     //$locCase->getFromDB($values['id']);
-                     //$caseInfo = $locCase->getCaseInfo();
-                     //return Html::convDateTime($caseInfo->createDate);
-                     break;
-                  case 'update_date':
-                     $res = $PM_DB->request('APPLICATION', [
-                                       'APP_NUMBER' => $values['id']
-                                       ]
-                                    );
-                     if ($row = $res->next()) {
-                        return Html::convDateTime($row['APP_UPDATE_DATE']);
-                     }
-                     //$res = $PM_DB->query('SELECT * FROM APPLICATION WHERE APP_NUMBER = '.$values['id']);
-                     //if ($res->num_rows > 0) {
-                     //   $row = $PM_DB->fetch_assoc($res);
-                     //   return Html::convDateTime($row['APP_UPDATE_DATE']);
-                     //}
-                     //$locCase = new self;
-                     //$locCase->getFromDB($values['id']);
-                     //$caseInfo = $locCase->getCaseInfo();
-                     //return Html::convDateTime($caseInfo->updateDate);
-                     break;
-               }
-            }
-            return '-';
-         case 'items_id':
+         case 'name':
             // show an item link
             $item = new $values['itemtype'];
             $item->getFromDB($values['items_id']);
-            return $item->getLink(['forceid' => 1]);
+            return $item->getLink();
 
          case 'case_status':
             return self::getStatus($values['case_status']);
 
          case 'itemtype':
             return self::getItemtype($values['itemtype']);
-
-         case 'plugin_processmaker_processes_id':
-            $item = new PluginProcessmakerProcess;
-            $item->getFromDB($values['plugin_processmaker_processes_id']);
-            return $item->getLink();
 
          case 'plugin_processmaker_cases_id':
             if ($values['plugin_processmaker_cases_id'] != 0) {
@@ -1243,11 +1212,11 @@ class PluginProcessmakerCase extends CommonDBTM {
             $options['name']  = $name;
             $options['value'] = $values[$field];
             return self::dropdownItemtype($options);
-         case 'plugin_processmaker_processes_id':
-            $options['name']  = $name;
-            $options['value'] = $values[$field];
-            $options['specific_tags'] = ['process_restrict' => 0];
-            return PluginProcessmakerProcess::dropdown($options);
+         //case 'plugin_processmaker_processes_id':
+         //   $options['name']  = $name;
+         //   $options['value'] = $values[$field];
+         //   $options['specific_tags'] = ['process_restrict' => 0];
+         //   return PluginProcessmakerProcess::dropdown($options);
 
          default:
             return parent::getSpecificValueToSelect($field, $name, $values, $options);
@@ -1288,10 +1257,13 @@ class PluginProcessmakerCase extends CommonDBTM {
 
    static function getAllStatusArray($withmetaforsearch = false) {
 
-      $tab = [self::DRAFT     => _x('case_status', 'Draft', 'processmaker'),
-                   self::TO_DO     => _x('case_status', 'To do', 'processmaker'),
-                   self::COMPLETED => _x('case_status', 'Completed', 'processmaker'),
-                   self::CANCELLED => _x('case_status', 'Cancelled', 'processmaker')];
+      $tab = [
+          self::DRAFT     => _x('case_status', 'Draft', 'processmaker'),
+          self::TO_DO     => _x('case_status', 'To do', 'processmaker'),
+          self::COMPLETED => _x('case_status', 'Completed', 'processmaker'),
+          self::CANCELLED => _x('case_status', 'Cancelled', 'processmaker'),
+          //self::ALL       => _x('case_status', 'All', 'processmaker')
+          ];
 
       return $tab;
    }
@@ -1397,62 +1369,12 @@ class PluginProcessmakerCase extends CommonDBTM {
       ];
 
       $tab[] = [
-         'id'                 => '3',
-         'table'              => $this->getTable(),
-         'field'              => 'plugin_processmaker_processes_id',
-         'name'               => __('Process', 'processmaker'),
-         'datatype'           => 'specific',
-         'searchtype'         => [
-            '0'                  => 'contains',
-            '1'                  => 'equals',
-            '2'                  => 'notequals'
-         ],
-         'massiveaction'      => false
-      ];
-
-      $tab[] = [
-         'id'                 => '7',
-         'table'              => $this->getTable(),
-         'field'              => 'itemtype',
-         'name'               => __('Item type'),
-         'massiveaction'      => false,
-         'datatype'           => 'specific',
-         'searchtype'         => [
-            '0'                  => 'contains',
-            '1'                  => 'equals',
-            '2'                  => 'notequals'
-         ]
-      ];
-
-      $tab[] = [
-         'id'                 => '8',
-         'table'              => $this->getTable(),
-         'field'              => 'items_id',
-         'name'               => __('Item'),
-         'massiveaction'      => false,
-         'datatype'           => 'specific',
-         'additionalfields'   => [
-            '0'                  => 'itemtype'
-         ]
-      ];
-
-      $tab[] = [
-         'id'                 => '9',
-         'table'              => 'glpi_entities',
-         'field'              => 'name',
-         'name'               => __('Item entity', 'processmaker'),
-         'massiveaction'      => false,
-         'datatype'           => 'itemlink'
-      ];
-
-      $tab[] = [
          'id'                 => '10',
          'table'              => $this->getTable(),
          'field'              => 'case_status',
          'name'               => __('Status'),
          'datatype'           => 'specific',
          'searchtype'         => [
-            '0'                  => 'contains',
             '1'                  => 'equals',
             '2'                  => 'notequals'
          ],
@@ -1472,24 +1394,78 @@ class PluginProcessmakerCase extends CommonDBTM {
       $tab[] = [
          'id'                 => '16',
          'table'              => $this->getTable(),
-         'field'              => 'id',
+         'field'              => 'date_creation',
          'name'               => __('Creation date'),
-         'datatype'           => 'specific',
          'massiveaction'      => false,
-         'nosearch'           => true,
-         'processmaker_cases' => 'creation_date'
+         'datatype'           => 'datetime'
       ];
 
       $tab[] = [
          'id'                 => '18',
          'table'              => $this->getTable(),
-         'field'              => 'id',
+         'field'              => 'date_mod',
          'name'               => __('Last update'),
-         'datatype'           => 'specific',
+         'datatype'           => 'datetime',
          'massiveaction'      => false,
-         'nosearch'           => true,
-         'processmaker_cases' => 'update_date'
       ];
+
+      $tab[] = [
+         'id'                 => '7',
+         'table'              => $this->getTable(),
+         'field'              => 'itemtype',
+         'name'               => __('Item type'),
+         'massiveaction'      => false,
+         'datatype'           => 'specific',
+         'searchtype'         => [
+            '0'                  => 'contains',
+            '1'                  => 'equals',
+            '2'                  => 'notequals'
+         ]
+      ];
+
+      $tab[] = [
+         'id'                 => '8',
+         'table'              => $this->getTable(),
+         'field'              => 'name',
+         'name'               => __('Item title'),
+         'massiveaction'      => false,
+         'datatype'           => 'specific',
+         'searchequalsonfield' => true,
+         'additionalfields'   => [
+            '0' => 'itemtype',
+            '1' => 'items_id'
+         ],
+         'nosearch'           => true
+      ];
+
+      $tab[] = [
+         'id'                 => '11',
+         'table'              => $this->getTable(),
+         'field'              => 'items_id',
+         'name'               => __('Item ID'),
+         'massiveaction'      => false,
+         'datatype'           => 'number',
+         'searchtype'         => 'contains',
+      ];
+
+      $tab[] = [
+         'id'                 => '9',
+         'table'              => 'glpi_entities',
+         'field'              => 'completename',
+         'name'               => __('Item entity', 'processmaker'),
+         'massiveaction'      => false,
+         'datatype'           => 'text'
+      ];
+
+      $tab[] = [
+         'id'                 => '3',
+         'table'              => PluginProcessmakerProcess::getTable(),
+         'field'              => 'name',
+         'name'               => __('Process name', 'processmaker'),
+         'datatype'           => 'itemlink',
+         'massiveaction'      => false
+      ];
+
 
       return $tab;
    }
@@ -1508,8 +1484,6 @@ class PluginProcessmakerCase extends CommonDBTM {
          PluginProcessmakerProcess::showUnderMaintenance($process->fields['name'], 'small');
       }
       self::showCaseInfoTab($this);
-
-      //echo '</div>' ;
 
       Html::closeForm();
 
@@ -1554,11 +1528,12 @@ class PluginProcessmakerCase extends CommonDBTM {
 
          $this->addStandardTab('PluginProcessmakerCasechangelog', $ong, $options);
 
-         $this->addStandardTab('PluginProcessmakerCasedynaform', $ong, $options);
+         $this->addStandardTab('PluginProcessmakerCasehistorydynaformpage', $ong, $options);
       }
 
       return $ong;
    }
+
 
    /**
     * Actions done after the PURGE of the item in the database
@@ -1577,12 +1552,14 @@ class PluginProcessmakerCase extends CommonDBTM {
       $ret = false;
 
       $PM_SOAP->login(true);
-      if ($this->deleteTasks() && $this->deleteCronTaskActions() && $PM_SOAP->deleteCase($this->fields['case_guid'])->status_code == 0) {
+      if ($this->deleteTasks()
+            && $this->deleteCronTaskActions()
+            && $this->deleteDocuments()
+            && $PM_SOAP->soapDeleteCase($this->fields['case_guid'])->status_code == 0) {
          $ret = true;
          $dbu = new DbUtils;
          // then must delete any sub-processes (sub-cases)
          $restrict = ["plugin_processmaker_cases_id" => $this->getID()];
-         //foreach ($dbu->getAllDataFromTable(self::getTable(), "`plugin_processmaker_cases_id` = ".$this->getID()) as $row) {
          foreach ($dbu->getAllDataFromTable(self::getTable(), $restrict) as $row) {
             $tmp = new self;
             $tmp->fields = $row;
@@ -1594,18 +1571,124 @@ class PluginProcessmakerCase extends CommonDBTM {
 
 
    /**
+    * Summary of deleteDocuments
+    * Deletes all documents in a case
+    * @return bool
+    */
+   function deleteDocuments() {
+      global $DB;
+
+      $pmdocs = getAllDataFromTable(PluginProcessmakerDocument::getTable(), [
+         'plugin_processmaker_cases_id' => $this->getID()
+         ]);
+
+      if (count($pmdocs)) {
+         $pmdocs = array_column($pmdocs, 'documents_id');
+         return $DB->delete(Document_Item::getTable(), ['documents_id' => $pmdocs])
+            && $DB->delete(Document::getTable(), ['id' => $pmdocs])
+            && $DB->delete(PluginProcessmakerDocument::getTable(), ['documents_id' => $pmdocs]);
+      }
+
+      return true; // nothing to delete
+   }
+
+
+   /**
     * Summary of deleteCronTaskActions
-    * Will delete any cron task actions taht are linked to current case
+    * Will delete any cron task actions that are linked to current case
     */
    function deleteCronTaskActions() {
       global $DB;
 
-      return $DB->delete('glpi_plugin_processmaker_crontaskactions', [
-                     'plugin_processmaker_cases_id' => $this->getID()
-                     ]
-                  );
-      //$query = "DELETE FROM `glpi_plugin_processmaker_crontaskactions` WHERE `plugin_processmaker_cases_id` = ".$this->getID();
-      //return $DB->query($query);
+      return $DB->delete(PluginProcessmakerCrontaskaction::getTable(), [
+               'plugin_processmaker_cases_id' => $this->getID()
+               ]
+            );
+   }
+
+
+   static function processMassiveActionsForOneItemtype(MassiveAction $ma, CommonDBTM $item,
+                                                    array $ids) {
+      global $PM_SOAP;
+
+      $action = $ma->getAction();
+
+      switch ($action) {
+         case 'casecancel' :
+            foreach ($ids as $pid) {
+               if (!$item->canCancelItem()) {
+                  $ma->itemDone(__CLASS__, $pid, MassiveAction::ACTION_NORIGHT);
+                  $ma->addMessage($item->getErrorMessage(ERROR_RIGHT));
+                  continue;
+               }
+
+               if ($item->getFromDB($pid)) {
+                  switch ($item->fields['case_status']) {
+                     case self::DRAFT:
+                        $ma->itemDone(__CLASS__, $pid, MassiveAction::ACTION_KO);
+                        $ma->addMessage($pid.": ".__('Unable to cancel case! It is a draft then delete it!', 'processmaker'));
+                        break;
+                     case self::TO_DO:
+                        $resultPM = $PM_SOAP->cancelCase($item->fields['case_guid']);
+                        if ($resultPM->status_code === 0
+                              && $item->cancelCase()) {
+                           $ma->itemDone(__CLASS__, $pid, MassiveAction::ACTION_OK);
+                           $ma->addMessage($pid.": ".__('Case has been cancelled!', 'processmaker'));
+                        } else {
+                           $ma->itemDone(__CLASS__, $pid, MassiveAction::ACTION_KO);
+                           $ma->addMessage($pid.": ".__('Unable to cancel case!', 'processmaker'));
+                        }
+                        break;
+                     case self::COMPLETED:
+                        $ma->itemDone(__CLASS__, $pid, MassiveAction::ACTION_KO);
+                        $ma->addMessage($pid.": ".__('Unable to cancel case! It is completed!', 'processmaker'));
+                        break;
+                     case self::CANCELLED:
+                        $ma->itemDone(__CLASS__, $pid, MassiveAction::ACTION_KO);
+                        $ma->addMessage($pid.": ".__('Unable to cancel case! It is already cancelled!', 'processmaker'));
+                        break;
+                  }
+               }
+
+            }
+            break;
+      }
+   }
+
+
+   /**
+    * Summary of addDocuments
+    * @param array $docs stdClass array which comes from pmSoapClient->inputDocumentList or pmSoapClient->outputDocumentList
+    * @param CommonDBTM $item, Ticket, Change or Problem
+    * @param int $users_id is the id of the currrent user
+    * @param bool $is_output false for input docs, and true for output docs
+    */
+   public function addDocuments(array $docs, CommonDBTM $item, int $users_id, bool $is_output) {
+      global $DB;
+
+      $caseDocs = [];
+      if (is_array($docs) && count($docs) > 0) {
+         // then for each doc in array, must add it to the host item
+         $pmDoc = new PluginProcessmakerDocument;
+         foreach ($docs as $doc) {
+            $pmDoc->addDocument($doc, $this->getID(), $item->fields['entities_id'], $item->getType(), $item->getID(), $users_id, $is_output);
+            $caseDocs[$doc->guid."-".$doc->version] = true;
+         }
+
+      }
+
+      // delete documents when they are no longuer in PM but still here in GLPI
+      $pmdocs = getAllDataFromTable(PluginProcessmakerDocument::getTable(), ['plugin_processmaker_cases_id' => $this->getID(), 'is_output' => $is_output]);
+      foreach ($pmdocs as $pmdoc) {
+         if (!isset($caseDocs[$pmdoc['guid']."-".$pmdoc['version']])) {
+            // pmdoc must be deleted from GLPI DB
+            $DB->delete(Document_Item::getTable(), ['documents_id' => $pmdoc['documents_id']]);
+            $DB->delete(Document::getTable(), ['id' => $pmdoc['documents_id']]);
+            $DB->delete(PluginProcessmakerDocument::getTable(), ['documents_id' => $pmdoc['documents_id']]);
+         }
+
+      }
+
    }
 
 }

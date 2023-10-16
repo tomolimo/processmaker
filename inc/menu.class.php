@@ -1,4 +1,30 @@
 <?php
+/*
+-------------------------------------------------------------------------
+ProcessMaker plugin for GLPI
+Copyright (C) 2014-2022 by Raynet SAS a company of A.Raymond Network.
+
+https://www.araymond.com/
+-------------------------------------------------------------------------
+
+LICENSE
+
+This file is part of ProcessMaker plugin for GLPI.
+
+This file is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This plugin is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this plugin. If not, see <http://www.gnu.org/licenses/>.
+--------------------------------------------------------------------------
+ */
 class PluginProcessmakerMenu extends CommonGLPI {
    static $rightname = 'plugin_processmaker_config';
 
@@ -12,7 +38,8 @@ class PluginProcessmakerMenu extends CommonGLPI {
          return [];
       }
 
-      $front_page = "/plugins/processmaker/front";
+      $pm_plugin_url = Plugin::getWebDir('processmaker');
+      $front_page = "$pm_plugin_url/front";
       $menu = [];
       $menu['title'] = self::getMenuName();
       $menu['page']  = "$front_page/process.php";
@@ -20,7 +47,7 @@ class PluginProcessmakerMenu extends CommonGLPI {
       if (Session::haveRightsOr("config", [READ, UPDATE])) {
          $menu['links']['config'] = PluginProcessmakerConfig::getFormURL(false);
       }
-      $menu['icon'] = "'></i><img src=\"/plugins/processmaker/pics/processmaker-xxs.png\" style=\"vertical-align: middle;\"/><i class='";
+      $menu['icon'] = "'></i><img src=\"$pm_plugin_url/pics/processmaker-xxs.png\" style=\"vertical-align: middle;\"/><i class='";
 
       $itemtypes = ['PluginProcessmakerProcess' => 'processes',
                     'PluginProcessmakerCaselink' => 'caselinks'

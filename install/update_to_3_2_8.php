@@ -1,5 +1,30 @@
 <?php
+/*
+-------------------------------------------------------------------------
+ProcessMaker plugin for GLPI
+Copyright (C) 2014-2022 by Raynet SAS a company of A.Raymond Network.
 
+https://www.araymond.com/
+-------------------------------------------------------------------------
+
+LICENSE
+
+This file is part of ProcessMaker plugin for GLPI.
+
+This file is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This plugin is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this plugin. If not, see <http://www.gnu.org/licenses/>.
+--------------------------------------------------------------------------
+ */
 function update_to_3_2_8() {
    global $DB;
 
@@ -49,15 +74,15 @@ function update_to_3_2_8() {
 
    if (!$DB->fieldExists("glpi_plugin_processmaker_cases", "processes_id")) {
       $query = "ALTER TABLE `glpi_plugin_processmaker_cases`
-	               ADD COLUMN `processes_id` INT(11) NULL DEFAULT NULL;
+	               ADD COLUMN `processes_id` INT UNSIGNED NULL DEFAULT NULL;
                ";
       $DB->query($query) or die("error adding column processes_id into glpi_plugin_processmaker_cases" . $DB->error());
    } else {
       $flds = $DB->listFields('glpi_plugin_processmaker_cases');
       if (strcasecmp( $flds['processes_id']['Type'], 'varchar(32)' ) == 0) {
          // required because autoload doesn't work for unactive plugin'
-         include_once(GLPI_ROOT."/plugins/processmaker/inc/process.class.php");
-         include_once(GLPI_ROOT."/plugins/processmaker/inc/case.class.php");
+         include_once(PLUGIN_PROCESSMAKER_ROOT . "/inc/process.class.php");
+         include_once(PLUGIN_PROCESSMAKER_ROOT . "/inc/case.class.php");
          $proc = new PluginProcessmakerProcess;
          $case = new PluginProcessmakerCase;
          foreach ($DB->request("SELECT * FROM glpi_plugin_processmaker_cases WHERE LENGTH( processes_id ) = 32") as $row) {
@@ -65,9 +90,9 @@ function update_to_3_2_8() {
             $case->update([ 'id' => $row['id'], 'processes_id' => $proc->getID() ] );
          }
          $query = "ALTER TABLE `glpi_plugin_processmaker_cases`
-	               CHANGE COLUMN `processes_id` `processes_id` INT(11) NULL DEFAULT NULL AFTER `case_status`;
+	               CHANGE COLUMN `processes_id` `processes_id` INT UNSIGNED NULL DEFAULT NULL AFTER `case_status`;
                   ";
-         $DB->query($query) or die("error converting column processes_id into INT(11) in glpi_plugin_processmaker_cases" . $DB->error());
+         $DB->query($query) or die("error converting column processes_id into INT UNSIGNED in glpi_plugin_processmaker_cases" . $DB->error());
       }
    }
 
@@ -95,7 +120,7 @@ function update_to_3_2_8() {
       $DB->query($query) or die("error droping 'defaults' from 'glpi_users_id' to glpi_plugin_processmaker_users" . $DB->error());
 
       $query = "ALTER TABLE `glpi_plugin_processmaker_users`
-	               CHANGE COLUMN `glpi_users_id` `id` INT(11) NOT NULL AUTO_INCREMENT FIRST,
+	               CHANGE COLUMN `glpi_users_id` `id` INT UNSIGNED NOT NULL AUTO_INCREMENT FIRST,
                   ADD PRIMARY KEY (`id`);
                ";
       $DB->query($query) or die("error renaming 'glpi_users_id' into 'id' to glpi_plugin_processmaker_users" . $DB->error());
@@ -109,8 +134,8 @@ function update_to_3_2_8() {
 
    if (!$DB->fieldExists( 'glpi_plugin_processmaker_processes', 'itilcategories_id')) {
       $query = "ALTER TABLE `glpi_plugin_processmaker_processes`
-	                ADD COLUMN `itilcategories_id` INT(11) NOT NULL DEFAULT '0',
-	                ADD COLUMN `type` INT(11) NOT NULL DEFAULT '1' COMMENT 'Only used for Tickets';";
+	                ADD COLUMN `itilcategories_id` INT UNSIGNED NOT NULL DEFAULT '0',
+	                ADD COLUMN `type` INT UNSIGNED NOT NULL DEFAULT '1' COMMENT 'Only used for Tickets';";
 
       $DB->query($query) or die("error adding columns 'itilcategories_id' and 'type' to glpi_plugin_processmaker_processes" . $DB->error());
    }
@@ -148,9 +173,9 @@ function update_to_3_2_8() {
 
       //if (!$DB->fieldExists("glpi_plugin_processmaker_caselinks", "plugin_processmaker_taskcategories_id_source")) {
       //   $query = "ALTER TABLE `glpi_plugin_processmaker_caselinks`
-      //             ADD COLUMN `plugin_processmaker_taskcategories_id_source` INT(11) NULL DEFAULT NULL AFTER `sourcetask_guid`,
-      //             ADD COLUMN `plugin_processmaker_taskcategories_id_target` INT(11) NULL DEFAULT NULL AFTER `targettask_guid`,
-      //             ADD COLUMN `plugin_processmaker_processes_id` INT(11) NULL DEFAULT NULL AFTER `targetprocess_guid`;";
+      //             ADD COLUMN `plugin_processmaker_taskcategories_id_source` INT UNSIGNED NULL DEFAULT NULL AFTER `sourcetask_guid`,
+      //             ADD COLUMN `plugin_processmaker_taskcategories_id_target` INT UNSIGNED NULL DEFAULT NULL AFTER `targettask_guid`,
+      //             ADD COLUMN `plugin_processmaker_processes_id` INT UNSIGNED NULL DEFAULT NULL AFTER `targetprocess_guid`;";
       //   $DB->query($query) or die("error adding col plugin_processmaker_taskcategories_id_source to glpi_plugin_processmaker_caselinks" . $DB->error());
 
       //   $query = "UPDATE glpi_plugin_processmaker_caselinks AS pm_cl
@@ -177,14 +202,13 @@ function update_to_3_2_8() {
 
    //if( !$DB->tableExists('glpi_plugin_processmaker_selfservicedrafts')){
    //   $query = "CREATE TABLE `glpi_plugin_processmaker_selfservicedrafts` (
-   //                 `id` INT(11) NOT NULL AUTO_INCREMENT,
-   //                 `users_id` INT(11) NOT NULL,
-   //                 `plugin_processmaker_processes_id` INT(11) NOT NULL,
+   //                 `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+   //                 `users_id` INT UNSIGNED NOT NULL,
+   //                 `plugin_processmaker_processes_id` INT UNSIGNED NOT NULL,
    //                 `url` TEXT NOT NULL,
    //                 PRIMARY KEY (`id`),
    //                 INDEX `users_id` (`users_id`)
    //              )
-   //              COLLATE='utf8_general_ci'
    //              ENGINE=InnoDB
    //              ;" ;
    //   $DB->query($query) or die("error creating glpi_plugin_processmaker_selfservicedrafts" . $DB->error());

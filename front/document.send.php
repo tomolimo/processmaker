@@ -25,15 +25,15 @@ You should have received a copy of the GNU General Public License
 along with this plugin. If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------
  */
-function update_3_2_8_to_3_2_9() {
-   global $DB;
+include ('../../../inc/includes.php');
 
-   if (!$DB->fieldExists("glpi_plugin_processmaker_configs", "db_version")) {
-      $query = "ALTER TABLE `glpi_plugin_processmaker_configs`
-                  ADD COLUMN `db_version` VARCHAR(10) NULL;";
-      $DB->query($query) or die("error adding db_version field to glpi_plugin_processmaker_configs" . $DB->error());
+Session::checkLoginUser();
+
+if (isset($_REQUEST["id"]) && $_REQUEST["id"] > 0) {
+
+   $pm_doc = new PluginProcessmakerDocument;
+   if ($pm_doc->getFromDB($_REQUEST["id"])) {
+      echo $pm_doc->getDocumentFromPM();
    }
-
-   return '3.2.9';
-
 }
+

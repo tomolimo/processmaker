@@ -1,5 +1,30 @@
 <?php
+/*
+-------------------------------------------------------------------------
+ProcessMaker plugin for GLPI
+Copyright (C) 2014-2022 by Raynet SAS a company of A.Raymond Network.
 
+https://www.araymond.com/
+-------------------------------------------------------------------------
+
+LICENSE
+
+This file is part of ProcessMaker plugin for GLPI.
+
+This file is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This plugin is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this plugin. If not, see <http://www.gnu.org/licenses/>.
+--------------------------------------------------------------------------
+ */
 if (!defined('GLPI_ROOT')) {
     die("Sorry. You can't access directly to this file");
 }
@@ -63,22 +88,38 @@ class PluginProcessmakerProcess extends CommonDBTM {
       return $search;
    }
 
+   static function processMassiveActionsForOneItemtype(MassiveAction $ma, CommonDBTM $item,
+                                                       array $ids) {
+      $action = $ma->getAction();
+
+      switch ($action) {
+         case 'taskrefresh' :
+            foreach ($ids as $pid) {
+               if (!$item->canUpdateItem()) {
+                  $ma->itemDone(__CLASS__, $pid, MassiveAction::ACTION_NORIGHT);
+                  $ma->addMessage($item->getErrorMessage(ERROR_RIGHT));
+                  continue;
+               }
+
+               $item->refreshTasks($pid);
+               $ma->itemDone(__CLASS__, $pid, MassiveAction::ACTION_OK);
+            }
+            break;
+      }
+   }
 
    /**
    * Summary of refreshTasks
    * will refresh (re-synch) all process task list
-   * @param array $post is the $_POST
+   * @param integer $ID is the id of the process
    * @return void
    */
-   function refreshTasks($post) {
+   function refreshTasks($ID) {
       global $PM_DB, $CFG_GLPI;
 
-      if ($this->getFromDB( $post['id'] )) {
+      if ($this->getFromDB($ID)) {
          // here we are in the right process
          // we need to get the tasks + content from PM db
-         //$config = PluginProcessmakerConfig::getInstance() ;
-         //$database = $config->fields['pm_workspace'] ;
-         //$translates = false;
          $mapLangs = [];
          $dbu = new DbUtils;
          //         if (class_exists('DropdownTranslation')) {
@@ -136,19 +177,18 @@ class PluginProcessmakerProcess extends CommonDBTM {
 
          $pmtask = new PluginProcessmakerTaskCategory;
          $restrict = ["is_active" => '1', 'plugin_processmaker_processes_id' => $this->getID()];
-         //$currentasksinprocess = $dbu->getAllDataFromTable($pmtask->getTable(), '`is_active` = 1 AND `plugin_processmaker_processes_id` = '.$this->getID());
          $currentasksinprocess = $dbu->getAllDataFromTable($pmtask->getTable(), $restrict);
          $tasks=[];
          foreach ($currentasksinprocess as $task) {
             $tasks[$task['pm_task_guid']] = $task;
          }
          $inactivetasks = array_diff_key($tasks, $defaultLangTaskArray);
-         foreach ($inactivetasks as $taskkey => $task) {
+         foreach ($inactivetasks as $task) {
             // must verify if this taskcategory are used in a task somewhere
             $objs = ['TicketTask', 'ProblemTask', 'ChangeTask'];
             $countElt = 0;
             foreach ($objs as $obj) {
-               $countElt += $dbu->countElementsInTable( $dbu->getTableForItemType($obj), "taskcategories_id = ".$task['taskcategories_id'] );
+               $countElt += $dbu->countElementsInTable( $dbu->getTableForItemType($obj), ["taskcategories_id" => $task['taskcategories_id']] );
                if ($countElt != 0) {
                   // just set 'is_active' to 0
                   $pmtask->Update(['id' => $task['id'], 'is_start' => 0, 'is_active' => 0]);
@@ -171,7 +211,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
                // got it then check names, and if != update
                if ($taskCat->getFromDB($pmTaskCat->fields['taskcategories_id'])) {
                   // found it must test if should be updated
-                  if ($taskCat->fields['name'] != $task['TAS_TITLE'] 
+                  if ($taskCat->fields['name'] != $task['TAS_TITLE']
                      || $taskCat->fields['comment'] != $task['TAS_DESCRIPTION']) {
                      $taskCat->update([
                         'id'                => $taskCat->getID(),
@@ -294,8 +334,8 @@ class PluginProcessmakerProcess extends CommonDBTM {
       $PM_SOAP->login( true );
       $pmProcessList = $PM_SOAP->processList();
 
-      $config = PluginProcessmakerConfig::getInstance();
-      $pmMainTaskCat = $config->fields['taskcategories_id'];
+      //$config = $PM_SOAP->config; // $PM_PluginProcessmakerConfig::getInstance();
+      $pmMainTaskCat = $PM_SOAP->config['taskcategories_id'];
 
       // and get processlist from GLPI
       if ($pmProcessList) {
@@ -436,7 +476,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
       if ($this->canCreate()) {
          $buttons["process.php?refresh=1"] = $title;
          $title = "";
-         Html::displayTitle($CFG_GLPI["root_doc"] . "/plugins/processmaker/pics/gears.png", $title, '',
+         Html::displayTitle(Plugin::getWebDir('processmaker')."/pics/gears.png", $title, '',
                                     $buttons);
       }
 
@@ -712,14 +752,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
    }
 
    function showForm ($ID, $options = ['candel'=>false]) {
-      global $DB, $CFG_GLPI;
-
-      //if ($ID > 0) {
-      //   $this->check($ID,READ);
-      //}
-
-      //$canedit = $this->can($ID,UPDATE);
-      //$options['canedit'] = $canedit ;
+      global $DB, $CFG_GLPI, $PM_SOAP;
 
       $this->initForm($ID, $options);
       $this->showFormHeader($options);
@@ -729,8 +762,8 @@ class PluginProcessmakerProcess extends CommonDBTM {
       //Html::autocompletionTextField($this, "name");
       echo $this->fields["name"];
       echo "</td>";
-      echo "<td rowspan='5' class='middle right'>".__("Comments")."</td>";
-      echo "<td class='center middle' rowspan='5'><textarea cols='45' rows='6' name='comment' >".
+      echo "<td rowspan='6' class='middle right'>".__("Comments")."</td>";
+      echo "<td class='center middle' rowspan='6'><textarea cols='45' rows='10' name='comment' >".
            $this->fields["comment"]."</textarea></td></tr>";
 
       echo "<tr class='tab_bg_1'>";
@@ -759,6 +792,28 @@ class PluginProcessmakerProcess extends CommonDBTM {
       echo "</td></tr>\n";
 
       echo "<tr class='tab_bg_1'>";
+      echo "<td>" . __('Re-assign reason is mandatory (can be changed in task category settings)', 'processmaker') . "</td>";
+      echo "<td nowrap>";
+      $elements = [
+          Entity::CONFIG_PARENT => __('Inheritance of the plugin settings', 'processmaker'),
+          0                     => Dropdown::getYesNo(0),
+          1                     => Dropdown::getYesNo(1)
+          ];
+      Dropdown::showFromArray('is_reassignreason_mandatory', $elements, [
+          'value' => $this->fields['is_reassignreason_mandatory'],
+          ]);
+
+      if ($this->fields['is_reassignreason_mandatory'] == Entity::CONFIG_PARENT) {
+         echo "<div class='inherited inline' title='"
+             .__('Value inherited from plugin settings', 'processmaker')
+             ."'><i class='fas fa-level-down-alt'></i>"
+             .$elements[$PM_SOAP->config['is_reassignreason_mandatory']]
+            ."</div>";
+      }
+
+      echo "</td></tr>\n";
+
+      echo "<tr class='tab_bg_1'>";
       echo "<td >".__('Visible in Incident for Central interface', 'processmaker')."</td><td>";
       Dropdown::showYesNo("is_incident", $this->fields["is_incident"]);
       echo "</td></tr>";
@@ -784,7 +839,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
                     ];
 
          Ajax::updateItemOnSelectEvent("dropdown_type$rand", "show_category_by_type",
-                                         $CFG_GLPI["root_doc"]."/plugins/processmaker/ajax/dropdownTicketCategories.php",
+                                         Plugin::getWebDir('processmaker')."/ajax/dropdownTicketCategories.php",
                                          $params);
       } else {
          echo Ticket::getTicketTypeName($this->fields["type"]);
@@ -838,7 +893,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
       Dropdown::showYesNo("maintenance", $this->fields["maintenance"]);
       if ($this->fields["maintenance"]) {
          echo "</td><td>";
-         echo "<img src='/plugins/processmaker/pics/verysmall-under_maintenance.png' alt='Synchronize Task List' title='Synchronize Task List'>";
+         echo "<img src='".Plugin::getWebDir('processmaker')."/pics/verysmall-under_maintenance.png' alt='Synchronize Task List' title='Synchronize Task List'>";
       }
       echo "</td></tr>";
 
@@ -917,7 +972,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
          $processname = $data["name"];
          if ($link == 2) {
             $process["name"]    = $processname;
-            $process["link"]    = $CFG_GLPI["root_doc"]."/plugins/processmaker/front/process.form.php?id=".$pid;
+            $process["link"]    = Plugin::getWebDir('processmaker')."/front/process.form.php?id=".$pid;
             $process["comment"] = __('Name')."&nbsp;: ".$processname."<br>".__('Comments').
                                "&nbsp;: ".$data["comment"]."<br>";
          } else {
@@ -978,9 +1033,9 @@ class PluginProcessmakerProcess extends CommonDBTM {
       global $CFG_GLPI;
 
       if (!isset($options['specific_tags']['process_restrict'])) {
-         $options['specific_tags']['process_restrict'] = 1;
+         $options['specific_tags']['process_restrict'] = 0;
       }
-      $options['url'] = $CFG_GLPI["root_doc"].'/plugins/processmaker/ajax/dropdownProcesses.php';
+      $options['url'] = Plugin::getWebDir('processmaker').'/ajax/dropdownProcesses.php';
       return Dropdown::show( __CLASS__, $options );
 
    }
@@ -997,7 +1052,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
       }
       echo "<div class='center'>";
 
-      echo Html::image($CFG_GLPI['root_doc']."/plugins/processmaker/pics/{$size}under_maintenance.png");
+      echo Html::image(Plugin::getWebDir('processmaker')."/pics/{$size}under_maintenance.png");
       echo "<p style='font-weight: bold;'>";
       echo sprintf(__('Process \'%s\' is under maintenance, please retry later, thank you.', 'processmaker'), $ptitle);
       echo "</p>";
