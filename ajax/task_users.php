@@ -2,7 +2,7 @@
 /*
 -------------------------------------------------------------------------
 ProcessMaker plugin for GLPI
-Copyright (C) 2014-2022 by Raynet SAS a company of A.Raymond Network.
+Copyright (C) 2014-2023 by Raynet SAS a company of A.Raymond Network.
 
 https://www.araymond.com/
 -------------------------------------------------------------------------
@@ -97,7 +97,7 @@ $res = $DB->request([
 ]);
 
 // there is only one row
-$taskCat = $res->next();
+$taskCat = $res->current();
 $ask_for_reason = PluginProcessmakerTaskCategory::inheritedReAssignReason($taskCat['pm_is_reassignreason_mandatory'], $taskCat['gppp_is_reassignreason_mandatory']);
 
 PluginProcessmakerUser::dropdown( ['name'   => 'users_id_recipient',
@@ -121,42 +121,46 @@ echo HTML::scriptBlock("
          // Dialog helpers
          // Create the dialog with \"Re-assign\" button
          function showCommentDlg(title, content, alttext) {
-
-            var dlgContents = {
-               title: title,
-               modal: true,
-               width: 'auto',
-               height: 'auto',
-               resizable: false,
-               close: function (event, ui) {
-                  $(this).dialog('destroy').remove();
-               },
-               buttons: [{
-                  text: alttext,
-                  id: 'submit$rand',
-                  disabled: 'disabled',
-                  click: function() {
-                     $('#comment$rand').val($('#commenttxtarea$rand').val());
-                     $('#reassign$rand').click();
-                     $('#submit$rand').button('disable');
-                  }
-               }],
-               show: true,
-               hide: true
+            modalId = title.replaceAll(' ', '_')
+            var modal = $('#'+title);
+            if (modal && modal.length == 0) {
+               var modal = '<div class=\"modal fade testmodalprocess\" id=\"'+ modalId +'\" tabindex=\"-1\" role=\"dialog\" aria-labelledby=\"exampleModalCenterTitle\" aria-hidden=\"true\">'
+                     + '<div class=\"modal-dialog modal-dialog-centered\"role=\"document\">'
+                     + '<div class=\"modal-content\">'
+                     + '<div class=\"modal-header\">'
+                     + '<h5 class=\"modal-modalId\" id=\"changeChoiceTitle\">'+ title +'</h5>'
+                     + '<button type=\"button\" class=\"btn-close\" data-bs-dismiss=\"modal\" aria-label=\"Close\"></button>'
+                     + '</div >'
+                     + '<div class=\"modal-body\">'
+                     + '</div>'
+                     + '<div class=\"modal-footer\">'
+                     + '<button type=\"button\" class=\"btn btn-primary\" id=\"submit$rand\" disabled>'+alttext+'</button>'
+                     + '</div>'
+                     + '</div>'
+                     + '</div>';
+               $('body').append(modal);
             }
-            $('<div id=divreassign$rand></div>').appendTo($('#processmaker_form_task$rand-".$_REQUEST['delIndex']."'));
-            var locDlg = $('#divreassign$rand').html(content + '<p><textarea id=commenttxtarea$rand rows=6 cols=60></textarea></p><font color=red>".addslashes(__('Input at least 10 words to justify.','processmaker'))."</font>').dialog(dlgContents);
+            $('#'+modalId).modal('show');
+            $('#'+modalId+' .modal-body').append('<label for=\"message-text\" class=\"col-form-label\">'+content+'</label><textarea class=\"form-control\" id=\"commenttxtarea$rand\" style=\"height: 100px\"></textarea></p><font color=red>".addslashes(__('Input at least 10 words to justify.','processmaker'))."</font>');
             $('#commenttxtarea$rand').focus();
             $('#commenttxtarea$rand').on('keydown keyup', function(e) {
                if ($('#commenttxtarea$rand').val().split(/\W+/).length > 10) {
-                  $('#submit$rand').button('enable');
+                  $('#submit$rand').prop('disabled', false);
                } else {
-                  $('#submit$rand').button('disable');
+                  $('#submit$rand').prop('disabled', true);
                }
             });
-
-            return locDlg;
+            $('#'+modalId).on('hide.bs.modal', function () {
+               $('#'+modalId).remove();
+            })
+            $('#submit$rand').click(() => {
+               $('#comment$rand').val($('#commenttxtarea$rand').val());
+               $('#reassign$rand').click();
+               $('#submit$rand').button('disable');
+               $('#'+modalId).modal('hide').remove();
+         });
          };
+
 
          $('input[name=reassign$rand]').click(function (e) {
 //debugger;
@@ -176,7 +180,6 @@ echo HTML::scriptBlock("
                // un-claim
                if (".($can_unclaim ? 1 : 0)." && users_id_val != 0) {
                   if (" . ($ask_for_reason ? 1 : 0) . ") {
-                      //e.preventDefault();
                       showCommentDlg('".addslashes(__('Un-claim task', 'processmaker'))."',
                                      '".addslashes(__('Please input reason to un-claim<br/>(task will be re-assigned to former group):', 'processmaker'))."',
                                      '".addslashes(__('Un-claim', 'processmaker'))."');

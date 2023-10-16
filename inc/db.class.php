@@ -2,7 +2,7 @@
 /*
 -------------------------------------------------------------------------
 ProcessMaker plugin for GLPI
-Copyright (C) 2014-2022 by Raynet SAS a company of A.Raymond Network.
+Copyright (C) 2014-2023 by Raynet SAS a company of A.Raymond Network.
 
 https://www.araymond.com/
 -------------------------------------------------------------------------
@@ -45,7 +45,8 @@ class PluginProcessmakerDB extends DBmysql {
          && $config['pm_workspace'] != '' ) {
          $this->dbhost = $config['pm_dbserver_name'];
          $this->dbuser = $config['pm_dbserver_user'];
-         $this->dbpassword = Toolbox::sodiumDecrypt($config['pm_dbserver_passwd']);
+         $glpikey = new GLPIKey();
+         $this->dbpassword = $glpikey->decrypt($config['pm_dbserver_passwd']);
          $this->dbdefault = isset($config['pm_dbname']) ? $config['pm_dbname'] : '';
          parent::__construct();
       }

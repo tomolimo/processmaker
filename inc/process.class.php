@@ -2,7 +2,7 @@
 /*
 -------------------------------------------------------------------------
 ProcessMaker plugin for GLPI
-Copyright (C) 2014-2022 by Raynet SAS a company of A.Raymond Network.
+Copyright (C) 2014-2023 by Raynet SAS a company of A.Raymond Network.
 
 https://www.araymond.com/
 -------------------------------------------------------------------------
@@ -188,7 +188,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
             $objs = ['TicketTask', 'ProblemTask', 'ChangeTask'];
             $countElt = 0;
             foreach ($objs as $obj) {
-               $countElt += $dbu->countElementsInTable( $dbu->getTableForItemType($obj), ["taskcategories_id" => $task['taskcategories_id']] );
+               $countElt += $dbu->countElementsInTable($dbu->getTableForItemType($obj), ['taskcategories_id' => $task['taskcategories_id']]);
                if ($countElt != 0) {
                   // just set 'is_active' to 0
                   $pmtask->Update(['id' => $task['id'], 'is_start' => 0, 'is_active' => 0]);
@@ -334,7 +334,6 @@ class PluginProcessmakerProcess extends CommonDBTM {
       $PM_SOAP->login( true );
       $pmProcessList = $PM_SOAP->processList();
 
-      //$config = $PM_SOAP->config; // $PM_PluginProcessmakerConfig::getInstance();
       $pmMainTaskCat = $PM_SOAP->config['taskcategories_id'];
 
       // and get processlist from GLPI
@@ -488,28 +487,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
    * @return bool true if succeed else false
    **/
    public function getFromGUID($process_guid) {
-      global $DB;
-
-      $res = $DB->request(
-                     $this->getTable(), [
-                     'process_guid' => $process_guid
-                     ]
-             );
-      //$query = "SELECT *
-      //          FROM `".$this->getTable()."`
-      //          WHERE `process_guid` = '$process_guid'";
-
-      //if ($result = $DB->query($query)) {
-      if ($res) {
-         if ($res->numrows() != 1) {//if ($DB->numrows($result) != 1) {
-            return false;
-         }
-         $this->fields = $res->next(); //$DB->fetch_assoc($result);
-         if (is_array($this->fields) && count($this->fields)) {
-            return true;
-         }
-      }
-      return false;
+      return $this->getFromDBByCrit(['process_guid' => $process_guid]);
    }
 
 
@@ -968,7 +946,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
       //   $data     = $DB->fetch_assoc($result);
       if ($res && $res->numrows() == 1) {
 //         $processname = $res['name'];//$data["name"];
-         $data = $res->next();
+         $data = $res->current();
          $processname = $data["name"];
          if ($link == 2) {
             $process["name"]    = $processname;

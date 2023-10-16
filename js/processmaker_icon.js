@@ -1,4 +1,3 @@
-<?php
 /*
 -------------------------------------------------------------------------
 ProcessMaker plugin for GLPI
@@ -25,13 +24,7 @@ You should have received a copy of the GNU General Public License
 along with this plugin. If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------
  */
-/**
- * PluginProcessmakerCaselinkaction short summary.
- *
- * PluginProcessmakerCaselinkaction description.
- *
- * @version 1.0
- * @author MoronO
- */
-class PluginProcessmakerCaselinkaction extends CommonDBTM {
-}
+
+$('document').ready(() => {
+   $('aside.navbar #navbar-menu li.nav-item .dropdown-menu a[href*="/plugins/processmaker/front/"] i').append('<img src="' + CFG_GLPI.root_doc + '/plugins/processmaker/pics/processmaker-xxs.png" style="vertical-align: middle;"/>');
+});

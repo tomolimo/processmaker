@@ -24,14 +24,14 @@
       <author>Olivier Moron</author>
    </authors>
    <versions>
-      <version>
-         <num>3.3.8</num>
-         <compatibility>9.1</compatibility>
-      </version>
-      <version>
-         <num>3.4.30</num>
-         <compatibility>9.2</compatibility>
-      </version>
+     <version>
+       <num>3.3.8</num>
+       <compatibility>9.1</compatibility>
+     </version>
+     <version>
+       <num>3.4.30</num>
+       <compatibility>9.2</compatibility>
+     </version>
       <version>
          <num>3.5.15</num>
          <compatibility>9.3</compatibility>
@@ -43,6 +43,10 @@
       <version>
          <num>4.4.0</num>
          <compatibility>9.5</compatibility>
+      </version>
+      <version>
+         <num>5.0.0</num>
+         <compatibility>10.0</compatibility>
       </version>
    </versions>
    <langs>

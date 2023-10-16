@@ -1,7 +1,7 @@
 /*
 -------------------------------------------------------------------------
 ProcessMaker plugin for GLPI
-Copyright (C) 2014-2022 by Raynet SAS a company of A.Raymond Network.
+Copyright (C) 2014-2023 by Raynet SAS a company of A.Raymond Network.
 
 https://www.araymond.com/
 -------------------------------------------------------------------------
@@ -29,8 +29,7 @@ $(function () {
       //debugger;
       var pattern = /##processmaker.*(##|...)/g;
 
-      $('tr.tab_bg_2 td a').each(function (index) {
-
+      $('.grid-item table tbody tr td a').each(function (index) {
          var textToChange = $(this).text();
          var matches = textToChange.match(pattern);
          if (matches) {

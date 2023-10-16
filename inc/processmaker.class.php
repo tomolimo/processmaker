@@ -2,7 +2,7 @@
 /*
 -------------------------------------------------------------------------
 ProcessMaker plugin for GLPI
-Copyright (C) 2014-2022 by Raynet SAS a company of A.Raymond Network.
+Copyright (C) 2014-2023 by Raynet SAS a company of A.Raymond Network.
 
 https://www.araymond.com/
 -------------------------------------------------------------------------
@@ -85,11 +85,11 @@ if (!function_exists('stripcslashes_deep')) {
    * @return stripcslashes item
    **/
    function stripcslashes_deep($value) {
-
-      $value = is_array($value) ?
-                array_map('stripcslashes_deep', $value) :
-                stripcslashes($value);
-
+      if (isset($value)) {
+         $value = is_array($value) ?
+                   array_map('stripcslashes_deep', $value) :
+                   stripcslashes($value);
+      }
       return $value;
    }
 }
@@ -260,7 +260,8 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                $cookie_lifetime = 15 * 60; //= 15 minutes
             }
             if ($admin_or_user === true) { // admin rights has been requested, then force new login
-                $locSession = $this->pmSoapClient->login([ 'userid' => $this->config['pm_admin_user'], 'password' => Toolbox::sodiumDecrypt($this->config['pm_admin_passwd'])]);
+               $glpikey = new GLPIKey();
+               $locSession = $this->pmSoapClient->login([ 'userid' => $this->config['pm_admin_user'], 'password' => $glpikey->decrypt($this->config['pm_admin_passwd'])]);
                if (is_object($locSession) && $locSession->status_code == 0) {
                   $_SESSION["pluginprocessmaker"]["session"]["admin"] = true;
                   $_SESSION["pluginprocessmaker"]["session"]["id"] = $locSession->message;
@@ -290,8 +291,9 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                   $pmusr = new PluginProcessmakerUser;
                   $pmusr->getFromDB($gusr->getID());
                   if (is_object($pmusr) && array_key_exists('pm_users_id', $pmusr->fields)) {
-                     $pass = md5(Toolbox::sodiumEncrypt($gusr->getID().$gusr->getName().time()));
                      // and must be updated also in PM db
+                     $glpikey = new GLPIKey();
+                     $pass = md5($glpikey->encrypt($gusr->getID().$gusr->getName().time()));
                      $PM_DB->update('RBAC_USERS', ['USR_PASSWORD' => $pass], ['USR_UID' => $pmusr->fields['pm_users_id']]);
                      $PM_DB->update('USERS', ['USR_PASSWORD' => $pass], ['USR_UID' => $pmusr->fields['pm_users_id']]);
                      // and then login with this user/password
@@ -1350,9 +1352,6 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
       $pmGroupList = $PM_SOAP->groupList();
       $pmGroup = null;
-      //if($pmgrp_key = array_search($PM_SOAP->pm_group_guid, array_column($pmGroupList, 'guid'))) {
-      //   $pmgroup = $pmGroupList[$pmgrp_key];
-      //}
       foreach ($pmGroupList as $pmGrp) {
          if ($pmGrp->guid == $PM_SOAP->pm_group_guid) {
             $pmGroup = $pmGrp;
@@ -1372,21 +1371,17 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                     'LEFT JOIN'  => ['glpi_plugin_processmaker_users' => ['FKEY' => ['glpi_plugin_processmaker_users' => 'id', 'glpi_users' => 'id']]],
                     'WHERE'      => ['name' => ['NOT LIKE', '*%']]
                   ]);
-      //foreach ($DB->request("SELECT glpi_users.id, glpi_users.name, glpi_users.realname, glpi_users.firstname, glpi_users.is_active, glpi_users.is_deleted, glpi_plugin_processmaker_users.pm_users_id as pmUserId
-      //                        FROM glpi_users
-      //                        LEFT JOIN glpi_plugin_processmaker_users on glpi_plugin_processmaker_users.id = glpi_users.id
-      //                        WHERE name not like '*%'") as $dbgroup) {
       foreach ($res as $dbgroup) {
          $glpiUserList[ strtolower($dbgroup['name'])] = $dbgroup;
       }
 
+      $glpikey = new GLPIKey();
       $arrayDiff = array_diff_key($glpiUserList, $pmUserList);
-
       foreach ($arrayDiff as $user) {
          if ($user['is_active'] != 0 && $user['is_deleted'] != 1) {
             $status = "ACTIVE";
             $task->addVolume(1);
-            $pass = substr(Toolbox::sodiumEncrypt($user['id'].$user['name'].time()), 0, 20); // must keep only 20 chars as the web service is limited to 20 for the password
+            $pass = substr($glpikey->encrypt($user['id'].$user['name'].time()), 0, 20); // must keep only 20 chars as the web service is limited to 20 for the password
             $pmResult = $PM_SOAP->createUser($user['name'], $user['firstname'], $user['realname'], "", "PROCESSMAKER_OPERATOR", $pass, $status);
             if ($pmResult->status_code == 0) {
                $task->log("Added user: '".$user['name']."'");
@@ -1440,8 +1435,6 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                   $ret = $pmuser->add([ 'id' => $user['id'], 'pm_users_id' => $pmuserlistGuid ]);
                }
 
-               //$query = "REPLACE INTO glpi_plugin_processmaker_users (glpi_users_id, pm_users_id) VALUES (".$user['id'].", '". $pmUserList[strtolower($user['name'])]['guid']."');" ;
-               //$DB->query($query) or
                if (!$ret) {
                   $task->log("Cannot update user: '".$user['id']."' into glpi_plugin_processmaker_users!");
                }
@@ -1496,7 +1489,6 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                            'FROM'   => 'glpi_groups',
                            'WHERE'  => ['AND' => ['is_task' => 1, 'is_usergroup' => 1]]
                         ]);
-      //foreach ($DB->request("SELECT id, name, is_task, is_usergroup FROM glpi_groups WHERE is_task=1 AND is_usergroup=1") as $dbgroup) {
       foreach ($res as $dbgroup) {
          $glpiGroupList[$dbgroup['name']] = $dbgroup;
       }
@@ -1527,8 +1519,6 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
          // not really optimized, but this way we are sure that groups are synchronized
          // must be redesigned
          $PM_DB->delete('GROUP_USER', ['GROUP_USER.GRP_UID' => $pmGroupList[$group['name']]['CON_ID']]);
-         //$query = "DELETE FROM GROUP_USER WHERE GROUP_USER.GRP_UID='".$pmGroupList[$group['name']]['CON_ID']."';";
-         //$PM_DB->query($query);
          // and insert all users from real GLPI group
          $res = $DB->request(['SELECT'      => ['glpi_groups_users.users_id', 'glpi_plugin_processmaker_users.pm_users_id'],
                               'FROM'        => 'glpi_groups',
@@ -1536,14 +1526,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                                                 'glpi_plugin_processmaker_users' => ['FKEY' => ['glpi_plugin_processmaker_users' => 'id', 'glpi_groups_users' => 'users_id']]],
                               'WHERE'       => ['glpi_groups.name' => $group['name']]]);
 
-         //foreach ($DB->request("SELECT glpi_groups_users.users_id, glpi_plugin_processmaker_users.pm_users_id
-         //                          FROM glpi_groups
-         //                          JOIN glpi_groups_users ON glpi_groups_users.groups_id=glpi_groups.id
-         //                          JOIN glpi_plugin_processmaker_users ON glpi_plugin_processmaker_users.id=glpi_groups_users.users_id
-         //                          WHERE glpi_groups.name='".$group['name']."'") as $user) {
          foreach ($res as $user) {
-            //$query = "INSERT INTO GROUP_USER (`GRP_UID`, `USR_UID`) VALUES ( '".$pmGroupList[$group['name']]['CON_ID']."', '".$user['pm_users_id']."')";
-            //$PM_DB->query($query);
             $PM_DB->insert('GROUP_USER', ['GRP_UID' => $pmGroupList[$group['name']]['CON_ID'],
                                           'USR_UID' => $user['pm_users_id']
                                          ]
@@ -1554,8 +1537,6 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       }
 
       // now should renew the duedate of the users
-      //$PM_DB->query("UPDATE USERS SET USR_DUE_DATE='2035-12-31' WHERE USR_DUE_DATE<>'2035-12-31'; ");
-      //$PM_DB->query("UPDATE RBAC_USERS SET USR_DUE_DATE='2035-12-31' WHERE USR_DUE_DATE<>'2035-12-31'; ");
       $PM_DB->update('USERS',
                         ['USR_DUE_DATE' => '2035-12-31'],
                         ['USR_DUE_DATE' => ['!=', '2035-12-31']]
@@ -2163,7 +2144,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
     */
    function computeTaskDuration($begin, $end, $entity) {
 
-      $calendars_id = Entity::getUsedConfig('calendars_id', $entity);
+      $calendars_id = Entity::getUsedConfig('calendars_strategy', $entity, 'calendars_id', 0);
       $calendar     = new Calendar();
 
       // Using calendar
@@ -2196,7 +2177,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       //$res = $DB->query($query);
       $res = $DB->request('glpi_plugin_processmaker_tasks', ['AND' => ['plugin_processmaker_cases_id' => $cases_id, 'del_index' => $delIndex]]);
       //if ($DB->numrows($res) > 0) {
-      if ($row = $res->next()) {
+      if ($row = $res->current()) {
          $dbu = new DbUtils;
          //$row = $DB->fetch_array($res);
 
@@ -2282,7 +2263,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       //$query = "SELECT * FROM glpi_plugin_processmaker_tasks WHERE plugin_processmaker_cases_id='$cases_id' and del_index=$delIndex; ";
       //$res = $DB->query($query);
       //if ($DB->numrows($res) > 0) {
-      if ($row = $res->next()) {
+      if ($row = $res->current()) {
          $dbu = new DbUtils;
          //$row = $DB->fetch_array($res);
          $glpi_task = new $row['itemtype'];
@@ -2407,6 +2388,40 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    */
    public static function pre_show_item_processmaker($params) {
 
+      $plugin = new Plugin();
+      $itemtype = $params['item']->getType();
+      if (in_array($itemtype, ['Ticket', 'Problem', 'Change'])
+         && $params['options']['id']
+         && !PluginProcessmakerCase::canSolve($params)
+         && Session::getCurrentInterface() == "central") {
+         // then we are in an ITIL Object
+         // tabnum 1 : Processing Ticket
+         // a case may be solved or not (ex: PIR tasks for Change Management)
+
+         // don't display message if arbehaviours is install and activated
+         $itemtype = strtolower($itemtype);
+         if ((!$plugin->isInstalled('arbehaviours') || !$plugin->isActivated('arbehaviours'))
+            && isset($_SESSION['glpiactiveprofile'][$itemtype.'_status'])) {
+
+            echo Html::scriptBlock("
+               //$('head').append('<style type=\"text/css\">li.solution {pointer-events:none; opacity:0.3;}</style>');
+               //debugger;
+               $('a.action-solution').css({pointerEvents: 'none', opacity: 0.3});
+               glpi_toast_info('At least one \'Process case\' is running!<br> Adding a solution is currently disabled!', 'Solution disabled', {delay: Math.pow(2, 31) - 1});
+            ");
+
+            //self::displayMessage(__('At least one \'Process case\' is running!<br/>Adding a solution is currently disabled!', 'processmaker'), false, INFO);
+
+            ////backup current $_SESSION['glpiactiveprofile'][$itemtype.'_status']
+            //$_SESSION['glpiactiveprofile'][$itemtype.'_status_pm_save'] = $_SESSION['glpiactiveprofile'][$itemtype.'_status'];
+
+            //// for all $params['options']['itemtype'].status, we must disable solved (life cycles)
+            //foreach ($_SESSION['glpiactiveprofile'][$itemtype.'_status'] as $key => $value) {
+            //   //$_SESSION['glpiactiveprofile'][$itemtype.'_status'][$key][CommonITILObject::SOLVED] = 0;
+            //}
+         }
+      }
+
       if (!is_array($params['item']) && is_subclass_of($params['item'], 'CommonITILTask')) {
          // must check if Task is bound to a PM task
          $pmTask = new PluginProcessmakerTask($params['item']->getType());
@@ -2431,36 +2446,23 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
             }
          }
          if ($is_pmtask) {
-            $params['item']->fields['can_edit'] = false; // to prevent task edition
-
-            // replace ##ticket.url##_PluginProcessmakerCase$processmakercases by a setActiveTab to the Case panel
-            $taskCat = new TaskCategory;
-            $taskCat->getFromDB($params['item']->fields['taskcategories_id']);
-            $taskComment = isset($taskCat->fields['comment']) ? $taskCat->fields['comment'] : '';
-            if (Session::haveTranslations('TaskCategory', 'comment')) {
-               $params['item']->fields['content'] = str_replace('##processmaker.taskcomment##',
-                  DropdownTranslation::getTranslatedValue($taskCat->getID(), 'TaskCategory', 'comment', $_SESSION['glpilanguage'], $taskComment), $params['item']->fields['content']);
-            } else {
-               $params['item']->fields['content'] = str_replace('##processmaker.taskcomment##', $taskComment, $params['item']->fields['content']);
-            }
             $taskJSId = strtolower("viewitem".$params['item']->getType().$params['item']->getId()); //.$params['options']['rand']);
-
+            $dataItemId = $params['item']->getId();
             $tmpCase = new PluginProcessmakerCase;
             $tmpCase->getFromDB($pmTask->fields['plugin_processmaker_cases_id']);
             $urlLink = $tmpCase->getLinkURL().'&forcetab=PluginProcessmakerTask$'.$pmTask->fields['items_id'];
 
             echo Html::scriptBlock("
                function $taskJSId(ev) {
-                     //debugger;
                      if ($(ev.target).parent('.read_more').length == 0) {
                         document.location='$urlLink';
                      }
                   };
-               $('#$taskJSId').find('.item_content').on('click', $taskJSId).css('cursor', 'pointer');
-               $('#$taskJSId').find('.read_more').css('cursor', 'auto');
+               $('div[data-items-id=\"$dataItemId\"]').find('.text-content').on('click', $taskJSId).css('cursor', 'pointer');
+               $('div[data-items-id=\"$dataItemId\"]').find('.read_more').css('cursor', 'auto');
                $('tr[id=\"$taskJSId\"]').children().on('click', $taskJSId).css('cursor', 'pointer');
                $(function() {
-                  $('#{$taskJSId}').find('.displayed_content span.state').parent().append(
+                  $('div[data-items-id=\"$dataItemId\"]').find('.timeline-item-buttons').prepend(
                      '<a class=\"pm_task pm_task_badge\" href=\"{$urlLink}\">".str_replace("'", "\\'", $tmpCase->fields['name'])."' +
                      '<span class=\"pm_task pm_task_case\" case-id=\"{$tmpCase->fields['id']}\">{$tmpCase->fields['id']}</span>' +
                      '</a>'
@@ -2470,9 +2472,6 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                //   $('#$taskJSId').find('.displayed_content > div').last().html().replace(/(.*?)(<br>.*)/, '<span class=\"pm_task pm_task_category\">$1</span>$2')
                //);
             ");
-
-            $params['item']->fields['content'] = str_replace(["\n##processmakercase.url##", '\n##processmakercase.url##', '##processmakercase.url##'], "", $params['item']->fields['content']);
-
             // in order to set NavigationList
             Session::initNavigateListItems('PluginProcessmakerCase',
                         //TRANS : %1$s is the itemtype name,
@@ -2483,65 +2482,56 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       }
    }
 
+   static function show_in_timeline_processmaker($params) {
+      foreach($params['timeline'] as $key => $timelineObject) {
+         if (is_subclass_of($timelineObject['type'], 'CommonITILTask')) {
+            $pmTask = new PluginProcessmakerTask($timelineObject['type']);
+            $is_pmtask = $pmTask->getFromDB($timelineObject['item']['id']);
+            if (!$is_pmtask && $timelineObject['item']['state'] == Planning::INFO) {
+               // look if it is a meta task for this process
+               // means a re-assign or an un-claim task info
+               $pm_process = new PluginProcessmakerProcess;
+               $restrict=[
+                                     'WHERE'  => [
+                                     'taskcategories_id'  => $timelineObject['item']['taskcategories_id']
+                                     ],
+                           ];
+               //if ($pm_process->getFromDBByQuery(" WHERE `taskcategories_id` = ".$params['item']->fields['taskcategories_id'])) {
+               if ($pm_process->getFromDBByRequest($restrict)) {
+                  // then look into content to get case id
+                  $re = '/<input name=\'caseid\' type=\'hidden\' value=\'(?\'caseid\'\d+)\'><input name=\'taskid\' type=\'hidden\' value=\'(?\'taskid\'\d+)\'>/';
+                  if (preg_match($re, $timelineObject['item']['content'], $matches)) {
+                     // here we get the case id and the task id
+                     $is_pmtask = $pmTask->getFromDB($matches['taskid']);
+                  }
+               }
+            }
+            if ($is_pmtask) {
+               $timelineObject['item']['can_edit'] = false; // to prevent task edition
+               $timelineObject['item']['can_promote'] = false; // to prevent task promote to ticket
 
-    /**
-     * Summary of pre_show_tab_arbehaviours
-     * @param array $params info about tab to be shown
-     * @return void
-     */
-   static function pre_show_tab_processmaker($params) {
-      //global $pmHideSolution;
-      $plugin = new Plugin();
-      $itemtype = $params['item']->getType();
-      if (in_array($itemtype, ['Ticket', 'Problem', 'Change'])
-         && $params['options']['id']
-         && $params['options']['itemtype'] == $itemtype
-         && $params['options']['tabnum'] == 1
-         && !PluginProcessmakerCase::canSolve($params)
-         && Session::getCurrentInterface() == "central") {
-         // then we are in an ITIL Object
-         // tabnum 1 : Processing Ticket
-         // a case may be solved or not (ex: PIR tasks for Change Management)
-
-         // don't display message if arbehaviours is install and activated
-         $itemtype = strtolower($itemtype);
-         if ((!$plugin->isInstalled('arbehaviours') || !$plugin->isActivated('arbehaviours'))
-            && isset($_SESSION['glpiactiveprofile'][$itemtype.'_status'])) {
-
-            echo Html::scriptBlock("
-               //$('head').append('<style type=\"text/css\">li.solution {pointer-events:none; opacity:0.3;}</style>');
-               //debugger;
-               $('li.solution').css({pointerEvents: 'none', opacity: 0.3});
-
-            ");
-
-            self::displayMessage(__('At least one \'Process case\' is running!<br/>Adding a solution is currently disabled!', 'processmaker'), false, INFO);
-
-            ////backup current $_SESSION['glpiactiveprofile'][$itemtype.'_status']
-            //$_SESSION['glpiactiveprofile'][$itemtype.'_status_pm_save'] = $_SESSION['glpiactiveprofile'][$itemtype.'_status'];
-
-            //// for all $params['options']['itemtype'].status, we must disable solved (life cycles)
-            //foreach ($_SESSION['glpiactiveprofile'][$itemtype.'_status'] as $key => $value) {
-            //   //$_SESSION['glpiactiveprofile'][$itemtype.'_status'][$key][CommonITILObject::SOLVED] = 0;
-            //}
+               // replace ##ticket.url##_PluginProcessmakerCase$processmakercases by a setActiveTab to the Case panel
+               $taskCat = new TaskCategory;
+               $taskCat->getFromDB($timelineObject['item']['taskcategories_id']);
+               $taskComment = isset($taskCat->fields['comment']) ? $taskCat->fields['comment'] : '';
+               if (Session::haveTranslations('TaskCategory', 'comment')) {
+                  $taskCategorytranslation = DropdownTranslation::getTranslatedValue($taskCat->getID(), 'TaskCategory', 'comment', $_SESSION['glpilanguage'], $taskComment);
+                  $timelineObject['item']['content'] = str_replace('##processmaker.taskcomment##',
+                     !is_null($taskCategorytranslation) ? $taskCategorytranslation : '' ,
+                     $timelineObject['item']['content']
+                  );
+               } else {
+                  $timelineObject['item']['content'] = str_replace('##processmaker.taskcomment##', $taskComment, $timelineObject['item']['content']);
+               }
+               //$tmpCase = new PluginProcessmakerCase;
+               //$tmpCase->getFromDB($pmTask->fields['plugin_processmaker_cases_id']);
+               $timelineObject['item']['content'] = str_replace(["\n##processmakercase.url##", '\n##processmakercase.url##', '##processmakercase.url##'], "", $timelineObject['item']['content']);
+               $timelineObject['item']['content'] = nl2br($timelineObject['item']['content']);
+               $params['timeline'][$key] = $timelineObject;
+            }
          }
       }
    }
-
-
-   //public static function post_show_tab_processmaker($params) {
-
-   //   //$itemtype = strtolower($params['item']->getType());
-   //   //if (isset($_SESSION['glpiactiveprofile'][$itemtype.'_status_pm_save'])) {
-   //   //   // we must restore rigths
-   //   //   // replace $_SESSION['glpiactiveprofile'][$itemtype.'_status'] with saved value
-
-   //   //   $_SESSION['glpiactiveprofile'][$itemtype.'_status'] = $_SESSION['glpiactiveprofile'][$itemtype.'_status_pm_save'];
-   //   //   unset($_SESSION['glpiactiveprofile'][$itemtype.'_status_save']);
-   //   //}
-
-   //}
-
 
     /**
      * Summary of getItemUsers
@@ -2758,12 +2748,12 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
             //if ($pmtask->getFromDBByQuery("WHERE itemtype = '$pmtask_itemtype' AND items_id = $pmtask_items_id")) {
             if ($pmtask->getFromDBByRequest($restrict)) {
 
-               if (!in_array("tasks", $item->html_tags)) {
+               if (!in_array("tasks", $item->tag_descriptions)) {
                   $item->html_tags[] = "tasks"; // to force GLPI to keep the below HTML tags, otherwise it will apply a Html::entities_deep() to the task.description
                }
 
                $task['##task.description##'] = str_replace('##processmaker.taskcomment##', $task['##task.categorycomment##'], $task['##task.description##']);
-               $task['##task.description##'] = Html::nl2br_deep($task['##task.description##']);
+               $task['##task.description##'] = nl2br($task['##task.description##']);
 
                //$restrict=[
                //                       'WHERE'  => [
@@ -3313,7 +3303,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                               ]);
                //$res = $PM_DB->query("SELECT APP_UID FROM SUB_APPLICATION WHERE APP_PARENT='{$myCase->fields['case_guid']}' AND DEL_INDEX_PARENT={$route->delIndex} AND SA_STATUS='ACTIVE'"); // AND DEL_THREAD_PARENT={$route->delThread} seems like it is not set to correct threadIndex
                //if ($row = $res->next() && $PM_DB->numrows($res) == 1) {
-               if ($res->numrows() == 1 && $row = $res->next()) {
+               if ($res->numrows() == 1 && $row = $res->current()) {
                   // then new task is a sub-process,
                   //$row = $PM_DB->fetch_assoc($res);
 

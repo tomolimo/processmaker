@@ -2,7 +2,7 @@
 /*
 -------------------------------------------------------------------------
 ProcessMaker plugin for GLPI
-Copyright (C) 2014-2022 by Raynet SAS a company of A.Raymond Network.
+Copyright (C) 2014-2023 by Raynet SAS a company of A.Raymond Network.
 
 https://www.araymond.com/
 -------------------------------------------------------------------------
@@ -223,7 +223,7 @@ class PluginProcessmakerTaskCategory extends CommonDBTM
      ]);
 
       // there is only one row
-      $taskCat = $res->next();
+      $taskCat = $res->current();
       $pmtaskcat->showFormHeader();
 
       echo "<input type=hidden name=categories_id value='".$item->getID()."'/>";
@@ -345,38 +345,7 @@ class PluginProcessmakerTaskCategory extends CommonDBTM
    * @return true if succeed else false
    **/
    function getFromGUID($task_guid) {
-      global $DB;
-
-      $res = $DB->request(
-                     $this->getTable(),
-                     [
-                     'pm_task_guid' => $task_guid
-                     ]
-      );
-      if ($res) {
-         if ($res->numrows() != 1) {
-            return false;
-         }
-         $this->fields = $res->next();
-         if (is_array($this->fields) && count($this->fields)) {
-            return true;
-         }
-      }
-
-      //$query = "SELECT *
-      //          FROM `".$this->getTable()."`
-      //          WHERE `pm_task_guid` = '$task_guid'";
-
-      //if ($result = $DB->query($query)) {
-      //   if ($DB->numrows($result) != 1) {
-      //      return false;
-      //   }
-      //   $this->fields = $DB->fetch_assoc($result);
-      //   if (is_array($this->fields) && count($this->fields)) {
-      //      return true;
-      //   }
-      //}
-      return false;
+      return $this->getFromDBByCrit(['pm_task_guid' => $task_guid]);
    }
 
     /**
@@ -402,7 +371,7 @@ class PluginProcessmakerTaskCategory extends CommonDBTM
          if ($res->numrows() != 1) {
             return false;
          }
-         $this->fields = $res->next();
+         $this->fields = $res->current();
          if (is_array($this->fields) && count($this->fields)) {
             return true;
          }

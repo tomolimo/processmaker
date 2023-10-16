@@ -2,7 +2,7 @@
 /*
 -------------------------------------------------------------------------
 ProcessMaker plugin for GLPI
-Copyright (C) 2014-2022 by Raynet SAS a company of A.Raymond Network.
+Copyright (C) 2014-2023 by Raynet SAS a company of A.Raymond Network.
 
 https://www.araymond.com/
 -------------------------------------------------------------------------
@@ -26,7 +26,7 @@ along with this plugin. If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------
 */
 
-use function GuzzleHttp\Psr7\mimetype_from_filename;
+use GuzzleHttp\Psr7\MimeType;
 
 
 /**
@@ -140,7 +140,7 @@ class PluginProcessmakerDocument extends CommonDBTM {
             'is_recursive' => 1,
             'name'         => $doc->filename,
             'users_id'     => $users_id,
-            'mime'         => mimetype_from_filename($doc->filename),
+            'mime'         => MimeType::fromFilename($doc->filename),
             ]);
          $this->add([
             'plugin_processmaker_cases_id' => $cases_id,
