@@ -2,7 +2,7 @@
 /*
 -------------------------------------------------------------------------
 ProcessMaker plugin for GLPI
-Copyright (C) 2014-2022 by Raynet SAS a company of A.Raymond Network.
+Copyright (C) 2014-2023 by Raynet SAS a company of A.Raymond Network.
 
 https://www.araymond.com/
 -------------------------------------------------------------------------
@@ -38,17 +38,17 @@ class PluginProcessmakerMenu extends CommonGLPI {
          return [];
       }
 
-      $pm_plugin_url = Plugin::getWebDir('processmaker');
-      $front_page = "$pm_plugin_url/front";
+      //$pm_plugin_url = Plugin::getWebDir('processmaker');
       $menu = [];
       $menu['title'] = self::getMenuName();
-      $menu['page']  = "$front_page/process.php";
+      $menu['page']  = PluginProcessmakerProcess::getSearchURL(false);
       $menu['links']['search'] = PluginProcessmakerProcess::getSearchURL(false);
       if (Session::haveRightsOr("config", [READ, UPDATE])) {
          $menu['links']['config'] = PluginProcessmakerConfig::getFormURL(false);
       }
-      $menu['icon'] = "'></i><img src=\"$pm_plugin_url/pics/processmaker-xxs.png\" style=\"vertical-align: middle;\"/><i class='";
+      //$menu['icon'] = '{% verbatim %}"></i><img src="'.$pm_plugin_url.'/pics/processmaker-xxs.png" style="vertical-align: middle;"/><i class="{% endverbatim %}';
 
+      //$menu['icon'] = "\"src=\"$pm_plugin_url/pics/processmaker-xxs.png\" style=\"vertical-align: middle;";
       $itemtypes = ['PluginProcessmakerProcess' => 'processes',
                     'PluginProcessmakerCaselink' => 'caselinks'
             ];

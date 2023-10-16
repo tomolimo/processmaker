@@ -1,8 +1,9 @@
 <?php
+use Symfony\Component\DomCrawler\Crawler;
 /*
 -------------------------------------------------------------------------
 ProcessMaker plugin for GLPI
-Copyright (C) 2014-2022 by Raynet SAS a company of A.Raymond Network.
+Copyright (C) 2014-2023 by Raynet SAS a company of A.Raymond Network.
 
 https://www.araymond.com/
 -------------------------------------------------------------------------
@@ -109,96 +110,70 @@ function processMakerShowCase($users_id, $from_helpdesk) {
       $buffer = ob_get_clean();
 
       // to change this HTML code
-      $dom = new DOMDocument();
-
-      // will convert '&' to '&amp;', '<' to '&lt;' and '>' to '&gt;'
-      $buffer = htmlspecialchars($buffer, ENT_NOQUOTES);
-      // will restore '&lt;' to '<' and '&gt;' to '>'
-      // so that only the already escaped entites will get the double encoding
-      // will also change </b> end of bold into a local identifier
-      $endOfBold = 'end_of_bold'.rand();
-      $endOfSpan = 'end_of_span'.rand();
-      $buffer = str_replace(['&lt;', '&gt;', '</b>', '</span>'], ['<', '>', $endOfBold, $endOfSpan], $buffer);
-
-      // will convert any UTF-8 char that can't be expressed in ASCII into an HTML entity
-      $buffer = mb_convert_encoding($buffer, 'HTML-ENTITIES');
-
-      $dom->loadHTML($buffer, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD );
-      $xpath = new DOMXPath($dom);
+      $crawler = new Crawler();
+      $crawler->addHtmlContent($buffer);
 
       // hide some fields
-      $list = [ 'name', 'type', 'locations_id', 'itilcategories_id', 'items_id', 'add' ];
-      $xpath_str = '//*[@name="'.implode( '"]/ancestor::tr[1] | //*[@name="', $list ).'"]/ancestor::tr[1]';
-      $res = $xpath->query($xpath_str);
-      foreach ($res as $elt) {
-         $elt->setAttribute( 'style', 'display:none;');
-      }
+      $list = [ 'name', 'type', 'locations_id', 'itilcategories_id', 'items_id'];
+
+      $crawler->filter('[name='. implode('], [name=', $list) .']')->each(function (Crawler $node) {
+         $node->closest('.form-field')->getNode(0)->setAttribute('style', 'display:none;');
+      });
+      $crawler->filter('[name=add]')->getNode(0)->setAttribute('style', 'display:none;');
 
       // add an input for processguid in the form
-      $res = $xpath->query('//form[@name="helpdeskform"]');
-      $input = $res->item(0)->appendChild(new DOMElement('input'));
+      $formNode = $crawler->filter('#itil-form');
+      $input = $formNode->getNode(0)->appendChild(new DOMElement('input'));
       $input->setAttribute('name', 'processmaker_process_guid');
       $input->setAttribute('type', 'hidden');
       $input->setAttribute('value', $caseInfo->processId);
 
       // add an input for processid in the form
-      $input = $res->item(0)->appendChild(new DOMElement('input'));
+      $input = $formNode->getNode(0)->appendChild(new DOMElement('input'));
       $input->setAttribute('name', 'processmaker_processes_id');
       $input->setAttribute('type', 'hidden');
       $input->setAttribute('value', $_REQUEST['processes_id']);
 
       // let insert in form the guid of the case
-      $input = $res->item(0)->appendChild(new DOMElement('input'));
+      $input = $formNode->getNode(0)->appendChild(new DOMElement('input'));
       $input->setAttribute('name', 'processmaker_caseguid');
       $input->setAttribute('type', 'hidden');
       $input->setAttribute('value', $caseInfo->caseId);
 
       // let insert in form the number of the case
-      $input = $res->item(0)->appendChild(new DOMElement('input'));
+      $input = $formNode->getNode(0)->appendChild(new DOMElement('input'));
       $input->setAttribute('name', 'processmaker_casenum');
       $input->setAttribute('type', 'hidden');
       $input->setAttribute('value', $caseInfo->caseNumber);
 
       // let insert in form the delindex of the case
-      $input = $res->item(0)->appendChild(new DOMElement('input'));
+      $input = $formNode->getNode(0)->appendChild(new DOMElement('input'));
       $input->setAttribute('name', 'processmaker_delindex');
       $input->setAttribute('type', 'hidden');
       $input->setAttribute('value', $caseInfo->currentUsers[0]->delIndex);
 
       // let insert in form the action
-      $input = $res->item(0)->appendChild(new DOMElement('input'));
+      $input = $formNode->getNode(0)->appendChild(new DOMElement('input'));
       $input->setAttribute('name', 'processmaker_action');
       $input->setAttribute('type', 'hidden');
       $input->setAttribute('value', 'routecase');
 
 
       // special case for content textarea which is in the same tr than the file upload
-      $res = $xpath->query('//*[@name="content"]/ancestor::div[1] | //*[@name="content"]/ancestor::tr[1]/td[1]');
-      foreach ($res as $elt) {
-         $elt->setAttribute( 'style', 'display:none;');
-      }
-
-      $res = $xpath->query('//*[@name="content"]/ancestor::td[1]');
-      foreach ($res as $elt) {
-         // there should be only one td
-         $elt->setAttribute( 'colspan', '2');
-      }
-
-      $res = $xpath->query('//*[@name="content"]/ancestor::tr[1]');
-      $table = $xpath->query('//*[@name="add"]/ancestor::table[1]');
-
-      $tr = $table->item(0)->insertBefore(new DOMElement('tr'), $res->item(0));
-
-      $td = $tr->appendChild(new DOMElement('td'));
-      $td->setAttribute('colspan', '2');
-
-      $iframe = $td->appendChild(new DOMElement('iframe'));
-
+      $crawler->filter('textarea[name=content]')->closest('div.field-container')->children()->getNode(0)->setAttribute('style', 'display:none');
+      $descriptionContainer = $crawler->filter('textarea[name=content]')->closest('div.field-container');
+      $formField = $descriptionContainer->closest('div.form-field');
+      $cardBody = $formField->closest('div.card-body');
+      $cardBody->children()->getNode(0)->setAttribute('class', 'col-md-12');
+      $formField->children('label')->getNode(0)->setAttribute('style', 'display:none');
+      $descriptionContainer->getNode(0)->setAttribute('class', 'col-md-12');
+      $containerDivNode = $descriptionContainer->getNode(0)->insertBefore(new DOMElement('div'), $descriptionContainer->getNode(0)->firstChild);
+      $iframeParentDiv = $containerDivNode->appendChild(new DOMElement('div'));
+      $iframe = $iframeParentDiv->appendChild(new DOMElement('iframe'));
       $pmCaseUser = $caseInfo->currentUsers[0]; // by default
       $paramsURL = "DEL_INDEX={$pmCaseUser->delIndex}&action={$caseInfo->caseStatus}";
 
       $iframeId = 'caseiframe';
-
       $iframe->setAttribute('id', $iframeId);
       $iframe->setAttribute('width', '100%' );
       $iframe->setAttribute('style', 'border:none;' );
@@ -216,22 +191,10 @@ function processMakerShowCase($users_id, $from_helpdesk) {
          ]));
       $iframe->setAttribute(
           'src',
-          "{$PM_SOAP->serverURL}/cases/cases_Open?sid={$PM_SOAP->getPMSessionID()}&APP_UID={$caseInfo->caseId}&{$paramsURL}&glpi_data={$glpi_data}"
+"{$PM_SOAP->serverURL}/cases/cases_Open?sid={$PM_SOAP->getPMSessionID()}&APP_UID={$caseInfo->caseId}&{$paramsURL}&glpi_data={$glpi_data}"
           );
 
-      // set the width and the title of the first table th
-      $th = $xpath->query('//*[@name="add"]/ancestor::table[1]/*/th[1]');
-      $th->item(0)->setAttribute('width', '30%');
-      $th->item(0)->nodeValue = $caseInfo->processName;
-
-      $buffer = $dom->saveHTML();
-
-      // revert back </b> and </span>
-      $buffer = str_replace([$endOfSpan, $endOfBold], ['</span>', '</b>'], $buffer);
-
-      // will revert back any char converted above
-      $buffer = mb_convert_encoding($buffer, 'UTF-8', 'HTML-ENTITIES');
-      echo $buffer;
+      echo $crawler->html();
    }
 
 }

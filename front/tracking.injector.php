@@ -2,7 +2,7 @@
 /*
 -------------------------------------------------------------------------
 ProcessMaker plugin for GLPI
-Copyright (C) 2014-2022 by Raynet SAS a company of A.Raymond Network.
+Copyright (C) 2014-2023 by Raynet SAS a company of A.Raymond Network.
 
 https://www.araymond.com/
 -------------------------------------------------------------------------

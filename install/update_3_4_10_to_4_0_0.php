@@ -2,7 +2,7 @@
 /*
 -------------------------------------------------------------------------
 ProcessMaker plugin for GLPI
-Copyright (C) 2014-2022 by Raynet SAS a company of A.Raymond Network.
+Copyright (C) 2014-2023 by Raynet SAS a company of A.Raymond Network.
 
 https://www.araymond.com/
 -------------------------------------------------------------------------
@@ -33,11 +33,10 @@ function update_3_4_10_to_4_0_0() {
 
       $glpikey = new GLPIKey;
       // Fetch old key and migrate
-      $sodium_key = null;
       $old_key = $glpikey->getLegacyKey();
 
       if ($DB instanceof DBmysql) {
-         return $glpikey->migrateFieldsInDb($sodium_key, $old_key);
+         return $glpikey->migrateFieldsInDb($old_key);
       }
 
       return false;

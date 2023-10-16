@@ -2,7 +2,7 @@
 /*
  -------------------------------------------------------------------------
 ProcessMaker plugin for GLPI
-Copyright (C) 2014-2022 by Raynet SAS a company of A.Raymond Network.
+Copyright (C) 2014-2023 by Raynet SAS a company of A.Raymond Network.
 
 https://www.araymond.com/
 -------------------------------------------------------------------------
@@ -25,12 +25,12 @@ You should have received a copy of the GNU General Public License
 along with this plugin. If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------
  */
-define('PROCESSMAKER_VERSION', '4.4.0');
+define('PROCESSMAKER_VERSION', '5.0.0');
 
 // Minimal GLPI version, inclusive
-define('PLUGIN_PROCESSMAKER_MIN_GLPI', '9.5');
+define('PLUGIN_PROCESSMAKER_MIN_GLPI', '10.0');
 // Maximum GLPI version, exclusive
-define('PLUGIN_PROCESSMAKER_MAX_GLPI', '9.6');
+define('PLUGIN_PROCESSMAKER_MAX_GLPI', '10.1');
 
 // Minimal PM version, inclusive
 define('PLUGIN_PROCESSMAKER_MIN_PM', '3.3.0-community-RE-2.0');
@@ -80,6 +80,9 @@ function plugin_init_processmaker() {
 
       $PLUGIN_HOOKS['pre_show_tab']['processmaker']
          = ['PluginProcessmakerProcessmaker', 'pre_show_tab_processmaker'];
+
+      $PLUGIN_HOOKS['show_in_timeline']['processmaker']
+         = ['PluginProcessmakerProcessmaker', 'show_in_timeline_processmaker'];
       //$PLUGIN_HOOKS['post_show_tab']['processmaker']
       //   = ['PluginProcessmakerProcessmaker', 'post_show_tab_processmaker'];
 
@@ -94,7 +97,7 @@ function plugin_init_processmaker() {
          $PLUGIN_HOOKS['menu_toadd']['processmaker']['helpdesk'] = 'PluginProcessmakerCase';
       }
 
-      Plugin::registerClass('PluginProcessmakerProcess', [ 'massiveaction_nodelete_types' => true] );
+      Plugin::registerClass('PluginProcessmakerProcess'); // , [ 'massiveaction_nodelete_types' => true] );
 
       $hooks = [];
       foreach ($objects as $obj) {
@@ -152,6 +155,7 @@ function plugin_init_processmaker() {
                $PLUGIN_HOOKS['add_javascript']['processmaker'] = ["js/central.js"];
                break;
          }
+         $PLUGIN_HOOKS['add_javascript']['processmaker'][] = "js/processmaker_icon.js";
 
          //$PLUGIN_HOOKS['add_javascript']['processmaker'][] = "js/jsloader.js";
          $PLUGIN_HOOKS['add_javascript']['processmaker'][] = "js/cases.js";
@@ -202,8 +206,8 @@ function plugin_version_processmaker() {
 
 // Optional : check prerequisites before install : may print errors or add to message after redirect
 function plugin_processmaker_check_prerequisites() {
-   if (version_compare(GLPI_VERSION, '9.5', 'lt') || version_compare(GLPI_VERSION, '9.6', 'ge')) {
-      echo "This plugin requires GLPI >= 9.5 and < 9.6";
+   if (version_compare(GLPI_VERSION, PLUGIN_PROCESSMAKER_MIN_GLPI, 'lt') || version_compare(GLPI_VERSION, PLUGIN_PROCESSMAKER_MAX_GLPI, 'ge')) {
+      echo "This plugin requires GLPI >= ". PLUGIN_PROCESSMAKER_MIN_GLPI ." and < " . PLUGIN_PROCESSMAKER_MAX_GLPI;
       return false;
    }
 

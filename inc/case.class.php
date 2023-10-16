@@ -2,7 +2,7 @@
 /*
 -------------------------------------------------------------------------
 ProcessMaker plugin for GLPI
-Copyright (C) 2014-2022 by Raynet SAS a company of A.Raymond Network.
+Copyright (C) 2014-2023 by Raynet SAS a company of A.Raymond Network.
 
 https://www.araymond.com/
 -------------------------------------------------------------------------
@@ -285,8 +285,8 @@ class PluginProcessmakerCase extends CommonDBTM {
          $info = sprintf($info,
                          $this->getNameID(['forceid' => true]),
                          DropdownTranslation::getTranslatedValue($glpi_task->fields['taskcategories_id'], 'TaskCategory', 'name', $_SESSION['glpilanguage'], $taskCat->fields['name']),
-                         Html::clean($dbu->getUserName(isset($glpi_task->oldvalues['users_id_tech']) ? $glpi_task->oldvalues['users_id_tech'] : 0)),
-                         Html::clean($groups_id_tech['name']),
+                         $dbu->getUserName(isset($glpi_task->oldvalues['users_id_tech']) ? $glpi_task->oldvalues['users_id_tech'] : 0),
+                         $groups_id_tech['name'],
                          $options['comment']
                         );
          // unescape some chars and replace CRLF, CR or LF by <br/>
@@ -398,18 +398,18 @@ class PluginProcessmakerCase extends CommonDBTM {
          $taskCat = new TaskCategory;
          $taskCat->getFromDB( $glpi_task->fields['taskcategories_id'] );
          $task_name = DropdownTranslation::getTranslatedValue($glpi_task->fields['taskcategories_id'], 'TaskCategory', 'name', $_SESSION['glpilanguage'], $taskCat->fields['name']);
-         $new_tech_name = Html::clean($dbu->getUserName($newTech));
+         $new_tech_name = $dbu->getUserName($newTech);
          if ($old_users_tech_id) {
-            $info = __('<b>Task re-assigned!</b><br/><b>Case: </b>%s<br/><b>Task: </b>"%s" has been re-assigned from "%s" to "%s".<br/><b>Reason: </b>%s', 'processmaker');
+            $info = __('<b>Task re-assigned!</b><br><b>Case: </b>%s<br><b>Task: </b>"%s" has been re-assigned from "%s" to "%s".<br><b>Reason: </b>%s', 'processmaker');
             $info = sprintf($info,
                             $this->getNameID(['forceid' => true]),
                             $task_name,
-                            Html::clean($dbu->getUserName(isset($glpi_task->oldvalues['users_id_tech']) ? $glpi_task->oldvalues['users_id_tech'] : 0)),
+                            $dbu->getUserName(isset($glpi_task->oldvalues['users_id_tech']) ? $glpi_task->oldvalues['users_id_tech'] : 0),
                             $new_tech_name,
                             $options['comment']
                            );
          } else {
-            $info = __('<b>Task assigned!</b><br/><b>Case: </b>%s<br/><b>Task: </b>"%s" has been assigned to "%s".<br/><b>Reason: </b>%s', 'processmaker');
+            $info = __('<b>Task assigned!</b><br><b>Case: </b>%s<br><b>Task: </b>"%s" has been assigned to "%s".<br><b>Reason: </b>%s', 'processmaker');
             $info = sprintf($info,
                             $this->getNameID(['forceid' => true]),
                             $task_name,
@@ -420,7 +420,8 @@ class PluginProcessmakerCase extends CommonDBTM {
          $info .= "<input name='caseid' type='hidden' value='".$this->getID()."'><input name='taskid' type='hidden' value='".$pm_task->getID()."'>";
 
          // unescape some chars and replace CRLF, CR or LF by <br/>
-         $info = str_replace(["\\'", '\\"', '\r\n', '\r', '\n'], ["'", '"', '<br>', '<br>', '<br>'], $info);
+         $info = str_replace(["\\'", '\\"'], ["'", '"'], $info);
+         $info = nl2br($info);
 
          $glpi_task->add([$foreignkey         => $glpi_task->fields[$foreignkey],
                           'date'              => $glpi_task->fields['date'],
@@ -546,7 +547,7 @@ class PluginProcessmakerCase extends CommonDBTM {
                //$res = $PM_DB->query("SELECT APP_UID FROM SUB_APPLICATION WHERE APP_PARENT='{$this->fields['case_guid']}' AND DEL_INDEX_PARENT={$currentTask->delIndex} AND SA_STATUS='ACTIVE'");
                //if ($res && $PM_DB->numrows($res) == 1) {
                //   $row = $PM_DB->fetch_assoc($res);
-               if ($res->numrows() == 1 && $row = $res->next()) {
+               if ($res->numrows() == 1 && $row = $res->current()) {
                   $sub_case = new PluginProcessmakerCase;
                   $sub_case->getFromGUID($row['APP_UID']);
                   $case_url .= $sub_case->getID()."-".$currentTask->delIndex;
@@ -700,7 +701,7 @@ class PluginProcessmakerCase extends CommonDBTM {
 
       echo "<tr><th colspan=12 >".sprintf($maintitle, $itemtype::getTypeName(1))."</th></tr>";
 
-      Ticket::commonListHeader(Search::HTML_OUTPUT);
+      $itemtype::commonListHeader(Search::HTML_OUTPUT);
 
       $itemtype::showShort($case->fields['items_id']);
 
@@ -728,7 +729,7 @@ class PluginProcessmakerCase extends CommonDBTM {
 
       // will not show delete button if case is a sub-process
       // and will show it only if it is a draft or if current glpi user has the right to delete cases and session is central
-      if ($case->canPurgeItem($case->getID())) {
+      if ($case->canPurgeItem()) {
 
          // then propose a button to delete case
          // the button will be effectively shown by the showFormButtons()
@@ -1119,14 +1120,14 @@ class PluginProcessmakerCase extends CommonDBTM {
          return [];
       }
 
-      $pm_plugin_url = Plugin::getWebDir('processmaker');
-      $front_page = "$pm_plugin_url/front";
+      //$pm_plugin_url = Plugin::getWebDir('processmaker');
+      //$front_page = "$pm_plugin_url/front";
       $menu = [];
       $menu['title'] = self::getTypeName(Session::getPluralNumber());
-      $menu['page']  = "$front_page/case.php";
-      $menu['icon'] = "'></i><img src=\"$pm_plugin_url/pics/processmaker-xxs.png\" style=\"vertical-align: middle;\"/><i class='";
-
-      $menu['links']['search'] = PluginProcessmakerCase::getSearchURL(false);
+      $menu['page']  = self::getSearchURL(false);
+      //$menu['icon'] = '"></i><img src="'.$pm_plugin_url.'/pics/processmaker-xxs.png" style="vertical-align: middle;"/><i class="';
+      //$menu['icon'] = "\"src=\"$pm_plugin_url/pics/processmaker-xxs.png\" style=\"vertical-align: middle;";
+      $menu['links']['search'] = self::getSearchURL(false);
       if (Session::haveRightsOr("config", [READ, UPDATE])) {
          $menu['links']['config'] = PluginProcessmakerConfig::getFormURL(false);
       }
@@ -1509,17 +1510,17 @@ class PluginProcessmakerCase extends CommonDBTM {
       $process->getFromDB($this->fields['plugin_processmaker_processes_id']);
 
       $ong = [];
-      if (self::isLayoutWithMain()) {
-         $this->addDefaultFormTab($ong);
-      }
+      //if (self::isLayoutWithMain()) {
+      //   $this->addDefaultFormTab($ong);
+      //}
 
       if (!$process->fields['maintenance']) {
          $this->addStandardTab('PluginProcessmakerTask', $ong, $options);
       }
 
-      if (!self::isLayoutWithMain()) {
+      //if (!self::isLayoutWithMain()) {
          $this->addStandardTab(__CLASS__, $ong, $options);
-      }
+      //}
 
       if (!$process->fields['maintenance']) {
          $this->addStandardTab('PluginProcessmakerCasemap', $ong, $options);

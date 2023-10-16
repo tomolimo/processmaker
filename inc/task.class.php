@@ -239,7 +239,7 @@ class PluginProcessmakerTask extends CommonITILTask
                                  ]
                               ]
                ]);
-            if ($res->numrows() == 1 && $row = $res->next()) {
+            if ($res->numrows() == 1 && $row = $res->current()) {
                //$row = $PM_DB->fetch_assoc($res);
                $loc_case = new PluginProcessmakerCase;
                $loc_case->getFromGUID($row['APP_UID']);
@@ -344,7 +344,7 @@ class PluginProcessmakerTask extends CommonITILTask
 
       // get infos for the current task
       $restrict = [
-          "id" => $tabnum
+          'id' => $tabnum
           ];
       $task = $dbu->getAllDataFromTable('glpi_plugin_processmaker_tasks', $restrict);
 

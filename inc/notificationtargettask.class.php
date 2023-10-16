@@ -1,8 +1,9 @@
 <?php
+use Glpi\Toolbox\Sanitizer;
 /*
 -------------------------------------------------------------------------
 ProcessMaker plugin for GLPI
-Copyright (C) 2014-2022 by Raynet SAS a company of A.Raymond Network.
+Copyright (C) 2014-2023 by Raynet SAS a company of A.Raymond Network.
 
 https://www.araymond.com/
 -------------------------------------------------------------------------
@@ -97,7 +98,7 @@ class PluginProcessmakerNotificationTargetTask extends PluginProcessmakerNotific
       foreach ($DB->request($query) as $row) {
          if (!isset($ptaskcats[$row['ptaskcat']])) {
             $temp->getFromDB($row['ptaskcat']);
-            $ptaskcats[$row['ptaskcat']] = $temp->fields['name'];
+            $ptaskcats[$row['ptaskcat']] = isset($temp->fields['name']) ? $temp->fields['name'] : '';
          }
          $temp->getFromDB($row['taskcat']);
 
@@ -161,10 +162,10 @@ class PluginProcessmakerNotificationTargetTask extends PluginProcessmakerNotific
       // task creator
       // should always be Process Maker user
       $dbu = new DbUtils();
-      $this->data['##task.author##'] = Html::clean($dbu->getUserName($taskobj->fields['users_id']));
+      $this->data['##task.author##'] = $dbu->getUserName($taskobj->fields['users_id']);
 
       // task editor
-      $this->data['##task.lastupdater##'] = Html::clean($dbu->getUserName($taskobj->fields['users_id_editor']));
+      $this->data['##task.lastupdater##'] = $dbu->getUserName($taskobj->fields['users_id_editor']);
 
       // task technician
       $this->data['##task.user##'] = '';
@@ -172,19 +173,19 @@ class PluginProcessmakerNotificationTargetTask extends PluginProcessmakerNotific
       $tech = new User;
       if ($taskobj->fields['users_id_tech'] > 0
           && $tech->getFromDB($taskobj->fields['users_id_tech'])) {
-         $this->data['##task.user##'] = Html::clean($dbu->getUserName($taskobj->fields['users_id_tech']));
+         $this->data['##task.user##'] = $dbu->getUserName($taskobj->fields['users_id_tech']);
          $this->data['##task.user.login##'] = $tech->fields['name'];
       }
       $oldtech = new User;
       if (isset($options['old_users_id_tech'])
           && $options['old_users_id_tech'] > 0
           && $oldtech->getFromDB($options['old_users_id_tech'])) {
-         $this->data['##task.former.user##'] = Html::clean($dbu->getUserName($options['old_users_id_tech']));
+         $this->data['##task.former.user##'] = $dbu->getUserName($options['old_users_id_tech']);
          $this->data['##task.former.user.login##'] = $oldtech->fields['name'];
       }
 
       // task group technician
-      $this->data['##task.group##'] = Html::clean(Toolbox::clean_cross_side_scripting_deep(Dropdown::getDropdownName("glpi_groups", $taskobj->fields['groups_id_tech'])), true, 2, false);
+      $this->data['##task.group##'] = implode(Sanitizer::encodeHtmlSpecialCharsRecursive(Dropdown::getDropdownArrayNames("glpi_groups", [$taskobj->fields['groups_id_tech']])));
 
       // task planning
       $this->data['##task.begin##'] = '';
