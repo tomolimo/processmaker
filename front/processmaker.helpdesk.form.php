@@ -1,4 +1,30 @@
 <?php
+/*
+-------------------------------------------------------------------------
+ProcessMaker plugin for GLPI
+Copyright (C) 2014-2022 by Raynet SAS a company of A.Raymond Network.
+
+https://www.araymond.com/
+-------------------------------------------------------------------------
+
+LICENSE
+
+This file is part of ProcessMaker plugin for GLPI.
+
+This file is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This plugin is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this plugin. If not, see <http://www.gnu.org/licenses/>.
+--------------------------------------------------------------------------
+ */
 include_once ("../../../inc/includes.php");
 
 
@@ -27,7 +53,14 @@ function processMakerShowProcessList ($ID, $from_helpdesk) {
    echo "<input type='hidden' name='itemtype' value='Ticket'>";
    echo "<input type='hidden' name='itilcategories_id' value='".$_REQUEST['itilcategories_id']."'>";
    echo "<input type='hidden' name='type' value='".$_REQUEST['type']."'>";
-   PluginProcessmakerProcess::dropdown( [ 'value' => 0, 'entity' => $_SESSION['glpiactive_entity'], 'name' => 'plugin_processmaker_processes_id' ]);
+   PluginProcessmakerProcess::dropdown([
+       'value'         => 0, 
+       'entity'        => $_SESSION['glpiactive_entity'], 
+       'name'          => 'plugin_processmaker_processes_id', 
+       'specific_tags' => [
+            'process_restrict' => 1
+            ]
+        ]);
    echo "</td><td class='center'>";
    echo "<input type='submit' name='additem' value='Start' class='submit'>";
    echo "</td></tr>";
@@ -52,37 +85,28 @@ function processMakerShowCase($users_id, $from_helpdesk) {
       // case is created
       // Must show it...
 
-      $rand = rand();
+      //$rand = rand();
 
-      $PM_SOAP->echoDomain();
-      echo "<script type='text/javascript' src='".$CFG_GLPI["root_doc"]."/plugins/processmaker/js/cases.helpdesk.js?rand=$rand'></script>";
+      //$PM_SOAP->echoDomain();
+      //echo "<script type='text/javascript' src='" .
+      //   Plugin::getWebDir('processmaker') .
+      //   "/js/cases.helpdesk.js?rand=$rand'></script>";
+      //echo Html::script(Plugin::getWebDir('processmaker') . "/js/cases.helpdesk.js", ['version' => PROCESSMAKER_VERSION]);
+      //$PM_SOAP->loadJS("/js/cases.js");
+
 
       $tkt = new Ticket;
 
-      // as showFormHelpdesk uses $_REQUEST, we must set it
-      $_REQUEST = $_REQUEST;
-
-      //// must be using bare text
-      //$save_rich_text = $CFG_GLPI["use_rich_text"];
-      //$CFG_GLPI["use_rich_text"] = false;
+      // as showFormHelpdesk uses $_POST, we must set it
+      $_POST = $_REQUEST;
 
       // to get the HTML code for the helpdesk form
-      $saved_ob_level = ob_get_level();
+      //$saved_ob_level = ob_get_level();
       ob_start();
 
       $tkt->showFormHelpdesk($users_id);
 
       $buffer = ob_get_clean();
-
-      //$CFG_GLPI["use_rich_text"] = $save_rich_text;
-
-      // 9.1 only: hack to fix an issue with the initEditorSystem which calls scriptStart without calling scriptEnd
-      if (ob_get_level() > $saved_ob_level) {
-         $buffer = ob_get_clean().$buffer;
-      }
-
-      //echo $buffer;
-      //return;
 
       // to change this HTML code
       $dom = new DOMDocument();
@@ -123,6 +147,31 @@ function processMakerShowCase($users_id, $from_helpdesk) {
       $input->setAttribute('type', 'hidden');
       $input->setAttribute('value', $_REQUEST['processes_id']);
 
+      // let insert in form the guid of the case
+      $input = $res->item(0)->appendChild(new DOMElement('input'));
+      $input->setAttribute('name', 'processmaker_caseguid');
+      $input->setAttribute('type', 'hidden');
+      $input->setAttribute('value', $caseInfo->caseId);
+
+      // let insert in form the number of the case
+      $input = $res->item(0)->appendChild(new DOMElement('input'));
+      $input->setAttribute('name', 'processmaker_casenum');
+      $input->setAttribute('type', 'hidden');
+      $input->setAttribute('value', $caseInfo->caseNumber);
+
+      // let insert in form the delindex of the case
+      $input = $res->item(0)->appendChild(new DOMElement('input'));
+      $input->setAttribute('name', 'processmaker_delindex');
+      $input->setAttribute('type', 'hidden');
+      $input->setAttribute('value', $caseInfo->currentUsers[0]->delIndex);
+
+      // let insert in form the action
+      $input = $res->item(0)->appendChild(new DOMElement('input'));
+      $input->setAttribute('name', 'processmaker_action');
+      $input->setAttribute('type', 'hidden');
+      $input->setAttribute('value', 'routecase');
+
+
       // special case for content textarea which is in the same tr than the file upload
       $res = $xpath->query('//*[@name="content"]/ancestor::div[1] | //*[@name="content"]/ancestor::tr[1]/td[1]');
       foreach ($res as $elt) {
@@ -136,11 +185,9 @@ function processMakerShowCase($users_id, $from_helpdesk) {
       }
 
       $res = $xpath->query('//*[@name="content"]/ancestor::tr[1]');
-      //$res = $xpath->query('//*[@name="add"]/ancestor::tr[@class="tab_bg_1"]/preceding-sibling::tr[1]');
       $table = $xpath->query('//*[@name="add"]/ancestor::table[1]');
 
       $tr = $table->item(0)->insertBefore(new DOMElement('tr'), $res->item(0));
-      //$tr = $table->item(0)->appendChild(new DOMElement('tr'));
 
       $td = $tr->appendChild(new DOMElement('td'));
       $td->setAttribute('colspan', '2');
@@ -150,11 +197,27 @@ function processMakerShowCase($users_id, $from_helpdesk) {
       $pmCaseUser = $caseInfo->currentUsers[0]; // by default
       $paramsURL = "DEL_INDEX={$pmCaseUser->delIndex}&action={$caseInfo->caseStatus}";
 
-      $iframe->setAttribute('id', 'caseiframe' );
-      $iframe->setAttribute('onload', "onLoadFrame( event, '{$caseInfo->caseId}', {$pmCaseUser->delIndex}, {$caseInfo->caseNumber}, '{$caseInfo->processName}') ;" );
+      $iframeId = 'caseiframe';
+
+      $iframe->setAttribute('id', $iframeId);
       $iframe->setAttribute('width', '100%' );
       $iframe->setAttribute('style', 'border:none;' );
-      $iframe->setAttribute('src', "{$PM_SOAP->serverURL}/cases/cases_Open?sid={$PM_SOAP->getPMSessionID()}&APP_UID={$caseInfo->caseId}&{$paramsURL}&rand=$rand&glpi_domain={$PM_SOAP->config->fields['domain']}" );
+
+      $glpi_data = urlencode(json_encode([
+         'glpi_url'               => $CFG_GLPI['url_base'],
+         'glpi_tabtype'           => 'task',
+         'glpi_iframeid'          => $iframeId,
+         'glpi_sid'               => $PM_SOAP->getPMSessionID(),
+         'glpi_app_uid'           => $caseInfo->caseId,
+         'glpi_pro_uid'           => $caseInfo->processId,
+         'glpi_del_index'         => $pmCaseUser->delIndex,
+         'glpi_hide_claim_button' => false,
+         'glpi_task_guid'         => $pmCaseUser->taskId
+         ]));
+      $iframe->setAttribute(
+          'src',
+          "{$PM_SOAP->serverURL}/cases/cases_Open?sid={$PM_SOAP->getPMSessionID()}&APP_UID={$caseInfo->caseId}&{$paramsURL}&glpi_data={$glpi_data}"
+          );
 
       // set the width and the title of the first table th
       $th = $xpath->query('//*[@name="add"]/ancestor::table[1]/*/th[1]');

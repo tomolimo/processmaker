@@ -25,15 +25,24 @@ You should have received a copy of the GNU General Public License
 along with this plugin. If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------
  */
-function update_3_2_8_to_3_2_9() {
-   global $DB;
+function update_4_0_1_to_4_0_2($config) {
+   global $DB, $PM_DB;
 
-   if (!$DB->fieldExists("glpi_plugin_processmaker_configs", "db_version")) {
-      $query = "ALTER TABLE `glpi_plugin_processmaker_configs`
-                  ADD COLUMN `db_version` VARCHAR(10) NULL;";
-      $DB->query($query) or die("error adding db_version field to glpi_plugin_processmaker_configs" . $DB->error());
+   if (!isset($PM_DB)) {
+      $PM_DB = new PluginProcessmakerDB($config);
    }
 
-   return '3.2.9';
+   // needs to add fields into glpi_plugin_processmaker_case table
+   $query = "ALTER TABLE `glpi_plugin_processmaker_cases`
+      ADD COLUMN `date_creation` TIMESTAMP NULL DEFAULT NULL AFTER `plugin_processmaker_cases_id`,
+      ADD COLUMN `date_mod` TIMESTAMP NULL DEFAULT NULL AFTER `date_creation`;";
+   $DB->query($query) or die("error when altering glpi_plugin_processmaker_case table" . $DB->error());
 
+   // needs to fill in the real dates from the APPLICATION table from PM
+   $query = "SELECT APP_NUMBER, APP_CREATE_DATE, APP_UPDATE_DATE FROM APPLICATION;";
+   foreach ($PM_DB->request($query) as $row) {
+      $DB->update('glpi_plugin_processmaker_cases', ['date_creation' => $row['APP_CREATE_DATE'], 'date_mod' => $row['APP_UPDATE_DATE']], ['id' => $row['APP_NUMBER']]);
+   }
+
+   return '4.0.2';
 }

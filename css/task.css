@@ -1,6 +1,5 @@
-<?php
-/*
--------------------------------------------------------------------------
+﻿/*
+ -------------------------------------------------------------------------
 ProcessMaker plugin for GLPI
 Copyright (C) 2014-2022 by Raynet SAS a company of A.Raymond Network.
 
@@ -25,15 +24,20 @@ You should have received a copy of the GNU General Public License
 along with this plugin. If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------
  */
-function update_3_2_8_to_3_2_9() {
-   global $DB;
+span.pm_task, a.pm_task {
+   float: right;
+   color: #fff !important;
+   border-radius: 8px;
+   padding-left: 8px;
+   line-height: 1.5;
+}
 
-   if (!$DB->fieldExists("glpi_plugin_processmaker_configs", "db_version")) {
-      $query = "ALTER TABLE `glpi_plugin_processmaker_configs`
-                  ADD COLUMN `db_version` VARCHAR(10) NULL;";
-      $DB->query($query) or die("error adding db_version field to glpi_plugin_processmaker_configs" . $DB->error());
-   }
+a.pm_task_badge {
+   background-color: #4185F4 !important;
+}
 
-   return '3.2.9';
-
+span.pm_task_case {
+   background-color: red !important;
+   padding-right: 8px;
+   margin-left: 8px;
 }

@@ -1,21 +1,8 @@
 <?php
+/**
+ */
 
 include ( "../../../inc/includes.php");
 
-$config = new PluginProcessmakerConfig();
-if (isset($_POST["update"])) {
-   $config->check($_POST['id'], UPDATE);
-
-   // save
-   $config->update($_POST);
-
-
-   Html::back();
-
-} else if (isset($_POST["refresh"])) {
-   $config->refresh($_POST); // used to refresh process list, task category list
-   Html::back();
-}
-
-Html::redirect($CFG_GLPI["root_doc"]."/front/config.form.php?forcetab=".
-             urlencode('PluginProcessmakerConfig$1'));
+Session::setActiveTab('Config', 'PluginProcessmakerConfig$1');
+Html::redirect($CFG_GLPI["root_doc"]."/front/config.form.php");

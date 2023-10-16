@@ -1,6 +1,44 @@
 <?php
+/*
+ -------------------------------------------------------------------------
+ProcessMaker plugin for GLPI
+Copyright (C) 2014-2022 by Raynet SAS a company of A.Raymond Network.
 
-define('PROCESSMAKER_VERSION', '4.0.11');
+https://www.araymond.com/
+-------------------------------------------------------------------------
+
+LICENSE
+
+This file is part of ProcessMaker plugin for GLPI.
+
+This file is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This plugin is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this plugin. If not, see <http://www.gnu.org/licenses/>.
+--------------------------------------------------------------------------
+ */
+define('PROCESSMAKER_VERSION', '4.4.0');
+
+// Minimal GLPI version, inclusive
+define('PLUGIN_PROCESSMAKER_MIN_GLPI', '9.5');
+// Maximum GLPI version, exclusive
+define('PLUGIN_PROCESSMAKER_MAX_GLPI', '9.6');
+
+// Minimal PM version, inclusive
+define('PLUGIN_PROCESSMAKER_MIN_PM', '3.3.0-community-RE-2.0');
+// Maximum PM version, inclusive
+define('PLUGIN_PROCESSMAKER_MAX_PM', '3.3.0-community-RE-2.99');
+
+define('PLUGIN_PROCESSMAKER_ROOT', Plugin::getPhpDir('processmaker'));
+
 
 // used for case cancellation
 define("CANCEL", 256);
@@ -114,6 +152,12 @@ function plugin_init_processmaker() {
                $PLUGIN_HOOKS['add_javascript']['processmaker'] = ["js/central.js"];
                break;
          }
+
+         //$PLUGIN_HOOKS['add_javascript']['processmaker'][] = "js/jsloader.js";
+         $PLUGIN_HOOKS['add_javascript']['processmaker'][] = "js/cases.js";
+
+         // css
+         $PLUGIN_HOOKS['add_css']['processmaker'] = 'css/task.css';
       }
 
       $PLUGIN_HOOKS['use_massive_action']['processmaker'] = 1;
@@ -125,14 +169,15 @@ function plugin_init_processmaker() {
       // otherwise post-only users can't see cases and then can't act on a case task.
       $PLUGIN_HOOKS['change_profile']['processmaker'] = 'plugin_processmaker_change_profile';
 
-      //if ($plugin->isActivated('processmaker')) {
+      // in order to manage the password encryption which has been in glpi_configs table since 4.4.0
+      $PLUGIN_HOOKS['secured_configs']['processmaker'] = [
+          'pm_admin_passwd',
+          'pm_dbserver_passwd',
+          ];
 
-         // in order to manage the password encryption
-         $pmglpikey = new PluginProcessmakerGlpikey;
-         foreach ($pmglpikey->getFields() as $fld) {
-            $PLUGIN_HOOKS['secured_fields'][] = [$fld];
-         }
-      //}
+      // in order to push some info to javascript
+      $PLUGIN_HOOKS['redefine_menus']['processmaker'] = 'plugin_processmaker_redefine_menus';
+
    }
 
 }
@@ -148,8 +193,8 @@ function plugin_version_processmaker() {
       'homepage'       => 'https://github.com/tomolimo/processmaker',
       'requirements'   => [
          'glpi'   => [
-            'min' => '9.5',
-            'max' => '9.6'
+            'min' => PLUGIN_PROCESSMAKER_MIN_GLPI,
+            'max' => PLUGIN_PROCESSMAKER_MAX_GLPI
          ],
       ]
    ];

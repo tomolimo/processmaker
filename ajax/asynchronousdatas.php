@@ -1,4 +1,31 @@
 <?php
+/*
+-------------------------------------------------------------------------
+ProcessMaker plugin for GLPI
+Copyright (C) 2014-2022 by Raynet SAS a company of A.Raymond Network.
+
+https://www.araymond.com/
+-------------------------------------------------------------------------
+
+LICENSE
+
+This file is part of ProcessMaker plugin for GLPI.
+
+This file is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This plugin is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this plugin. If not, see <http://www.gnu.org/licenses/>.
+--------------------------------------------------------------------------
+ */
+
 if (strpos($_SERVER['PHP_SELF'], "asynchronousdatas.php")) {
    $AJAX_INCLUDE = 1;
    define('GLPI_ROOT', '../../..');
@@ -27,10 +54,10 @@ if (isset( $_SERVER['REQUEST_METHOD'] )  && $_SERVER['REQUEST_METHOD']=='OPTIONS
 
             $asyncdata = new PluginProcessmakerCrontaskaction;
             if (isset($datas['id']) && $asyncdata->getFromDB( $datas['id'] ) && $asyncdata->fields['state'] == PluginProcessmakerCrontaskaction::WAITING_DATA) {
-               $initialdatas = json_decode($asyncdata->fields['postdata'], true);
+               $initialdatas = json_decode($asyncdata->fields['formdata'], true);
                $initialdatas['form'] = array_merge( $initialdatas['form'], $datas['form'] );
-               $postdata = json_encode($initialdatas, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
-               $asyncdata->update( [ 'id' => $datas['id'], 'state' => PluginProcessmakerCrontaskaction::DATA_READY, 'postdata' => $postdata ] );
+               $formdata = json_encode($initialdatas, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
+               $asyncdata->update( [ 'id' => $datas['id'], 'state' => PluginProcessmakerCrontaskaction::DATA_READY, 'formdata' => $formdata ] );
                $ret = [ 'code' => '0', 'message' => 'Done' ];
             } else {
                $ret = [ 'code' => '2', 'message' => 'Case is not existing, or state is not WAITING_DATA' ];

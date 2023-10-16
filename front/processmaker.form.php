@@ -1,4 +1,30 @@
 <?php
+/*
+-------------------------------------------------------------------------
+ProcessMaker plugin for GLPI
+Copyright (C) 2014-2022 by Raynet SAS a company of A.Raymond Network.
+
+https://www.araymond.com/
+-------------------------------------------------------------------------
+
+LICENSE
+
+This file is part of ProcessMaker plugin for GLPI.
+
+This file is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This plugin is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this plugin. If not, see <http://www.gnu.org/licenses/>.
+--------------------------------------------------------------------------
+ */
 include_once ("../../../inc/includes.php");
 
 switch ($_REQUEST["action"]) {
@@ -61,8 +87,15 @@ switch ($_REQUEST["action"]) {
             // case is created
               // Must show it...
               //
-              $rand = rand( );
-              Html::redirect($CFG_GLPI['root_doc']."/plugins/processmaker/front/processmaker.helpdesk.form.php?processes_id=".$_REQUEST['plugin_processmaker_processes_id']."&case_guid=".$resultCase->caseId."&rand=$rand&itilcategories_id=".$_REQUEST["itilcategories_id"]."&type=".$_REQUEST["type"]."&entities_id=".$_REQUEST['entities_id']);
+            $rand = rand( );
+            Html::redirect(
+               Plugin::getWebDir('processmaker') . "/front/processmaker.helpdesk.form.php?processes_id=" . $_REQUEST['plugin_processmaker_processes_id'] .
+               "&case_guid=".$resultCase->caseId .
+               "&rand=$rand" .
+               "&itilcategories_id=" . $_REQUEST["itilcategories_id"] .
+               "&type=" . $_REQUEST["type"] .
+               "&entities_id=" . $_REQUEST['entities_id']
+            );
 
          } else {
             Session::addMessageAfterRedirect( PluginProcessmakerProcessmaker::getPMErrorMessage($resultCase->status_code)."<br>$resultCase->message ($resultCase->status_code)", true, ERROR);
@@ -85,10 +118,10 @@ switch ($_REQUEST["action"]) {
                                                  $_REQUEST['users_id'],
                                                  $_REQUEST['users_id_recipient'],
                                                  ['comment' => $_REQUEST['comment']]);
-            if ($pmResponse) {
+            if ($pmResponse->status_code == 0) {
                Session::addMessageAfterRedirect(__('Task re-assigned!', 'processmaker'), true, INFO);
             } else {
-               Session::addMessageAfterRedirect(__('Error re-assigning task: ', 'processmaker').$pmResponse->message, true, ERROR);
+               Session::addMessageAfterRedirect(__('Error re-assigning task: ', 'processmaker') . $pmResponse->message, true, ERROR);
             }
          } elseif ($_REQUEST['users_id_recipient'] == 0) {
             // we are unassigning a task, i.e.: task un-claim
