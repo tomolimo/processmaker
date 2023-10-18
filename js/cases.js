@@ -107,6 +107,12 @@ glpi_pm = {
             // iframe has been validated then we must validate parent form
             //debugger;
 
+            // set the content field (description)
+            if (typeof tinyMCE != 'undefined' && tinyMCE.activeEditor && data.userrequestsumup && data.userrequestsumup != '_') {
+               let userrequestsumup = data.userrequestsumup.replace(/(\r\n)|(\r)|(\n)/g, '<br>');
+               tinyMCE.activeEditor.setContent(userrequestsumup);
+            }
+
             // the GLPI form must be submitted to validate fields
             myformjq = $('#' + data.glpi_data.glpi_iframeid).parents('form');
             myform = myformjq[0];
