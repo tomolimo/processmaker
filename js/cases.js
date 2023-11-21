@@ -88,6 +88,9 @@ glpi_pm = {
 
                myform.pm_glpi_form_validate = false;
 
+               if (myformjq.attr('data-submitted') != undefined) {
+                  myformjq.attr('data-submitted', 'false');
+               }
                let button = myformjq.find('[name=add][type="submit"]');
                myform.requestSubmit(button.length ? button[0] : undefined);
             }
