@@ -28,18 +28,21 @@ along with this plugin. If not, see <http://www.gnu.org/licenses/>.
 glpi_pm = {
    add_tab_panel: function (name, title, html){
       //debugger ;
-      var loctabs = $('#tabspanel').next('div[id^=tabs]');
+      var loctabs = $('#tabspanel');
       if( !loctabs[0].children[name] ) { // panel is not yet existing, create one
-         if( loctabs.find('a[href=\"#'+name+'\"]').length == 0 ) {
-            loctabs.find('ul').append( '<li><a href=\'#' + name + '\'>' + title + '</a></li>' );
+         if (loctabs.find('a[data-bs-target=\"#'+name+'\"]').length == 0 ) {
+            loctabs.append("<li class='nav-item ms-0'><a class='nav-link justify-content-between pe-1' href='#' data-bs-toggle='tab' title='" + title + "' data-bs-target='#" + name + "'>" + title + "</a></li>" );
          }
-
-         loctabs.append( '<div id=\'' + name + '\'>' + html + '</div>');
-         loctabs.tabs('refresh'); // to show the panel
+         var select = loctabs.next('select');
+         select.append("<option value='" + (parseInt(select.children().last().val()) + 1) + "'>" + title + "</option >")
+         var tabcontentdiv = select.next('div');
+         tabcontentdiv.append("<div class='tab-pane fade' role='tabpanel' id='" + name + "'>" + html + "</div>");
+         $("a[data-bs-target='#" +name +"']").tab("show");
+         //tabcontentdiv.tabs('refresh'); // to show the panel
       } 
       // activate it
-      var tabIndex = loctabs.find('a[href=\"#'+name+'\"]').parent().index();
-      loctabs.tabs( 'option', 'active', tabIndex) ; // to activate it
+     //var tabIndex = loctabs.find('a[href=\"#'+name+'\"]').parent().index();
+     // loctabs.tabs( 'option', 'active', tabIndex) ; // to activate it
    },
 
 
