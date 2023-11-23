@@ -25,7 +25,7 @@ You should have received a copy of the GNU General Public License
 along with this plugin. If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------
  */
-define('PROCESSMAKER_VERSION', '5.0.2');
+define('PROCESSMAKER_VERSION', '5.0.3');
 
 // Minimal GLPI version, inclusive
 define('PLUGIN_PROCESSMAKER_MIN_GLPI', '10.0');
