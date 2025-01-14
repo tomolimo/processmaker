@@ -25,14 +25,26 @@ You should have received a copy of the GNU General Public License
 along with this plugin. If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------
  */
-/**
- * selfservicedraft short summary.
- *
- * selfservicedraft description.
- *
- * @version 1.0
- * @author morono
- */
-class PluginProcessmakerSelfservicedraft extends CommonDBTM {
+function update_4_5_0_to_4_6_0() {
+   global $DB;
 
+   if (!$DB->tableExists('glpi_plugin_processmaker_processcategories')) {
+        $query = "CREATE TABLE `glpi_plugin_processmaker_processcategories` (
+					`id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+					`name` VARCHAR(250) NOT NULL DEFAULT '',
+					`category_guid` VARCHAR(32) NULL,
+					PRIMARY KEY (`id`),
+					UNIQUE INDEX `category_guid` (`category_guid`)
+					);";
+
+       $DB->query($query) or die("error when creating glpi_plugin_processmaker_processcategories table" . $DB->error());
+   }
+    if (!$DB->fieldExists('glpi_plugin_processmaker_processes', 'plugin_processmaker_processcategories_id')) {
+        $query = "ALTER TABLE `glpi_plugin_processmaker_processes`
+					ADD COLUMN `plugin_processmaker_processcategories_id` INT UNSIGNED NULL AFTER `is_reassignreason_mandatory`;
+					";
+
+       $DB->query($query) or die("error when creating glpi_plugin_processmaker_processcategories table" . $DB->error());
+    }
+   return '4.6.0';
 }

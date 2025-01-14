@@ -2,7 +2,7 @@
 /*
 -------------------------------------------------------------------------
 ProcessMaker plugin for GLPI
-Copyright (C) 2014-2023 by Raynet SAS a company of A.Raymond Network.
+Copyright (C) 2014-2024 by Raynet SAS a company of A.Raymond Network.
 
 https://www.araymond.com/
 -------------------------------------------------------------------------
@@ -35,10 +35,21 @@ along with this plugin. If not, see <http://www.gnu.org/licenses/>.
  */
 class PluginProcessmakerTask extends CommonITILTask
 {
+    private $users_id_sender;
+
    private $itemtype;
+
    function __construct($itemtype = 'TicketTask') {
       parent::__construct();
-      $this->itemtype = $itemtype;
+      $this->itemtype        = $itemtype;
+      $this->users_id_sender = 0;
+   }
+
+   function getSender() {
+       return $this->users_id_sender;
+   }
+   function setSender($users_id) {
+       $this->users_id_sender = $users_id;
    }
 
 
@@ -66,7 +77,6 @@ class PluginProcessmakerTask extends CommonITILTask
    function getFromDB($items_id) {
       global $DB;
 
-      //if ($this->getFromDBByQuery(" WHERE itemtype='".$this->itemtype."' AND items_id=$items_id;" )) {
       if ($this->getFromDBByRequest([
                      'WHERE'  => [
                         'itemtype'  => $this->itemtype,
@@ -137,7 +147,6 @@ class PluginProcessmakerTask extends CommonITILTask
       $events = [];
 
       if (isset($params['start'])) {
-         $params['begin'] = $params['start']; //'2000-01-01 00:00:00';
          if ($params['type'] == 'group') {
             $params['who_group'] = $params['who'];
             $params['whogroup'] = $params['who'];
@@ -188,7 +197,7 @@ class PluginProcessmakerTask extends CommonITILTask
 
       $caseInfo = $case->getCaseInfo();
 
-      if (property_exists($caseInfo, 'currentUsers')) {
+      if (property_exists($caseInfo, 'currentUsers') && $caseInfo->caseStatus != PluginProcessmakerCase::CANCELLED) {
          $dbu = new DbUtils;
          $GLPICurrentPMUserId = PluginProcessmakerUser::getPMUserId(Session::getLoginUserID());
 
@@ -377,7 +386,7 @@ class PluginProcessmakerTask extends CommonITILTask
 
 
             $used_users = [];
-            $used_users[] = $current_assigned_user;
+            //$used_users[] = $current_assigned_user; // not set to be able to alert when trying to re-assigned to the same user
             if (array_key_exists($currentUser->taskId, $prevent_assign)) {
                if (!is_array($prevent_assign[$currentUser->taskId])) {
                   $prevent_assign[$currentUser->taskId] = [$prevent_assign[$currentUser->taskId]];
@@ -401,7 +410,7 @@ class PluginProcessmakerTask extends CommonITILTask
                      taskGuid  : '{$currentUser->taskId}',
                      delIndex  : {$task[$tabnum]['del_index']},
                      delThread : {$currentUser->delThread},
-//                     used      : [".join(',', array_unique($used_users))."] // not set to be able to alert when trying to re-assigned to the same user
+                     used      : [".join(',', array_unique($used_users))."]
                      }";
             echo html::scriptBlock("$('#divUsers-{$task[$tabnum]['del_index']}-{$rand}').load('".Plugin::getWebDir('processmaker')."/ajax/task_users.php', $data);");
          }
@@ -470,7 +479,7 @@ class PluginProcessmakerTask extends CommonITILTask
       // search if at least one active notification is existing for that pm task with that event 'task_update_'.$glpi_task->fields['taskcategories_id']
       $res = PluginProcessmakerNotificationTargetTask::getNotifications($type, $task->fields['taskcategories_id'], $item->fields['entities_id']);
       if ($res['notifications'] && count($res['notifications']) > 0) {
-         NotificationEvent::raiseEvent($res['event'],
+         return NotificationEvent::raiseEvent($res['event'],
                                        $this,
                                        ['plugin_processmaker_cases_id' => $this->fields['plugin_processmaker_cases_id'],
                                         'itemtype'          => $item->getType(),
@@ -482,7 +491,7 @@ class PluginProcessmakerTask extends CommonITILTask
                                         'obj'               => $item
                                        ]);
       } else {
-         NotificationEvent::raiseEvent(PluginProcessmakerNotificationTargetTask::getDefaultGLPIEvents($type),
+         return NotificationEvent::raiseEvent(PluginProcessmakerNotificationTargetTask::getDefaultGLPIEvents($type),
                                        $item,
                                        ['plugin_processmaker_cases_id' => $this->fields['plugin_processmaker_cases_id'],
                                         'itemtype'                     => $item->getType(),

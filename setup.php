@@ -2,7 +2,7 @@
 /*
  -------------------------------------------------------------------------
 ProcessMaker plugin for GLPI
-Copyright (C) 2014-2023 by Raynet SAS a company of A.Raymond Network.
+Copyright (C) 2014-2024 by Raynet SAS a company of A.Raymond Network.
 
 https://www.araymond.com/
 -------------------------------------------------------------------------
@@ -25,7 +25,7 @@ You should have received a copy of the GNU General Public License
 along with this plugin. If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------
  */
-define('PROCESSMAKER_VERSION', '5.0.3');
+define('PROCESSMAKER_VERSION', '5.2.3');
 
 // Minimal GLPI version, inclusive
 define('PLUGIN_PROCESSMAKER_MIN_GLPI', '10.0');
@@ -33,7 +33,7 @@ define('PLUGIN_PROCESSMAKER_MIN_GLPI', '10.0');
 define('PLUGIN_PROCESSMAKER_MAX_GLPI', '10.1');
 
 // Minimal PM version, inclusive
-define('PLUGIN_PROCESSMAKER_MIN_PM', '3.3.0-community-RE-2.0');
+define('PLUGIN_PROCESSMAKER_MIN_PM', '3.3.0-community-RE-2.8');
 // Maximum PM version, inclusive
 define('PLUGIN_PROCESSMAKER_MAX_PM', '3.3.0-community-RE-2.99');
 
@@ -63,6 +63,7 @@ function plugin_init_processmaker() {
       Plugin::registerClass('PluginProcessmakerTask', ['notificationtemplates_types' => true]);
 
       Plugin::registerClass('PluginProcessmakerTaskCategory', ['addtabon' => 'TaskCategory']);
+      Plugin::registerClass('PluginProcessmakerProcessCategory');
 
       if (Session::haveRightsOr("config", [READ, UPDATE])) {
          Plugin::registerClass('PluginProcessmakerConfig', ['addtabon' => 'Config']);
@@ -77,6 +78,8 @@ function plugin_init_processmaker() {
 
       $PLUGIN_HOOKS['pre_show_item']['processmaker']
          = ['PluginProcessmakerProcessmaker', 'pre_show_item_processmaker'];
+      $PLUGIN_HOOKS['post_show_item']['processmaker']
+         = ['PluginProcessmakerProcessmaker', 'post_show_item_processmaker'];
 
       $PLUGIN_HOOKS['pre_show_tab']['processmaker']
          = ['PluginProcessmakerProcessmaker', 'pre_show_tab_processmaker'];

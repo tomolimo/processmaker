@@ -2,7 +2,7 @@
 /*
 -------------------------------------------------------------------------
 ProcessMaker plugin for GLPI
-Copyright (C) 2014-2023 by Raynet SAS a company of A.Raymond Network.
+Copyright (C) 2014-2024 by Raynet SAS a company of A.Raymond Network.
 
 https://www.araymond.com/
 -------------------------------------------------------------------------
@@ -42,6 +42,9 @@ if (!defined('GLPI_ROOT')) {
 class PluginProcessmakerTaskCategory extends CommonDBTM
 {
 
+   const REMINDER_NONE = -10;
+   const REMINDER_STOP = -20;
+
    static $rightname = 'taskcategory';
 
    function getTabNameForItem(CommonGLPI $item, $withtemplate = 0) {
@@ -54,6 +57,46 @@ class PluginProcessmakerTaskCategory extends CommonDBTM
          }
       }
       return __('Task list', 'processmaker');
+   }
+
+
+   static function getAllAfterReminders() {
+        $possible_values                      = [];
+        $possible_values[self::REMINDER_NONE] = __('None');
+
+        $min_values = [15, 30];
+        foreach ($min_values as $val) {
+            $possible_values[$val * MINUTE_TIMESTAMP] = sprintf(_n('%d minute', '%d minutes', $val), $val);
+        }
+
+        $h_values = [1, 2, 4, 8, 12];
+        foreach ($h_values as $val) {
+            $possible_values[$val * HOUR_TIMESTAMP] = sprintf(_n('%d hour', '%d hours', $val), $val);
+        }
+        $d_values = [1, 2, 4, 6];
+        foreach ($d_values as $val) {
+            $possible_values[$val * DAY_TIMESTAMP] = sprintf(_n('%d day', '%d days', $val), $val);
+        }
+        $w_values = [1, 2, 3];
+        foreach ($w_values as $val) {
+            $possible_values[$val * WEEK_TIMESTAMP] = sprintf(_n('%d week', '%d weeks', $val), $val);
+        }
+        $m_values = [1, 2];
+        foreach ($m_values as $val) {
+            $possible_values[$val * MONTH_TIMESTAMP] = sprintf(_n('%d month', '%d months', $val), $val);
+        }
+
+        return $possible_values;
+   }
+
+
+   static function getAfterReminder($value) {
+       $arr = self::getAllAfterReminders();
+       if (array_key_exists($value, $arr)) {
+           return $arr[$value];
+       } else {
+           return null;
+       }
    }
 
 
@@ -272,6 +315,7 @@ class PluginProcessmakerTaskCategory extends CommonDBTM
       echo Dropdown::getYesNo($taskCat['is_subprocess']);
       echo "</td>";
 
+      echo "<tr class='headerRow'><th colspan='2' >" . __('Re-assign reason setting', 'processmaker') . "</th><th colspan='2' ></th></tr>";
       echo "<tr class='tab_bg_1'>";
       echo "<td>" . __('Re-assign reason is mandatory', 'processmaker') . "</td>";
       echo "<td class='b' nowrap>";
@@ -291,11 +335,52 @@ class PluginProcessmakerTaskCategory extends CommonDBTM
              .$elements[self::inheritedReAssignReason($taskCat['is_reassignreason_mandatory'], $taskCat['gppp_is_reassignreason_mandatory'])]
             ."</div>";
       }
+      echo "</td></tr>";
+
+      echo "<tr class='headerRow'><th colspan='2' >" . __('Reminder settings', 'processmaker') . "</th><th colspan='2' ></th></tr>";
+      echo "<tr class='tab_bg_1'>";
+      echo "<td>" . __('Before task (once)', 'processmaker');
+      echo "&nbsp;";
+      echo "&nbsp;";
+      Html::showToolTip(__('Can be overridden by GLPI_ITEM_TASK_REMINDER', 'processmaker'), [
+          'link' => 'https://github.com/tomolimo/processmaker/wiki/Case-Variables#glpi_item_task_reminder',
+          'linktarget' => '_blank'
+          ]);
+      echo "</td>";
+      echo "<td class='b'>";
+      Dropdown::showFromArray('before_time', self::getAllBeforeReminders(), [
+          'value' => $pmtaskcat->fields['before_time']
+          ]);
       echo "</td>";
 
+      echo "<td>" . __('Outdated task (every)', 'processmaker') . "</td>";
+      echo "<td class='b'>";
+      Dropdown::showFromArray('after_time', self::getAllAfterReminders(), [
+         'value'   => $pmtaskcat->fields['after_time'],
+      ]);
+      echo "</td></tr>";
 
+      echo "<tr class='tab_bg_1'>";
+
+      echo "<td>" . __('Sender (default: GLPI)', 'processmaker') . "</td>";
+      echo "<td class='b'>";
+      User::dropdown(['name'                 => 'users_id',
+                      'display_emptychoice'  => true,
+                      'right'                => 'all',
+                      'value'                => $pmtaskcat->fields['users_id']]);
+      echo "</td></tr>";
       $pmtaskcat->showFormButtons(['candel'=>false]);
    }
+
+
+   function prepareInputForUpdate($input) {
+       if (isset($input['_planningrecall']['before_time'])) {
+            $input['reminder_recall_time'] = $input['_planningrecall']['before_time'];
+            unset($input['_planningrecall']);
+       }
+       return $input;
+   }
+
 
    /**
     * Summary of displayTabContentForItem
@@ -364,9 +449,6 @@ class PluginProcessmakerTaskCategory extends CommonDBTM
                         'taskcategories_id' => $catid
                      ]
          );
-      //$query = "SELECT *
-      //          FROM `".$this->getTable()."`
-      //          WHERE `taskcategories_id` = $catid";
       if ($res) {
          if ($res->numrows() != 1) {
             return false;
@@ -376,69 +458,247 @@ class PluginProcessmakerTaskCategory extends CommonDBTM
             return true;
          }
       }
-      //if ($result = $DB->query($query)) {
-      //   if ($DB->numrows($result) != 1) {
-      //      return false;
-      //   }
-      //   $this->fields = $DB->fetch_assoc($result);
-      //   if (is_array($this->fields) && count($this->fields)) {
-      //      return true;
-      //   }
-      //}
       return false;
    }
 
-   ///**
-   // * Summary of dropdown
-   // * @param mixed $options
-   // * @return mixed
-   // */
-   //static function dropdown($options=array()) {
-   //   global $CFG_GLPI;
-   //   if (isset($options['value'])) {
-   //      $that = new self;
-   //      $that->getFromDB($options['value']);
-   //      $options['value'] = $that->fields['taskcategories_id'];
-   //   }
+   /**
+   * summary of cronInfo
+   *      Gives localized information about 1 cron task
+   * @param $name of the task
+   * @return array of strings
+   */
+   static function cronInfo ($name) {
+      switch ($name) {
+         case 'pmreminders' :
+            return ['description' => __('To send auto-reminders and overdue reminders.', 'processmaker')];
+      }
+      return [];
+   }
 
-   //   $options['url'] = Plugin::getWebDir('processmaker').'/ajax/dropdownTaskcategories.php';
-   //   return Dropdown::show( 'TaskCategory', $options );
+   /**
+    * Summary of cronPMReminders
+    * @param mixed $crontask 
+    * @return int
+    */
+   static function cronPMReminders ($crontask = null) {
+      global $DB, $CFG_GLPI, $PM_SOAP;
+      
+      if (!$CFG_GLPI["use_notifications"]) {
+         return 0;
+      }
 
-   //}
+      $pmconfig = $PM_SOAP->config;
 
-   ///**
-   // * Execute the query to select ProcesssmakerTaskcategories
-   // *
-   // * @param $count true if execute an count(*),
-   // * @param $search pattern
-   // *
-   // * @return mysql result set.
-   // **/
-   //static function getSqlSearchResult ($count=true, $search='') {
-   //   global $DB, $CFG_GLPI;
+      $cron_status = 0;
+      $iterator = $DB->request([
+         'SELECT'    => ['glpi_plugin_processmaker_taskrecalls.*',
+                         'glpi_plugin_processmaker_tasks.itemtype as gppt-itemtype',
+                         'glpi_plugin_processmaker_tasks.items_id as gppt-items_id',
+                         'glpi_plugin_processmaker_tasks.plugin_processmaker_cases_id as gppt-cases_id',
+                         'glpi_plugin_processmaker_cases.id as gppc-id',
+                         'glpi_plugin_processmaker_cases.name as gppc-name',
+                         'glpi_plugin_processmaker_cases.case_status as gppc-case_status'],
+         'DISTINCT'  => true,
+         'FROM'      => 'glpi_plugin_processmaker_taskrecalls',
+         'LEFT JOIN' => [
+            'glpi_plugin_processmaker_taskalerts'  => [
+               'ON' => [
+                  'glpi_plugin_processmaker_taskrecalls'  => 'id',
+                  'glpi_plugin_processmaker_taskalerts'   => 'plugin_processmaker_taskrecalls_id',
+               ]
+            ],
+            'glpi_plugin_processmaker_tasks' => [
+               'ON' => [
+                    'glpi_plugin_processmaker_tasks'       => 'id',
+                    'glpi_plugin_processmaker_taskrecalls' => 'plugin_processmaker_tasks_id'
+               ]
+            ],
+            'glpi_plugin_processmaker_cases' => [
+               'ON' => [
+                    'glpi_plugin_processmaker_cases' => 'id',
+                    'glpi_plugin_processmaker_tasks' => 'plugin_processmaker_cases_id'
+               ]
+            ],
+         ],
+         'WHERE'     => [
+            'NOT'                                              => ['glpi_plugin_processmaker_taskrecalls.when' => null],
+            'glpi_plugin_processmaker_taskrecalls.when'        => ['<', new \QueryExpression('NOW()')],
+            'glpi_plugin_processmaker_tasks.del_thread_status' => PluginProcessmakerTask::OPEN,
+            'OR' => [
+               ['glpi_plugin_processmaker_taskalerts.date'   => null],
+               ['glpi_plugin_processmaker_taskalerts.date' => ['<', new \QueryExpression($DB->quoteName('glpi_plugin_processmaker_taskrecalls.when'))]]]
+         ]
+      ]);
 
-   //   $orderby = '';
+      foreach ($iterator as $data) {
+         if ($data['gppc-case_status'] == PluginProcessmakerCase::CANCELLED) {
+             PluginProcessmakerCase::deleteReminders($data['gppc-id']);
+             continue;
+         } 
+         $pm_task = new PluginProcessmakerTask($data['gppt-itemtype']);
+         $pm_task->getFromDB($data['gppt-items_id']);
 
-   //   $where = ' WHERE glpi_plugin_processmaker_taskcategories.is_active=1 ';
+         // init sender
+         $pm_task->setSender($data['users_id']);
 
-   //   $join = ' LEFT JOIN glpi_taskcategories ON glpi_taskcategories.id = glpi_plugin_processmaker_taskcategories.taskcategories_id';
+         $glpi_task = new $data['gppt-itemtype'];
+         $glpi_task->fields = $pm_task->fields;
 
-   //   if ($count) {
-   //      $fields = " COUNT(DISTINCT glpi_plugin_processmaker_taskcategories.id) AS cpt ";
-   //   } else {
-   //      $fields = " DISTINCT glpi_taskcategories.id, glpi_taskcategories.completename AS name ";
-   //      $orderby = " ORDER BY glpi_taskcategories.completename ASC";
-   //   }
+         $itemtype = $pm_task->getItilObjectItemType();
+         $glpi_item = new $itemtype;
+         $glpi_item->getFromDB($pm_task->fields[$glpi_item->getForeignKeyField()]);
 
-   //   if (strlen($search)>0 && $search!=$CFG_GLPI["ajax_wildcard"]) {
-   //      $where .= " AND (glpi_taskcategories.completename $search
-   //                     OR glpi_taskcategories.comment $search) ";
-   //   }
+         $add_alert = false; // by default
+         $new_when = 0; // by default
+         if ($data['before_time'] >= 0) {
+             // then send task "before reminder"
+             if ($pm_task->sendNotification('task_reminder', $glpi_task, $glpi_item)) {
+                 // and now add an alert
+                 $add_alert = true;
+                 // then set the 'before_time' value to self::REMINDER_STOP to permit future "after reminders"
+                 $data['before_time'] = self::REMINDER_STOP;
+                 $pm_taskrecall = new PluginProcessmakerTaskrecall();
+                 $pm_taskrecall->update($data);
+             }
+             if ($data['after_time'] >= 0) {
+                 // if task "after reminder" is set, then compute new when for the first task "after reminder"
+                 $new_when = strtotime($pm_task->fields['end']) + $data['after_time'];
+             }
+         } elseif ($data['after_time'] >= 0) {
+             // then task "after reminder"
+             if ($pm_task->sendNotification('task_overdue', $glpi_task, $glpi_item)) {
+                 // and now add an alert
+                 $add_alert = true;
+                 // then compute the new when for the next task "after reminder"
+                 $new_when = strtotime($data['when']) + $data['after_time'];
 
-   //   $query = "SELECT $fields FROM glpi_plugin_processmaker_taskcategories $join ".$where." ".$orderby.";";
+                 // Add a follow-up in the hosting item to indicate the sending of the reminder
+                 $fu = new ITILFollowup();
+                 $input = $fu->fields;
 
-   //   return $DB->query($query);
-   //}
+                 $fucontent = sprintf(
+                     __("Case: '%s',<br>Task: '%s',<br>A reminder has been sent to:<br>", 'processmaker'),
+                     $data['gppc-name'],
+                     Dropdown::getDropdownName("glpi_taskcategories", $glpi_task->fields["taskcategories_id"])
+                     );
+
+                 if (isset($glpi_task->fields['users_id_tech']) && $glpi_task->fields['users_id_tech'] > 0) {
+                     // get infos for user
+                     $dbu = new DbUtils;
+                     $userinfos = $dbu->getUserName($glpi_task->fields['users_id_tech'], 2);
+                     $fucontent .= "-> " . $userinfos['name'] . "<br>";
+                 }
+
+                 if (isset($glpi_task->fields['groups_id_tech']) && $glpi_task->fields['groups_id_tech'] > 0) {
+                     // get infos for group
+                     $grp = new Group();
+                     $grp->getFromDB($glpi_task->fields['groups_id_tech']);
+                     $fucontent .= "-> " . $grp->fields['name'] . "<br>";
+                 }
+
+                 $input['content'] = $DB->escape($fucontent);
+                 $input['is_private'] = 0;
+                 //$input['requesttypes_id'] = ;
+                 $input['items_id'] = $glpi_item->getID();
+                 $input['users_id'] = ($data['users_id'] > 0 ? $data['users_id'] : $pmconfig['users_id']);
+                 $input['itemtype'] = $glpi_item->getType();
+
+                 $fu->add($input);
+             }
+         }
+
+         if ($new_when != 0) {
+            // if the new_when is less than glpi_currenttime, then set it to be greater than glpi_currenttime 
+            // to prevent send of many "after reminders" in case of late cron that missed one or several "after reminders"
+            $glpi_currenttime = strtotime($_SESSION["glpi_currenttime"]);
+            if ($new_when < $glpi_currenttime + $data['after_time']) {
+                $new_when = $glpi_currenttime + $data['after_time'];
+            }
+            $data['when'] = date("Y-m-d H:i:s", $new_when);
+            $pm_taskrecall = new PluginProcessmakerTaskrecall();
+            $pm_taskrecall->update($data);
+         }
+
+         if ($add_alert) {
+               $cron_status = 1;
+               $crontask->addVolume(1);
+               $crontask->log(sprintf(__('Reminder for case #%s has been sent!', 'processmaker'), $data['gppt-cases_id']));
+
+               $pm_taskalert = new PluginProcessmakerTaskalert();
+               $input["plugin_processmaker_taskrecalls_id"] = $data['id'];
+               $pm_taskalert->add($input);
+         } else {
+            // Clean item
+            $pr->delete($data);
+         }
+      }
+      return $cron_status;
+      }
 
 
+   static function getAllBeforeReminders() {
+        $possible_values                      = [];
+        $possible_values[self::REMINDER_NONE] = __('None');
+
+        $min_values = [0, 15, 30];
+        foreach ($min_values as $val) {
+            $possible_values[$val * MINUTE_TIMESTAMP] = sprintf(_n('%d minute', '%d minutes', $val), $val);
+        }
+
+        $h_values = [1, 2, 4, 8, 12];
+        foreach ($h_values as $val) {
+            $possible_values[$val * HOUR_TIMESTAMP] = sprintf(_n('%d hour', '%d hours', $val), $val);
+        }
+        $d_values = [1, 2];
+        foreach ($d_values as $val) {
+            $possible_values[$val * DAY_TIMESTAMP] = sprintf(_n('%d day', '%d days', $val), $val);
+        }
+        $w_values = [1];
+        foreach ($w_values as $val) {
+            $possible_values[$val * WEEK_TIMESTAMP] = sprintf(_n('%d week', '%d weeks', $val), $val);
+        }
+
+        return $possible_values;
+   }
+
+
+   static function getBeforeReminder($value) {
+       $arr = self::getAllBeforeReminders();
+       if (array_key_exists($value, $arr)) {
+           return $arr[$value];
+       }
+       return null;
+   }
+
+
+   static function getSpecificValueToDisplay($field, $values, array $options=[]) {
+        if (!is_array($values)) {
+            $values = [$field => $values];
+        }
+        switch ($field) {
+            case 'before_time':
+                return self::getBeforeReminder($values[$field]);
+            case 'after_time':
+                return self::getAfterReminder($values[$field]);
+        }
+        return parent::getSpecificValueToDisplay($field, $values, $options);
+   }
+
+
+   static function getSpecificValueToSelect($field, $name='', $values='', array $options=[]) {
+        if (!is_array($values)) {
+            $values = [$field => $values];
+        }
+        $options['display'] = false;
+        $options['name']  = $name;
+        $options['value'] = $values[$field];
+        switch ($field) {
+            case 'before_time' :
+                return Dropdown::showFromArray($name, self::getAllBeforeReminders(), $options);
+            case 'after_time' :
+                return Dropdown::showFromArray($name, self::getAllAfterReminders(), $options);
+        }
+
+        return parent::getSpecificValueToSelect($field, $name, $values, $options);
+    }
 }

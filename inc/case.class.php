@@ -2,7 +2,7 @@
 /*
 -------------------------------------------------------------------------
 ProcessMaker plugin for GLPI
-Copyright (C) 2014-2023 by Raynet SAS a company of A.Raymond Network.
+Copyright (C) 2014-2024 by Raynet SAS a company of A.Raymond Network.
 
 https://www.araymond.com/
 -------------------------------------------------------------------------
@@ -519,7 +519,7 @@ class PluginProcessmakerCase extends CommonDBTM {
 
       echo "<tr><th colspan=4>".__('Current task(s) properties', 'processmaker')."</th></tr>";
 
-      if (property_exists($caseInfo, 'currentUsers') && count($caseInfo->currentUsers) > 0) {
+      if (property_exists($caseInfo, 'currentUsers') && count($caseInfo->currentUsers) > 0 && $caseInfo->caseStatus != self::CANCELLED) {
          echo "<tr style='font-weight: bold;'>
                <th>".__('Task', 'processmaker')."</th>
                <th>".__('Task guid', 'processmaker')."</th>
@@ -675,9 +675,9 @@ class PluginProcessmakerCase extends CommonDBTM {
 
       // order task by "current user", then by "to be claimed", and then push to end "tasks assigned to another user"
       // then by delindex ASC in these three parts
-      usort($utasks, 'self::localSortTasks');
-      usort($tbctasks, 'self::localSortTasks');
-      usort($infotasks, 'self::localSortTasks');
+      usort($utasks, 'PluginProcessmakerCase::localSortTasks');
+      usort($tbctasks, 'PluginProcessmakerCase::localSortTasks');
+      usort($infotasks, 'PluginProcessmakerCase::localSortTasks');
 
       return array_merge($utasks, $tbctasks, $infotasks);
    }
@@ -767,39 +767,41 @@ class PluginProcessmakerCase extends CommonDBTM {
       $canupdate = $item->can($items_id, UPDATE);
 
       $rand = mt_rand();
-      $res = $DB->request([
-                     'SELECT'    => ['gppc.id AS assocID', 'gppc.id AS id', 'gppp.id AS pid', 'gppp.name AS pname', 'gppc.case_status', 'gppc.plugin_processmaker_cases_id'],
-                     'FROM'      => 'glpi_plugin_processmaker_cases AS gppc',
-                     'LEFT JOIN' => [
-                        'glpi_plugin_processmaker_processes AS gppp' => [
-                           'FKEY' => [
-                              'gppp' => 'id',
-                              'gppc' => 'plugin_processmaker_processes_id']
-                           ]
-                        ],
-                     'WHERE'     => [
-                        'AND' => [
-                           'gppc.itemtype' => $itemtype,
-                           'gppc.items_id' => $items_id
-                        ]
-                     ]
-                  ]);
+      //$res = $DB->request([
+      //               'SELECT'    => ['gppc.id AS assocID', 'gppc.id AS id', 'gppp.id AS pid', 'gppp.name AS pname', 'gppc.case_status', 'gppc.plugin_processmaker_cases_id'],
+      //               'FROM'      => 'glpi_plugin_processmaker_cases AS gppc',
+      //               'LEFT JOIN' => [
+      //                  'glpi_plugin_processmaker_processes AS gppp' => [
+      //                     'FKEY' => [
+      //                        'gppp' => 'id',
+      //                        'gppc' => 'plugin_processmaker_processes_id']
+      //                     ]
+      //                  ],
+      //               'WHERE'     => [
+      //                  'AND' => [
+      //                     'gppc.itemtype' => $itemtype,
+      //                     'gppc.items_id' => $items_id
+      //                  ]
+      //               ]
+      //            ]);
 
-      $cases = [];
-      $used  = [];
-      $pid   = [];
-      if ($numrows = $res->numrows()) {
-         foreach ($res as $data) {
-            $cases[$data['id']] = $data;
-            $used[$data['id']]  = $data['id'];
-            if (isset($pid[$data['pid']])) {
-               $pid[$data['pid']] += 1;
-            } else {
-               $pid[$data['pid']] = 1;
-            }
-         }
-      }
-
+      //$cases = [];
+      //$used  = [];
+      //$pid   = [];
+      //if ($numrows = $res->numrows()) {
+      //   foreach ($res as $data) {
+      //      $cases[$data['id']] = $data;
+      //      $used[$data['id']]  = $data['id'];
+      //      if (isset($pid[$data['pid']])) {
+      //         $pid[$data['pid']] += 1;
+      //      } else {
+      //         $pid[$data['pid']] = 1;
+      //      }
+      //   }
+      //}
+      $countProcesses = [];
+      $cases = self::getAllCases($itemtype, $items_id, $countProcesses);
+      $numrows = count($cases);
       $columns = ['pname'  => __('Process', 'processmaker'),
                   'name'   => __('Case title', 'processmaker'),
                   'status' => __('Status', 'processmaker'),
@@ -813,41 +815,42 @@ class PluginProcessmakerCase extends CommonDBTM {
             && $_SESSION['glpiactiveprofile']['interface'] != 'helpdesk'
             && ($numrows < $PM_SOAP->config['max_cases_per_item']
                || $PM_SOAP->config['max_cases_per_item'] == 0)) {
-         echo "<div class='firstbloc'>";
-         echo "<form style='margin-bottom: 0px' name='processmaker_form$rand' id='processmaker_form$rand' method='post' action='".Toolbox::getItemTypeFormURL("PluginProcessmakerProcessmaker")."'>";
-         echo "<input type='hidden' name='action' value='newcase'>";
-         echo "<input type='hidden' name='items_id' value='$items_id'>";
-         echo "<input type='hidden' name='itemtype' value='$itemtype'>";
+         //echo "<div class='firstbloc'>";
+         //echo "<form style='margin-bottom: 0px' name='processmaker_form$rand' id='processmaker_form$rand' method='post' action='".Toolbox::getItemTypeFormURL("PluginProcessmakerProcessmaker")."'>";
+         //echo "<input type='hidden' name='action' value='newcase'>";
+         //echo "<input type='hidden' name='items_id' value='$items_id'>";
+         //echo "<input type='hidden' name='itemtype' value='$itemtype'>";
 
-         echo "<table class='tab_cadre_fixe'>";
-         echo "<tr class='tab_bg_2'><th colspan='3'>".__('Add a new case', 'processmaker')."</th></tr>";
+         //echo "<table class='tab_cadre_fixe'>";
+         //echo "<tr class='tab_bg_2'><th colspan='3'>".__('Add a new case', 'processmaker')."</th></tr>";
 
-         echo "<tr class='tab_bg_2'><td class='tab_bg_2'>";
-         echo __('Select the process you want to add', 'processmaker');
-         echo "</td><td class='tab_bg_2'>";
-         $condition['is_active'] = 1;
-         if ($itemtype == 'Ticket' && $item->fields['type'] == Ticket::INCIDENT_TYPE) {
-            $condition['is_incident'] =  1;
-         } else if ($itemtype == 'Ticket' && $item->fields['type'] == Ticket::DEMAND_TYPE) {
-            $condition['is_request'] = 1;
-         } else {
-            $condition['is_'.strtolower($itemtype)] =  1;
-            //$is_itemtype = "AND is_".strtolower($itemtype)."=1";
-         }
-         PluginProcessmakerProcess::dropdown(['value' => 0,
-                                              'entity'        => $item->fields['entities_id'],
-                                              'name'          => 'plugin_processmaker_processes_id',
-                                              'condition'     => $condition,
-                                              'specific_tags' => [
-                                                    'count_cases_per_item' => $pid,
-                                                    'process_restrict'     => 1
-                                                    ]
-                                              ]);
-         echo "</td><td class='tab_bg_2'>";
-         echo "<input type='submit' name='additem' value='"._sx('button', 'Add')."' class='submit'>";
-         echo "</td></tr></table>";
-         Html::closeForm();
-         echo "</div>";
+         //echo "<tr class='tab_bg_2'><td class='tab_bg_2'>";
+         //echo __('Select the process you want to add', 'processmaker');
+         //echo "</td><td class='tab_bg_2'>";
+         //$condition['is_active'] = 1;
+         //if ($itemtype == 'Ticket' && $item->fields['type'] == Ticket::INCIDENT_TYPE) {
+         //   $condition['is_incident'] =  1;
+         //} else if ($itemtype == 'Ticket' && $item->fields['type'] == Ticket::DEMAND_TYPE) {
+         //   $condition['is_request'] = 1;
+         //} else {
+         //   $condition['is_'.strtolower($itemtype)] =  1;
+         //   //$is_itemtype = "AND is_".strtolower($itemtype)."=1";
+         //}
+         //PluginProcessmakerProcess::dropdown(['value' => 0,
+         //                                     'entity'        => $item->fields['entities_id'],
+         //                                     'name'          => 'plugin_processmaker_processes_id',
+         //                                     'condition'     => $condition,
+         //                                     'specific_tags' => [
+         //                                           'count_cases_per_item' => $pid,
+         //                                           'process_restrict'     => 1
+         //                                           ]
+         //                                     ]);
+         //echo "</td><td class='tab_bg_2'>";
+         //echo "<input type='submit' name='additem' value='"._sx('button', 'Add')."' class='submit'>";
+         //echo "</td></tr></table>";
+         //Html::closeForm();
+         //echo "</div>";
+         self::showAddFormForItem($item, $rand, $countProcesses);
       }
 
       echo "<div class='spaced'>";
@@ -935,6 +938,85 @@ class PluginProcessmakerCase extends CommonDBTM {
       echo "</div>";
    }
 
+   static function getAllCases($itemtype, $items_id, &$count_processes = []):array { 
+       global $DB;
+
+       $res = $DB->request([
+                     'SELECT'    => ['gppc.id AS assocID', 'gppc.id AS id', 'gppp.id AS pid', 'gppp.name AS pname', 'gppc.case_status', 'gppc.plugin_processmaker_cases_id'],
+                     'FROM'      => 'glpi_plugin_processmaker_cases AS gppc',
+                     'LEFT JOIN' => [
+                        'glpi_plugin_processmaker_processes AS gppp' => [
+                           'FKEY' => [
+                              'gppp' => 'id',
+                              'gppc' => 'plugin_processmaker_processes_id']
+                           ]
+                        ],
+                     'WHERE'     => [
+                        'AND' => [
+                           'gppc.itemtype' => $itemtype,
+                           'gppc.items_id' => $items_id
+                        ]
+                     ]
+                  ]);
+       $cases = [];
+       if ($numrows = $res->numrows()) {
+          foreach ($res as $data) {
+             $cases[$data['id']] = $data;
+          }
+       }
+       foreach ($cases as $data) {
+           if (isset($count_processes[$data['pid']])) {
+              $count_processes[$data['pid']] += 1;
+           } else {
+              $count_processes[$data['pid']] = 1;
+           }
+       }
+       return $cases;
+   }
+
+   static function showAddFormForItem(CommonDBTM $item, $rand, $pid, $timeline = false) {
+       $items_id = $item->getField('id');
+       $itemtype = $item->getType();
+       echo "<div class='firstbloc'>";
+       echo "<form style='margin-bottom: 0px' name='processmaker_form$rand' id='processmaker_form$rand' method='post' action='".Toolbox::getItemTypeFormURL("PluginProcessmakerProcessmaker")."'>";
+       echo "<input type='hidden' name='action' value='newcase'>";
+       echo "<input type='hidden' name='items_id' value='$items_id'>";
+       echo "<input type='hidden' name='itemtype' value='$itemtype'>";
+       if ($timeline) {
+           echo "<input type='hidden' name='timeline' value='true'>";
+       }
+
+       echo "<table class='tab_cadre_fixe'>";
+       echo "<tr class='tab_bg_2'><th colspan='3'>".__('Add a new case', 'processmaker')."</th></tr>";
+
+       echo "<tr class='tab_bg_2'><td class='tab_bg_2'>";
+       echo __('Select the process you want to add', 'processmaker');
+       echo "</td><td class='tab_bg_2'>";
+       $condition['is_active'] = 1;
+       if ($itemtype == 'Ticket' && $item->fields['type'] == Ticket::INCIDENT_TYPE) {
+          $condition['is_incident'] =  1;
+       } else if ($itemtype == 'Ticket' && $item->fields['type'] == Ticket::DEMAND_TYPE) {
+          $condition['is_request'] = 1;
+       } else {
+          $condition['is_'.strtolower($itemtype)] =  1;
+          //$is_itemtype = "AND is_".strtolower($itemtype)."=1";
+       }
+       PluginProcessmakerProcess::dropdown(['value' => 0,
+                                            'entity'        => $item->fields['entities_id'],
+                                            'name'          => 'plugin_processmaker_processes_id',
+                                            'condition'     => $condition,
+                                            'specific_tags' => [
+                                                  'count_cases_per_item' => $pid,
+                                                  'process_restrict'     => 1
+                                                  ]
+                                            ]);
+       echo "</td><td class='tab_bg_2'>";
+       echo "<input type='submit' name='additem' value='"._sx('button', 'Add')."' class='submit'>";
+       echo "</td></tr></table>";
+       Html::closeForm();
+       echo "</div>";
+   }
+
    /**
     * Summary of displayTabContentForItem
     * @param CommonGLPI $item
@@ -997,6 +1079,9 @@ class PluginProcessmakerCase extends CommonDBTM {
    * @return true if case and tasks have been deleted from associated item and from case table
    */
    function deleteCase() {
+       global $DB;
+       self::deleteReminders($this->fields['id']);
+
       return $this->delete(['id' => $this->getID()]);
    }
 
@@ -1030,17 +1115,28 @@ class PluginProcessmakerCase extends CommonDBTM {
                   ]
                   ]);
          if ($res) {
-            $ret = true;
+             $ret = true;
+             // Delete task reminder on cancelCase
+             self::deleteReminders($this->fields['id']);
          }
-         //$query = "UPDATE glpi_".$this->fields['itemtype']."tasks SET state=0,users_id_tech=0,begin=NULL,end=NULL  WHERE state=1 AND id in (select items_id from glpi_plugin_processmaker_tasks where plugin_processmaker_cases_id='".$this->fields['id']."')";
-         //if ($DB->query( $query )) {
-         //   $ret = true;
-         //}
       }
       return $ret;
    }
 
-
+   /**
+    * Summary of deleteReminders
+    */
+   static function deleteReminders($id) {
+       global $DB;
+       if ($id) {
+            $sub = new QuerySubQuery([
+                 'SELECT' => 'id',
+                 'FROM'   => 'glpi_plugin_processmaker_tasks',
+                 'WHERE'  => ['plugin_processmaker_cases_id' => $id]
+            ]);
+            $DB->deleteOrDie('glpi_plugin_processmaker_taskrecalls', ['plugin_processmaker_tasks_id' => $sub]);
+       }
+   }
 
     /**
      * Summary of cancelCase
@@ -1634,7 +1730,7 @@ class PluginProcessmakerCase extends CommonDBTM {
                         if ($resultPM->status_code === 0
                               && $item->cancelCase()) {
                            $ma->itemDone(__CLASS__, $pid, MassiveAction::ACTION_OK);
-                           $ma->addMessage($pid.": ".__('Case has been cancelled!', 'processmaker'));
+                           //$ma->addMessage($pid.": ".__('Case has been cancelled!', 'processmaker'));
                         } else {
                            $ma->itemDone(__CLASS__, $pid, MassiveAction::ACTION_KO);
                            $ma->addMessage($pid.": ".__('Unable to cancel case!', 'processmaker'));

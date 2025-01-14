@@ -2,7 +2,7 @@
 /*
 -------------------------------------------------------------------------
 ProcessMaker plugin for GLPI
-Copyright (C) 2014-2024 by Raynet SAS a company of A.Raymond Network.
+Copyright (C) 2014-2022 by Raynet SAS a company of A.Raymond Network.
 
 https://www.araymond.com/
 -------------------------------------------------------------------------
@@ -25,14 +25,6 @@ You should have received a copy of the GNU General Public License
 along with this plugin. If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------
  */
-/**
- * selfservicedraft short summary.
- *
- * selfservicedraft description.
- *
- * @version 1.0
- * @author morono
- */
-class PluginProcessmakerSelfservicedraft extends CommonDBTM {
+class PluginProcessmakerTaskrecall extends CommonDBTM {
 
 }

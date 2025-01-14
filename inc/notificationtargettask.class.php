@@ -3,7 +3,7 @@ use Glpi\Toolbox\Sanitizer;
 /*
 -------------------------------------------------------------------------
 ProcessMaker plugin for GLPI
-Copyright (C) 2014-2023 by Raynet SAS a company of A.Raymond Network.
+Copyright (C) 2014-2024 by Raynet SAS a company of A.Raymond Network.
 
 https://www.araymond.com/
 -------------------------------------------------------------------------
@@ -44,10 +44,23 @@ class PluginProcessmakerNotificationTargetTask extends PluginProcessmakerNotific
               'task_reassign' => ['event' => 'task_reassign_', 'label' => __('Task re-assign'), 'glpi' => 'update_task'],
               'task_unclaim'  => ['event' => 'task_unclaim_',  'label' => __('Task un-claim'),  'glpi' => 'update_task'],
               'task_done'     => ['event' => 'task_done_',     'label' => __('Task done'),      'glpi' => 'update_task'],
-              'task_reminder' => ['event' => 'task_reminder_', 'label' => __('Task reminder'),  'glpi' => 'update_task']
+              'task_reminder' => ['event' => 'task_reminder_', 'label' => __('Task reminder'),  'glpi' => 'update_task'],
+              'task_overdue'  => ['event' => 'task_overdue_',  'label' => __('Task overdue'),   'glpi' => 'update_task']
              ];
    }
 
+
+   public function getSender(): array {
+       $sender = parent::getSender();
+       $users_id = $this->obj->getSender();
+       if ($users_id > 0) {
+            $usr = new User();
+            $usr->getFromDB($users_id);
+            $sender['name']  = $usr->getFriendlyName();
+            $sender['email'] = $usr->getDefaultEmail();
+       }
+       return $sender;
+   }
 
    /**
     * Summary of getDefaultGLPIEvents

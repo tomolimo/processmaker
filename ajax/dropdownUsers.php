@@ -2,7 +2,7 @@
 /*
 -------------------------------------------------------------------------
 ProcessMaker plugin for GLPI
-Copyright (C) 2014-2023 by Raynet SAS a company of A.Raymond Network.
+Copyright (C) 2014-2024 by Raynet SAS a company of A.Raymond Network.
 
 https://www.araymond.com/
 -------------------------------------------------------------------------
@@ -58,8 +58,7 @@ if (!isset($_REQUEST['all'])) {
 }
 
 $used = [];
-
-if (isset($_REQUEST['used'])) {
+if (isset($_REQUEST['used']) && is_array($_REQUEST['used'])) {
    $used = $_REQUEST['used'];
 }
 
@@ -98,7 +97,7 @@ $users = [];
 $count = 0;
 foreach ($res as $data) {
    $users[$data["id"]] = $dbu->formatUserName($data["id"], $data["name"], $data["realname"],
-                                          $data["firstname"], 0);
+                                          $data["firstname"], 0) . " (" . $data["name"] . ")";
    $logins[$data["id"]] = $data["name"];
 }
 

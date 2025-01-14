@@ -26,13 +26,33 @@ along with this plugin. If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------
  */
 /**
- * selfservicedraft short summary.
+ * PluginProcessmakerTaskCategory short summary.
  *
- * selfservicedraft description.
+ * PluginProcessmakerTaskCategory description.
  *
  * @version 1.0
- * @author morono
+ * @author MoronO
  */
-class PluginProcessmakerSelfservicedraft extends CommonDBTM {
+
+if (!defined('GLPI_ROOT')) {
+   die("Sorry. You can't access directly to this file");
+}
+
+
+class PluginProcessmakerProcessCategory extends CommonDBTM
+{
+   static function refreshCategories() {
+       global $PM_DB;
+
+       $processCategories = new self;
+       foreach($PM_DB->request('PROCESS_CATEGORY') as $data) {
+           if (!$processCategories->getFromDBByCrit(["category_guid" => $data['CATEGORY_UID']])) {
+               $processCategories->add([
+                    'name' => $data['CATEGORY_NAME'],
+                    'category_guid' => $data['CATEGORY_UID']
+               ]);
+           }
+       }
+   }
 
 }

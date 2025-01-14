@@ -2,7 +2,7 @@
 /*
 -------------------------------------------------------------------------
 ProcessMaker plugin for GLPI
-Copyright (C) 2014-2023 by Raynet SAS a company of A.Raymond Network.
+Copyright (C) 2014-2024 by Raynet SAS a company of A.Raymond Network.
 
 https://www.araymond.com/
 -------------------------------------------------------------------------
@@ -53,11 +53,22 @@ if (isset( $_SERVER['REQUEST_METHOD'] )  && $_SERVER['REQUEST_METHOD']=='OPTIONS
             $datas = json_decode($request_body, true);
 
             $asyncdata = new PluginProcessmakerCrontaskaction;
-            if (isset($datas['id']) && $asyncdata->getFromDB( $datas['id'] ) && $asyncdata->fields['state'] == PluginProcessmakerCrontaskaction::WAITING_DATA) {
+
+            $ID = 0;
+            if (isset($_REQUEST['id'])) {
+               $ID = $_REQUEST['id'];
+            }
+            if (isset($datas['id'])) {
+                $ID = $datas['id'];
+            }
+            if ($ID && $asyncdata->getFromDB($ID) && $asyncdata->fields['state'] == PluginProcessmakerCrontaskaction::WAITING_DATA) {
                $initialdatas = json_decode($asyncdata->fields['formdata'], true);
-               $initialdatas['form'] = array_merge( $initialdatas['form'], $datas['form'] );
+               if (isset($datas['form'])) {
+                   $datas = $datas['form'];
+               }
+               $initialdatas['form'] = array_merge( $initialdatas['form'], $datas );
                $formdata = json_encode($initialdatas, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
-               $asyncdata->update( [ 'id' => $datas['id'], 'state' => PluginProcessmakerCrontaskaction::DATA_READY, 'formdata' => $formdata ] );
+               $asyncdata->update( [ 'id' => $ID, 'state' => PluginProcessmakerCrontaskaction::DATA_READY, 'formdata' => $formdata ] );
                $ret = [ 'code' => '0', 'message' => 'Done' ];
             } else {
                $ret = [ 'code' => '2', 'message' => 'Case is not existing, or state is not WAITING_DATA' ];

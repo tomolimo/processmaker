@@ -2,7 +2,7 @@
 /*
 -------------------------------------------------------------------------
 ProcessMaker plugin for GLPI
-Copyright (C) 2014-2023 by Raynet SAS a company of A.Raymond Network.
+Copyright (C) 2014-2024 by Raynet SAS a company of A.Raymond Network.
 
 https://www.araymond.com/
 -------------------------------------------------------------------------
@@ -43,7 +43,7 @@ function update_4_0_0_to_4_0_1() {
       UNIQUE INDEX `guid_version` (`guid`, `version`),
       INDEX `plugin_processmaker_cases_id` (`plugin_processmaker_cases_id`),
       INDEX `is_output` (`is_output`)
-      ) ENGINE=InnoDB DEFAULT;";
+      ) ENGINE=InnoDB;";
    $DB->query($query) or die("error when creating glpi_plugin_processmaker_documents table" . $DB->error());
 
    $query = "ALTER TABLE `glpi_plugin_processmaker_crontaskactions`

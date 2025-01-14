@@ -2,7 +2,7 @@
 /*
 -------------------------------------------------------------------------
 ProcessMaker plugin for GLPI
-Copyright (C) 2014-2023 by Raynet SAS a company of A.Raymond Network.
+Copyright (C) 2014-2024 by Raynet SAS a company of A.Raymond Network.
 
 https://www.araymond.com/
 -------------------------------------------------------------------------
@@ -72,8 +72,9 @@ function plugin_processmaker_install() {
    CronTask::Register('PluginProcessmakerProcessmaker', 'pmusers', DAY_TIMESTAMP, ['state' => CronTask::STATE_DISABLE, 'mode' => CronTask::MODE_EXTERNAL]);
    CronTask::Register('PluginProcessmakerProcessmaker', 'pmorphancases', DAY_TIMESTAMP, ['param' => 10, 'state' => CronTask::STATE_DISABLE, 'mode' => CronTask::MODE_EXTERNAL]);
    CronTask::Register('PluginProcessmakerProcessmaker', 'pmtaskactions', MINUTE_TIMESTAMP, ['state' => CronTask::STATE_DISABLE, 'mode' => CronTask::MODE_EXTERNAL]);
+   CronTask::Register('PluginProcessmakerTaskcategory', 'pmreminders', 5*MINUTE_TIMESTAMP, ['state' => CronTask::STATE_DISABLE, 'mode' => CronTask::MODE_EXTERNAL]);
 
-   // required because autoload doesn't work for unactive plugin'
+   // required because autoload doesn't work for inactive plugin'
    include_once(PLUGIN_PROCESSMAKER_ROOT . "/inc/profile.class.php");
    PluginProcessmakerProfile::createAdminAccess($_SESSION['glpiactiveprofile']['id']);
 
@@ -90,18 +91,14 @@ function plugin_processmaker_uninstall() {
 
 function plugin_processmaker_getAddSearchOptionsNew($itemtype) {
 
-    $name = _n('Process Case', 'Process Cases', Session::getPluralNumber(), 'processmaker');
-
     $tab = [];
-    $tab[] = [
-         'id'                 => 'processmaker',
-         'name'               => $name
+
+   if (in_array($itemtype, ['Ticket', 'Change', 'Problem'])) {
+      $tab[] = [
+          'id'                 => 'processmaker',
+          'name'               => _n('Process Case', 'Process Cases', Session::getPluralNumber(), 'processmaker')
       ];
 
-   // TODO add Change and Problem + other fields to the search
-   $objects = ['Ticket', 'Change', 'Problem'];
-
-   if (in_array($itemtype, $objects)) {
       $tab[] = [
          'id'                  => 10001,
          'table'               => PluginProcessmakerCase::getTable(),
@@ -191,18 +188,197 @@ function plugin_processmaker_getAddSearchOptionsNew($itemtype) {
 
       ];
    }
-    return $tab;
+
+   if ($itemtype == 'TaskCategory') {
+       $tab[] = [
+          'id'                 => 'processmaker',
+          'name'               => _n('Process task category', 'Process task categories', Session::getPluralNumber(), 'processmaker')
+      ];
+
+       $tab[] = [
+         'id'                  => 20000,
+         'table'               => PluginProcessmakerTaskCategory::getTable(),
+         'field'               => 'taskcategories_id',
+         'massiveaction'       => false,
+         'name'                => __('Process task', 'processmaker'),
+         'datatype'            => 'itemlink',
+         'joinparams'    => [
+            'jointype' => 'child'
+         ]
+      ];
+
+       $tab[] = [
+         'id'                  => 20001,
+         'table'               => PluginProcessmakerTaskCategory::getTable(),
+         'field'               => 'is_start',
+         'massiveaction'       => false,
+         'name'                => __('Start', 'processmaker'),
+         'datatype'            => 'bool',
+         'joinparams'    => [
+            'jointype' => 'child'
+         ]
+      ];
+
+       $tab[] = [
+         'id'                  => 20002,
+         'table'               => PluginProcessmakerTaskCategory::getTable(),
+         'field'               => 'is_active',
+         'massiveaction'       => false,
+         'name'                => __('Active', 'processmaker'),
+         'datatype'            => 'bool',
+         'joinparams'    => [
+            'jointype' => 'child'
+         ]
+      ];
+
+       $tab[] = [
+         'id'                  => 20003,
+         'table'               => PluginProcessmakerTaskCategory::getTable(),
+         'field'               => 'is_subprocess',
+         'massiveaction'       => false,
+         'name'                => __('Sub-process', 'processmaker'),
+         'datatype'            => 'bool',
+         'joinparams'    => [
+            'jointype' => 'child'
+         ]
+      ];
+
+       $tab[] = [
+         'id'                  => 20004,
+         'table'               => PluginProcessmakerTaskCategory::getTable(),
+         'field'               => 'is_reassignreason_mandatory',
+         'massiveaction'       => false,
+         'name'                => __('Force re-assign reason', 'processmaker'),
+         'datatype'            => 'specific',
+         'nosearch'            => true,
+         'nodisplay'           => true,
+         'joinparams'    => [
+            'jointype' => 'child'
+         ]
+      ];
+
+       $tab[] = [
+         'id'                  => 20005,
+         'table'               => PluginProcessmakerTaskCategory::getTable(),
+         'field'               => 'before_time',
+         'massiveaction'       => false,
+         'name'                => __('Reminder (before task begin)', 'processmaker'),
+         'datatype'            => 'specific',
+         'searchequalsonfield' => true,
+         'searchtype'          => [
+            'equals',
+            'notequals',
+            'lessthan',
+            'morethan'
+         ],
+         'joinparams'    => [
+            'jointype' => 'child'
+         ]
+      ];
+
+       $tab[] = [
+         'id'                  => 20006,
+         'table'               => User::getTable(),
+         'field'               => 'name',
+         'massiveaction'       => false,
+         'name'                => __('Reminder sender', 'processmaker'),
+         'datatype'            => 'dropdown',
+         'linkfield'          => 'users_id',
+         'joinparams'         => [
+            'beforejoin'         => [
+               'table'              => PluginProcessmakerTaskCategory::getTable(),
+               'joinparams'         => [
+                  'jointype'           => 'child',
+               ]
+            ]
+         ]
+      ];
+
+       $tab[] = [
+         'id'                  => 20007,
+         'table'               => PluginProcessmakerTaskCategory::getTable(),
+         'field'               => 'after_time',
+         'massiveaction'       => false,
+         'name'                => __('Reminder (after task end)', 'processmaker'),
+         'datatype'            => 'specific',
+         'searchequalsonfield' => true,
+         'searchtype'          => [
+            'equals',
+            'notequals',
+            'lessthan',
+            'morethan'
+         ],
+         'joinparams'    => [
+            'jointype' => 'child'
+         ]
+      ];
+
+      // $tab[] = [
+      //   'id'                  => 20008,
+      //   'table'               => PluginProcessmakerTaskCategory::getTable(),
+      //   'field'               => 'reminder_overdue_frequency',
+      //   'massiveaction'       => false,
+      //   'name'                => __('Reminder frequency', 'processmaker'),
+      //   'datatype'            => 'specific',
+      //   'searchequalsonfield' => true,
+      //   'searchtype'          => [
+      //      'equals',
+      //      'notequals',
+      //   ],
+      //  'joinparams'         => [
+      //      'jointype'           => 'child',
+      //  ]
+      //];
+   }
+
+   return $tab;
 }
 
-//function plugin_processmaker_addWhere($link, $nott, $itemtype, $ID, $val, $searchtype) {
+function plugin_processmaker_addWhere($link, $nott, $itemtype, $ID, $val, $searchtype) {
+    if ($itemtype == 'TaskCategory' && $ID == 20005) { // 20005 == before_time
+        switch ($searchtype) {
+            case 'lessthan':
+                if ($nott) {
+                    return "$link (`glpi_plugin_processmaker_taskcategories`.`before_time` <= $val)";
+                } else {
+                    return "$link (`glpi_plugin_processmaker_taskcategories`.`before_time` > $val)";
+                }
+                break;
+            case 'morethan':
+                if ($nott) {
+                    return "$link (`glpi_plugin_processmaker_taskcategories`.`before_time` >= $val)";
+                } else {
+                    return "$link (`glpi_plugin_processmaker_taskcategories`.`before_time` < $val)";
+                }
+                break;
+        }
+    }
+    if ($itemtype == 'TaskCategory' && $ID == 20007) { // 20007 == after_time
+        switch ($searchtype) {
+            case 'lessthan':
+                if ($nott) {
+                    return "$link (`glpi_plugin_processmaker_taskcategories`.`after_time` >= $val)";
+                } else {
+                    return "$link (`glpi_plugin_processmaker_taskcategories`.`after_time` < $val)";
+                }
+                break;
+            case 'morethan':
+                if ($nott) {
+                    return "$link (`glpi_plugin_processmaker_taskcategories`.`after_time` <= $val)";
+                } else {
+                    return "$link (`glpi_plugin_processmaker_taskcategories`.`after_time` > $val)";
+                }
+                break;
+        }
+    }
 
-//    return '';
+    return '';
+}
+
+
+//function plugin_processmaker_giveItem($itemtype, $ID, $data, $num) {
+//    echo '';
 //}
-
-
-function plugin_processmaker_giveItem($itemtype, $ID, $data, $num) {
-    echo '';
-}
 
 
 /**
@@ -491,6 +667,9 @@ function plugin_item_update_processmaker_tasks($parm) {
                   ], [], false);
 
                $externalapplicationparams['id'] = $cronactionid;
+              if ($externalapplication) {
+                  $externalapplicationparams['callback'] .= "?id=$cronactionid";
+              }
                $externalapplicationparams = json_encode( $externalapplicationparams, JSON_HEX_APOS | JSON_HEX_QUOT);
                // add to the crontaskcation the id of the crontaskaction itself in the postdata
                $cronaction->update([
@@ -545,7 +724,7 @@ function plugin_item_update_processmaker_tasks($parm) {
                   // add to the crontaskaction the response of the remote API
                   $cronaction->update([
                      'id'      => $cronactionid,
-                     'retcode' => ($response === false ? $error : $response)
+                     'retcode' => ($response === false ? $error : $DB->escape($response))
                      ], false);
 
                   curl_close ($ch);

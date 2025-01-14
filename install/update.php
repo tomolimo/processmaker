@@ -2,7 +2,7 @@
 /*
 -------------------------------------------------------------------------
 ProcessMaker plugin for GLPI
-Copyright (C) 2014-2023 by Raynet SAS a company of A.Raymond Network.
+Copyright (C) 2014-2024 by Raynet SAS a company of A.Raymond Network.
 
 https://www.araymond.com/
 -------------------------------------------------------------------------
@@ -105,6 +105,15 @@ function processmaker_update() {
          // will upgrade 4.0.2 to 4.4.0
          include_once(PLUGIN_PROCESSMAKER_ROOT . "/install/update_4_0_2_to_4_4_0.php");
          $new_version = update_4_0_2_to_4_4_0();
+
+       case '4.4.0' :
+         // will upgrade 4.4.0 to 4.5.0
+         include_once(PLUGIN_PROCESSMAKER_ROOT . "/install/update_4_4_0_to_4_5_0.php");
+         $new_version = update_4_4_0_to_4_5_0();
+      case '4.5.0' :
+         // will upgrade 4.5.0 to 4.6.0
+         include_once(PLUGIN_PROCESSMAKER_ROOT . "/install/update_4_5_0_to_4_6_0.php");
+         $new_version = update_4_5_0_to_4_6_0();
 
    }
 
