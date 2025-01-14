@@ -93,6 +93,7 @@ CREATE TABLE IF NOT EXISTS `glpi_plugin_processmaker_processes` (
 	`maintenance` TINYINT(1) NOT NULL DEFAULT '0',
    `max_cases_per_item` INT UNSIGNED NOT NULL DEFAULT '0',
 	`is_reassignreason_mandatory` TINYINT(1) NOT NULL DEFAULT '-2',
+	`plugin_processmaker_processcategories_id` INT UNSIGNED NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `process_guid` (`process_guid`)
 ) ENGINE=InnoDB;
@@ -116,18 +117,46 @@ CREATE TABLE `glpi_plugin_processmaker_processes_profiles` (
 
 -- Dumping structure for table glpi.glpi_plugin_processmaker_taskcategories
 CREATE TABLE `glpi_plugin_processmaker_taskcategories` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `plugin_processmaker_processes_id` INT UNSIGNED NOT NULL,
+  `pm_task_guid` VARCHAR(32) NOT NULL,
+  `taskcategories_id` INT UNSIGNED NOT NULL,
+  `is_start` TINYINT(1) NOT NULL DEFAULT '0',
+  `is_active` TINYINT(1) NOT NULL DEFAULT '1',
+  `is_subprocess` TINYINT(1) NOT NULL DEFAULT '0',
+  `is_reassignreason_mandatory` TINYINT(1) NOT NULL DEFAULT '-2',
+  `before_time` INT NOT NULL DEFAULT '-10',
+  `after_time` INT NOT NULL DEFAULT '-10',
+  `users_id` INT UNSIGNED NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE INDEX `pm_task_guid` (`pm_task_guid`),
+  UNIQUE INDEX `taskcategories_id` (`taskcategories_id`),
+  INDEX `plugin_processmaker_processes_id` (`plugin_processmaker_processes_id`)
+) ENGINE=InnoDB;
+
+
+-- Dumping structure for table glpi.glpi_plugin_processmaker_taskrecalls
+CREATE TABLE `glpi_plugin_processmaker_taskrecalls` (
 	`id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-	`plugin_processmaker_processes_id` INT UNSIGNED NOT NULL,
-	`pm_task_guid` VARCHAR(32) NOT NULL,
-	`taskcategories_id` INT UNSIGNED NOT NULL,
-	`is_start` TINYINT(1) NOT NULL DEFAULT '0',
-	`is_active` TINYINT(1) NOT NULL DEFAULT '1',
-	`is_subprocess` TINYINT(1) NOT NULL DEFAULT '0',
-	`is_reassignreason_mandatory` TINYINT(1) NOT NULL DEFAULT '-2',
+	`plugin_processmaker_tasks_id` INT UNSIGNED NOT NULL,
+	`before_time` INT NOT NULL DEFAULT '-10',
+	`after_time` INT NOT NULL DEFAULT '-10',
+	`when` TIMESTAMP NULL DEFAULT NULL,
+	`users_id` INT UNSIGNED NULL,
 	PRIMARY KEY (`id`),
-	UNIQUE INDEX `pm_task_guid` (`pm_task_guid`),
-	UNIQUE INDEX `items` (`taskcategories_id`),
-	INDEX `plugin_processmaker_processes_id` (`plugin_processmaker_processes_id`)
+	UNIQUE INDEX `item` (`plugin_processmaker_tasks_id`),
+	INDEX `when` (`when`)
+) ENGINE=InnoDB;
+
+
+-- Dumping structure for table glpi.glpi_plugin_processmaker_taskalerts
+CREATE TABLE `glpi_plugin_processmaker_taskalerts` (
+	`id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+	`plugin_processmaker_taskrecalls_id` INT UNSIGNED NOT NULL DEFAULT '0',
+	`date` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	PRIMARY KEY (`id`),
+	INDEX `plugin_processmaker_taskrecalls_id` (`plugin_processmaker_taskrecalls_id`),
+	INDEX `date` (`date`)
 ) ENGINE=InnoDB;
 
 
@@ -187,6 +216,14 @@ CREATE TABLE IF NOT EXISTS `glpi_plugin_processmaker_reassignreasontranslations`
 	INDEX `plugin_processmaker_taskcategories_id` (`plugin_processmaker_taskcategories_id`)
 ) ENGINE=InnoDB;
 
+-- Dumping structure for table glpi.glpi_plugin_processmaker_processcategories
+CREATE TABLE `glpi_plugin_processmaker_processcategories` (
+	`id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+	`name` VARCHAR(250) NOT NULL DEFAULT '',
+	`category_guid` VARCHAR(32) NULL,
+	PRIMARY KEY (`id`),
+	UNIQUE INDEX `category_guid` (`category_guid`)
+) ENGINE=InnoDB; 
 
 /*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;
 /*!40014 SET FOREIGN_KEY_CHECKS=IF(@OLD_FOREIGN_KEY_CHECKS IS NULL, 1, @OLD_FOREIGN_KEY_CHECKS) */;

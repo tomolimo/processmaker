@@ -25,14 +25,10 @@ You should have received a copy of the GNU General Public License
 along with this plugin. If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------
  */
-/**
- * selfservicedraft short summary.
- *
- * selfservicedraft description.
- *
- * @version 1.0
- * @author morono
- */
-class PluginProcessmakerSelfservicedraft extends CommonDBTM {
 
+include ("../../../inc/includes.php");
+if( isset($_REQUEST) && !empty($_REQUEST)) {
+    $Case = new PluginProcessmakerCase;
+    $Case->getFromDB($_REQUEST['cases_id']);
+    PluginProcessmakerTask::displayTabContentForItem($Case, $_REQUEST['tabnum']);    
 }

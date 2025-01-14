@@ -41,11 +41,11 @@
          <compatibility>9.4</compatibility>
       </version>
       <version>
-         <num>4.4.1</num>
+         <num>4.7.2</num>
          <compatibility>9.5</compatibility>
       </version>
       <version>
-         <num>5.0.3</num>
+         <num>5.2.3</num>
          <compatibility>10.0</compatibility>
       </version>
    </versions>

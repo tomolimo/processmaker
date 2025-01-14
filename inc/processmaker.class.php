@@ -2,7 +2,7 @@
 /*
 -------------------------------------------------------------------------
 ProcessMaker plugin for GLPI
-Copyright (C) 2014-2023 by Raynet SAS a company of A.Raymond Network.
+Copyright (C) 2014-2024 by Raynet SAS a company of A.Raymond Network.
 
 https://www.araymond.com/
 -------------------------------------------------------------------------
@@ -167,13 +167,13 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    * @param mixed   $txtForFollowup
    * @param integer $users_id       optional, if null will uses logged-in user
    */
-   public function addItemFollowup($itemtype, $itemId, $txtForFollowup, $users_id = null) {
+   public function addItemFollowup($itemtype, $itemId, $txtForFollowup, $cases_id, $tasks_id, $users_id = null) {
       global $DB;
       $fu = new ITILFollowup();
       $input = $fu->fields;
-      if (isset($txtForFollowup['GLPI_ITEM_FOLLOWUP_CONTENT']) && $txtForFollowup['GLPI_ITEM_FOLLOWUP_CONTENT'] != "") {
-         $input['content'] = $DB->escape($txtForFollowup['GLPI_ITEM_FOLLOWUP_CONTENT']);
-      }
+
+      $input['content'] = $DB->escape($txtForFollowup['GLPI_ITEM_FOLLOWUP_CONTENT'] . "<input name='caseid' type='hidden' value='$cases_id'><input name='taskid' type='hidden' value='$tasks_id'>");
+
       if (isset($txtForFollowup['GLPI_ITEM_FOLLOWUP_IS_PRIVATE']) && $txtForFollowup['GLPI_ITEM_FOLLOWUP_IS_PRIVATE'] != "") {
          $input['is_private'] = $txtForFollowup['GLPI_ITEM_FOLLOWUP_IS_PRIVATE'];
       }
@@ -659,16 +659,18 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    */
    function cancelCase($caseUid) {
       try {
-         $pmCaseInfo = $this->getCaseInfo($caseUid);
-         if ($pmCaseInfo->status_code == 0) {
-            foreach ($pmCaseInfo->currentUsers as $pmUser) {
-               $pmCancelTask = $this->cancelTask($caseUid, $pmUser->delIndex, $pmUser->userId);
-               if ($pmCancelTask->status_code != 0) {
-                   return $pmCancelTask;
-               }
-            }
-         }
-         return $pmCancelTask;
+          $pmCaseInfo = $this->getCaseInfo($caseUid);
+          if ($pmCaseInfo->status_code == 0) {
+              if (count($pmCaseInfo->currentUsers) > 1) {
+                  $pmCancelTask = $this->cancelTask($caseUid, null, null);
+              } else {
+                  $pmCancelTask = $this->cancelTask($caseUid, $pmCaseInfo->currentUsers[0]->delIndex, PluginProcessmakerUser::getPMUserId($_SESSION['glpiID']));
+                  if ($pmCancelTask->status_code != 0) {
+                      return $pmCancelTask;
+                  }
+              }
+          }
+          return $pmCancelTask;
       } catch (Exception $e) {
          Toolbox::logDebug($e);
          return false;
@@ -1636,7 +1638,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
          // here we create a fake task that will be used to store the creator of the case
          // this is due for traceability only
-         $PM_SOAP->add1stTask($myCase->getID(), $myCase->fields['itemtype'], $myCase->fields['items_id'], $caseInfo, [ 'notif' => false]); // no notif
+         $PM_SOAP->add1stTask($myCase->getID(), $myCase->fields['itemtype'], $myCase->fields['items_id'], $caseInfo, ['notif' => false, 'userId' => Session::getLoginUserID()]); // no notif
 
          // before routing, send items_id and itemtype
          // as this information was not available at case creation
@@ -1766,6 +1768,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    *            'txtTaskContent' => '',
    *            'start_date'     => '',
    *            'end_date'       => '',
+   *            'reminder'       => '',
    *            'notif'          => true
    * @return
    */
@@ -1853,7 +1856,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       $input['content'] .= "##processmakercase.url##";
 
       $input['is_private'] = 0;
-      $input['actiontime'] = 0;
+      //$input['actiontime'] = 0;
       $input['state'] = Planning::TODO; // == TO_DO
       $input['users_id_tech'] = 0; // by default as it can't be empty
       if ($techId) {
@@ -1862,13 +1865,13 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
          $input['groups_id_tech'] = $groups_id_tech['id'];
       }
 
-      if ($options['reminder'] != '' && $techId) {
-         $input['_planningrecall']   = ['before_time' => $options['reminder'],
-                                        'itemtype'    => get_class($glpi_task),
-                                        'items_id'    => '',
-                                        'users_id'    => $techId,
-                                        'field'       => 'begin'];
-      }
+      //if ($options['reminder'] != '' && $techId) {
+      //   $input['_planningrecall']   = ['before_time' => $options['reminder'],
+      //                                  'itemtype'    => get_class($glpi_task),
+      //                                  'items_id'    => '',
+      //                                  'users_id'    => $techId,
+      //                                  'field'       => 'begin'];
+      //}
 
       $donotif = PluginProcessmakerNotificationTargetProcessmaker::saveNotificationState(false); // do not send notification yet as the PluginProcessmakerTask is not yet added to DB
       $glpi_task->add(Toolbox::addslashes_deep($input));
@@ -1881,12 +1884,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
       if ($glpi_task->getId() > 0) {
          // stores link to task in DB
-         //$tmp = new PluginProcessmakerTask($glpi_task->getType());
-         //$tmp->add([ 'itemtype' => $glpi_task->getType(),
-         //            'items_id' => $glpi_task->getId(),
-         //            'plugin_processmaker_cases_id' => $cases_id,
-         //            'del_index' => $delIndex
-         //            ], [], false);
+         // can't use a GLPI framework object as PluginProcessmakerTask::getFromDB() has been overloaded
          $DB->insert('glpi_plugin_processmaker_tasks',
                      [
                      'items_id'                                => $glpi_task->getId(),
@@ -1896,10 +1894,26 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                      'del_index'                               => $delIndex,
                      'del_thread'                              => $delThread
                      ]);
-         //$query = "INSERT INTO glpi_plugin_processmaker_tasks (items_id, itemtype, plugin_processmaker_cases_id, plugin_processmaker_taskcategories_id, del_index, del_thread)
-         //            VALUES ({$glpi_task->getId()}, '{$glpi_task->getType()}', $cases_id, {$pmtaskcat->fields['id']}, $delIndex, $delThread);";
-         //$DB->query($query);
-         //}
+         $pmTaskId = $DB->insertId();
+
+         // check if there is a recall reminder from the $pm_taskcat
+         $before_time = $pmtaskcat->fields['before_time'];
+         $after_time  = $pmtaskcat->fields['after_time'];
+         if ($options['reminder'] != '') {
+             $before_time = $options['reminder'];
+         }
+         if ($before_time != PluginProcessmakerTaskCategory::REMINDER_NONE || $after_time != PluginProcessmakerTaskCategory::REMINDER_NONE) {
+             // then add a PluginProcessmakerTaskrecall object in DB
+             $when = ($before_time > PluginProcessmakerTaskCategory::REMINDER_NONE ? date("Y-m-d H:i:s", strtotime($input['begin']) - $before_time) : date("Y-m-d H:i:s", strtotime($input['end']) + $after_time));
+             $pr = new PluginProcessmakerTaskrecall();
+             $pr->add([
+                'plugin_processmaker_tasks_id' => $pmTaskId,
+                'users_id'                     => $pmtaskcat->fields['users_id'],
+                'before_time'                  => $before_time,
+                'after_time'                   => $after_time,
+                'when'                         => $when
+             ]);
+         }
 
          // send notification if needed for new task as now we have the PluginProcessmakerTask in the DB
          $donotif = PluginProcessmakerNotificationTargetProcessmaker::saveNotificationState($options['notif']);
@@ -1965,7 +1979,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
       $start_date = new DateTime($_SESSION["glpi_currenttime"]);
       $official_date_time = $_SESSION["glpi_currenttime"];
       $_SESSION["glpi_currenttime"] = $start_date->sub(new DateInterval("PT1S"))->format("Y-m-d H:i:s");
-      $userId = $options['userId'] ? $options['userId'] : Session::getLoginUserID();
+      $userId = $options['userId'];
       unset($options['userId']); // unset it as it's not in the options of addTask
 
       $this->addTask($cases_id,
@@ -2239,7 +2253,6 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
          $pm_task->sendNotification('task_done', $glpi_task, $hostItem);
 
          PluginProcessmakerNotificationTargetProcessmaker::restoreNotificationState($donotif);
-
          // restore current glpi time
          $_SESSION["glpi_currenttime"] = $saved_date_time;
 
@@ -2452,26 +2465,114 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
             $tmpCase->getFromDB($pmTask->fields['plugin_processmaker_cases_id']);
             $urlLink = $tmpCase->getLinkURL().'&forcetab=PluginProcessmakerTask$'.$pmTask->fields['items_id'];
 
+            if ($pmTask->fields['del_thread_status'] != PluginProcessmakerTask::CLOSED) {
+                if ($params['item']->fields['state'] != Planning::INFO) {
+                    echo Html::scriptBlock("
+                       function $taskJSId(ev) {
+                             //debugger;
+                             if ($(ev.target).parent('.read_more').length == 0) {
+                                $('div[data-items-id=\"$dataItemId\"]').width('100%');
+                                $('div[data-items-id=\"$dataItemId\"]').find('.edit_content').width('100%').css({ 'background-color': 'white', 'padding': '5px 0', 'text-align': 'center'})
+                                $('div[data-items-id=\"$dataItemId\"]').find('.read-only-content').hide();
+                                $('div[data-items-id=\"$dataItemId\"]').find('.edit_content').show().load('/plugins/processmaker/ajax/task.php', 
+                                               {'cases_id': {$pmTask->fields['plugin_processmaker_cases_id']}, 
+                                                'tabnum': {$pmTask->fields['items_id']}});
+                                $('div[data-items-id=\"$dataItemId\"] .close-edit-content').show().toggleClass('d-none')
+                                                                .click(function() {
+                                                                    $(this).hide();
+                                                                    $('div[data-items-id=\"$dataItemId\"] .edit_content').empty().hide();
+                                                                    $('div[data-items-id=\"$dataItemId\"] .read-only-content').show();
+                                                                    $('div[data-items-id=\"$dataItemId\"]').width('');
+                                                                });
+                             }
+                          };
+//debugger;
+                       $('div[data-items-id=\"$dataItemId\"]').find('.read-only-content').parent().append('<div class=\"edit_content\"></div>');
+                       $('div[data-items-id=\"$dataItemId\"]').find('.edit_content').hide();
+                       //$('div[data-items-id=\"$dataItemId\"]').find('.timeline-header .timeline-item-buttons').append('<div class=\"close-edit-content\"></div>');
+                       $('div[data-items-id=\"$dataItemId\"]').find('.timeline-header .close-edit-content').appendTo('div[data-items-id=\"$dataItemId\"] .timeline-item-buttons');
+                       $('div[data-items-id=\"$dataItemId\"]').find('.close-edit-content').hide();
+                       $('div[data-items-id=\"$dataItemId\"]').find('.text-content').on('click', $taskJSId).css('cursor', 'pointer');
+                       $('div[data-items-id=\"$dataItemId\"]').find('.read_more').css('cursor', 'auto');
+                       $('tr[id=\"$taskJSId\"]').children().on('click', $taskJSId).css('cursor', 'pointer');
+                       $(function() {
+                       $('div[data-items-id=\"$dataItemId\"]').find('.timeline-item-buttons').prepend(
+                          '<a class=\"pm_task pm_task_badge\" href=\"{$urlLink}\">".str_replace("'", "\\'", $tmpCase->fields['name'])."' +
+                          '<span class=\"pm_task pm_task_case\" case-id=\"{$tmpCase->fields['id']}\">{$tmpCase->fields['id']}</span>' +
+                          '</a>'
+                          );
+                      });
+                    ");
+                } else {
+                    echo Html::scriptBlock("
+                       function $taskJSId(ev) {
+                             //debugger;
+                             if ($(ev.target).parent('.read_more').length == 0) {
+                                document.location='$urlLink';
+                             }
+                          };
+                       $('#$taskJSId').find('.item-content').on('click', $taskJSId).css('cursor', 'pointer');
+                       $('#$taskJSId').find('.read_more').css('cursor', 'auto');
+                       $('tr[id=\"$taskJSId\"]').children().on('click', $taskJSId).css('cursor', 'pointer');
+                       $(function() {
+                          $('#$taskJSId').find('.displayed_content span.state').parent().append(
+                             '<a class=\"pm_task pm_task_badge\" href=\"$urlLink\">".str_replace("'", "\\'", $tmpCase->fields['name'])."' +
+                             '<span class=\"pm_task pm_task_case\" case-id=\"{$tmpCase->fields['id']}\">{$tmpCase->fields['id']}</span>' +
+                             '</a>'
+                             );
+                       });
+                    ");
+                }
+            } else {
+                echo Html::scriptBlock("
+                   function $taskJSId(ev) {
+                         if ($(ev.target).parent('.read_more').length == 0) {
+                            document.location='$urlLink';
+                         }
+                      };
+                   $('div[data-items-id=\"$dataItemId\"]').find('.text-content').on('click', $taskJSId).css('cursor', 'pointer');
+                   $('div[data-items-id=\"$dataItemId\"]').find('.read_more').css('cursor', 'auto');
+                   $('tr[id=\"$taskJSId\"]').children().on('click', $taskJSId).css('cursor', 'pointer');
+                   $(function() {
+                      $('div[data-items-id=\"$dataItemId\"]').find('.timeline-item-buttons').prepend(
+                         '<a class=\"pm_task pm_task_badge\" href=\"{$urlLink}\">".str_replace("'", "\\'", $tmpCase->fields['name'])."' +
+                         '<span class=\"pm_task pm_task_case\" case-id=\"{$tmpCase->fields['id']}\">{$tmpCase->fields['id']}</span>' +
+                         '</a>'
+                         );
+                   });
+                   //$('#$taskJSId').find('.displayed_content > div').last().html(
+                   //   $('#$taskJSId').find('.displayed_content > div').last().html().replace(/(.*?)(<br>.*)/, '<span class=\"pm_task pm_task_category\">$1</span>$2')
+                   //);
+                ");
+             }
+            //will open all todo tasks when created within last 30 seconds
+            if ((strtotime($pmTask->fields['date_creation']) > strtotime("-30 second") || strtotime($pmTask->fields['date_mod']) > strtotime("-30 second"))
+                && (Session::getLoginUserID() === $pmTask->fields['users_id_tech'] || !empty(Group_User::getGroupUsers($pmTask->fields['groups_id_tech'], ['users_id' => Session::getLoginUserID()])))
+                && $params['item']->fields['state'] == Planning::TODO) {
+                echo Html::scriptBlock("
+                    $('div[data-items-id=\"$dataItemId\"]').width('100%');
+                    $('div[data-items-id=\"$dataItemId\"]').find('.edit_content').width('100%').css({ 'background-color': 'white', 'padding': '5px 0', 'text-align': 'center'})
+                    $('div[data-items-id=\"$dataItemId\"]').find('.read-only-content').hide();
+                    $('div[data-items-id=\"$dataItemId\"]').find('.edit_content').show().load('/plugins/processmaker/ajax/task.php', 
+                                   {'cases_id': {$pmTask->fields['plugin_processmaker_cases_id']}, 
+                                    'tabnum': {$pmTask->fields['items_id']}}, function() {
+                                            $('div[data-items-id=\"$dataItemId\"]')[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                    });
+                    $('div[data-items-id=\"$dataItemId\"] .close-edit-content').show().toggleClass('d-none')
+                                                    .click(function() {
+                                                        $(this).hide();
+                                                        $('div[data-items-id=\"$dataItemId\"] .edit_content').empty().hide();
+                                                        $('div[data-items-id=\"$dataItemId\"] .read-only-content').show();
+                                                        $('div[data-items-id=\"$dataItemId\"]').width('');
+                                                    });
+                ");
+            }
+            // will add a class to the div.h_content
             echo Html::scriptBlock("
-               function $taskJSId(ev) {
-                     if ($(ev.target).parent('.read_more').length == 0) {
-                        document.location='$urlLink';
-                     }
-                  };
-               $('div[data-items-id=\"$dataItemId\"]').find('.text-content').on('click', $taskJSId).css('cursor', 'pointer');
-               $('div[data-items-id=\"$dataItemId\"]').find('.read_more').css('cursor', 'auto');
-               $('tr[id=\"$taskJSId\"]').children().on('click', $taskJSId).css('cursor', 'pointer');
-               $(function() {
-                  $('div[data-items-id=\"$dataItemId\"]').find('.timeline-item-buttons').prepend(
-                     '<a class=\"pm_task pm_task_badge\" href=\"{$urlLink}\">".str_replace("'", "\\'", $tmpCase->fields['name'])."' +
-                     '<span class=\"pm_task pm_task_case\" case-id=\"{$tmpCase->fields['id']}\">{$tmpCase->fields['id']}</span>' +
-                     '</a>'
-                     );
-               });
-               //$('#$taskJSId').find('.displayed_content > div').last().html(
-               //   $('#$taskJSId').find('.displayed_content > div').last().html().replace(/(.*?)(<br>.*)/, '<span class=\"pm_task pm_task_category\">$1</span>$2')
-               //);
-            ");
+                      //$('div[data-items-id=\"$dataItemId\"]').removeClass('ITILTask');
+                      $('div[data-items-id=\"$dataItemId\"]').addClass('Case-".$pmTask->fields['plugin_processmaker_cases_id']."');
+                ");
+
             // in order to set NavigationList
             Session::initNavigateListItems('PluginProcessmakerCase',
                         //TRANS : %1$s is the itemtype name,
@@ -2483,6 +2584,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
    }
 
    static function show_in_timeline_processmaker($params) {
+      global $CFG_GLPI;
       foreach($params['timeline'] as $key => $timelineObject) {
          if (is_subclass_of($timelineObject['type'], 'CommonITILTask')) {
             $pmTask = new PluginProcessmakerTask($timelineObject['type']);
@@ -2531,7 +2633,136 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
             }
          }
       }
+      //$itemtype = $params['item']->getType();
+      // if (in_array($itemtype, ['Ticket', 'Problem', 'Change'])
+      //   && $params['item']->getID()
+      //   && Session::getCurrentInterface() == "central") {
+      //    $rand = rand();
+          //$status = $params['item']->fields['status'];
+          //if ($status !== CommonITILObject::CLOSED && $status !== CommonITILObject::SOLVED) {
+          //    $user = User::getById(Session::getLoginUserID());
+          //    $btnLayout = $user->fields["timeline_action_btn_layout"];
+          //    if ($btnLayout == null) {
+          //        $btnLayout = 0;
+          //    }
+          //    echo Html::scriptBlock("
+          //     if (window.jQuery != undefined) {
+          //        $(document).ready(function() {
+          //              function newCasebutton(){
+          //                  $('.timeline-buttons .main-actions').hide();
+          //                  $('#right-actions').hide();
+          //                  $(document).on('click', '#new-itilobject-form .close-new-case-form', function() {
+          //                     $('#itil-footer .main-actions').show();
+          //                     $('#right-actions').show();
+          //                  });              
+          //               }
+          //              if ($btnLayout) {
+          //                 $('.timeline-buttons .main-actions').append('<button class=\"ms-2 mb-2 btn btn-primary answer-action newCase\" data-bs-toggle=\"collapse\" data-bs-target=\"#new-CaseForm-block\"><i class=\"fas fa-project-diagram\"></i><span>".__('Case', 'processmaker')."</span></button>');
+          //              }
+          //              else {
+          //                 $('.timeline-buttons .main-actions .dropdown-menu').append(\"<li><a class='dropdown-item action-task newCase' href='#' data-bs-toggle='collapse' data-bs-target='#new-CaseForm-block'><i class='fas fa-project-diagram'></i><span>".__('Add a case', 'processmaker')."</span></a></li>\");
+          //              }
+          //              $('.timeline-buttons .main-actions .newCase').css('background-color', '#4185F4');
+          //              $('.timeline-buttons .main-actions .newCase').on('click', newCasebutton).css('cursor', 'pointer');
+          //              $('#new-itilobject-form').append('<div class=\"timeline-item mb-3  new-case-form collapse \" id=\"new-CaseForm-block\" aria-expanded=\"false\" data-bs-parent=\"#new-itilobject-form\">')
+          //              $('#new-CaseForm-block').load('/plugins/processmaker/ajax/case.php', {'items_id': {$params['item']->getID()}, 'itemtype': '{$params['item']->getType()}'});
+          //         })
+          //    };");
+          //}
+          // <li class='newCase'><i class='fas fa-project-diagram'></i>
+          //<img src='/plugins/processmaker/pics/processmaker-xxxs.png'>
+
+          //// will add filter for each cases in this object
+          //foreach (getAllDataFromTable(PluginProcessmakerCase::GetTable(), ['itemtype' => $itemtype, 'items_id' => $params['item']->getID()]) as $row) {
+          //    echo Html::scriptBlock("
+          //         if (window.jQuery != undefined) {
+          //             $(document).ready(function() {
+          //                 $('.filter-timeline div.ITILTask').parents('li').before('<li class=\"list-group-item list-group-item-action py-1\"><div class=\"form-check form-switch trigger-filter CaseFilter\" role=\"button\"><input class=\"form-check-input\" type=\"checkbox\" id=\"timeline-filter-Case-" . $row['id'] . "\" autocomplete=\"off\" checked=\"\" data-itemtype=\"Case-" . $row['id'] . "\"><label class=\"form-check-label\" for=\"timeline-filter-Case-" . $row['id'] . "\" role=\"button\"><i class=\"fas fa-project-diagram mx-2\"></i>" . Toolbox::addslashes_deep($row['name']) . " - ". $row['id'] . "</label></div></li>');
+          //         })};");
+          //}
+          //echo Html::scriptBlock("
+          //   if (window.jQuery != undefined) {
+          //       $(document).ready(function() {
+          //           $('.filter-timeline div.list-group').prepend('<li class=\"list-group-item list-group-item-action py-1\"><div class=\"form-check form-switch trigger-filter FilterAll\" role=\"button\"><input class=\"form-check-input\" type=\"checkbox\" id=\"timeline-filter-filter-all\" autocomplete=\"off\" checked=\"\" ><label class=\"form-check-label\" for=\"timeline-filter-filter-filter-all\" role=\"button\"><i class=\"ti ti-checklist mx-2\"></i>All</label></div></li>')
+          //           $('.filter-timeline #timeline-filter-filter-all').on('click', function (e) {
+          //               $('.filter-timeline li').each(function () {
+          //                   if ($(this).find('.FilterAll').length == 0 
+          //                       && $(this).find('.Log').length == 0 
+          //                       && $(this).find('input[type=checkbox]').prop('checked') != $('#timeline-filter-filter-all').prop('checked')) {
+          //                       $(this).find('input[type=checkbox]').click();
+          //                   }
+          //               })
+          //           })
+          //       })
+          //  }");
+      //}
    }
+
+   /**
+    * Summary of post_show_item_processmaker
+    * @param mixed $params 
+    */
+   public static function post_show_item_processmaker($params) {
+       $itemtype = $params['item']->getType();
+       if (in_array($itemtype, ['Ticket', 'Problem', 'Change'])
+         && $params['item']->getID()
+         && Session::getCurrentInterface() == "central") {
+            $status = $params['item']->fields['status'];
+            if ($status !== CommonITILObject::CLOSED && $status !== CommonITILObject::SOLVED) {
+                $user = User::getById(Session::getLoginUserID());
+                $btnLayout = $user->fields["timeline_action_btn_layout"];
+                if ($btnLayout == null) {
+                    $btnLayout = 0;
+                }
+                echo Html::scriptBlock("
+                    $(document).ready(function() {
+                        function newCasebutton(){
+                            $('.timeline-buttons .main-actions').hide();
+                            $('#right-actions').hide();
+                            $(document).on('click', '#new-itilobject-form .close-new-case-form', function() {
+                               $('#itil-footer .main-actions').show();
+                               $('#right-actions').show();
+                            });
+                         }
+                        if ($btnLayout) {
+                           $('.timeline-buttons .main-actions').append('<button class=\"ms-2 mb-2 btn btn-primary answer-action newCase\" data-bs-toggle=\"collapse\" data-bs-target=\"#new-CaseForm-block\"><i class=\"fas fa-project-diagram\"></i><span>".__('Case', 'processmaker')."</span></button>');
+                        }
+                        else {
+                           $('.timeline-buttons .main-actions .dropdown-menu').append(\"<li><a class='dropdown-item action-task newCase' href='#' data-bs-toggle='collapse' data-bs-target='#new-CaseForm-block'><i class='fas fa-project-diagram'></i><span>".__('Add a case', 'processmaker')."</span></a></li>\");
+                        }
+                        $('.timeline-buttons .main-actions .newCase').css('background-color', '#4185F4');
+                        $('.timeline-buttons .main-actions .newCase').on('click', newCasebutton).css('cursor', 'pointer');
+                        $('#new-itilobject-form').append('<div class=\"timeline-item mb-3  new-case-form collapse \" id=\"new-CaseForm-block\" aria-expanded=\"false\" data-bs-parent=\"#new-itilobject-form\">')
+                        $('#new-CaseForm-block').load('/plugins/processmaker/ajax/case.php', {'items_id': {$params['item']->getID()}, 'itemtype': '{$params['item']->getType()}'});
+                     })
+                ;");
+            }
+            // will add filter for each cases in this object
+            foreach (getAllDataFromTable(PluginProcessmakerCase::GetTable(), ['itemtype' => $itemtype, 'items_id' => $params['item']->getID()]) as $row) {
+                echo Html::scriptBlock("
+                     if (window.jQuery != undefined) {
+                         $(document).ready(function() {
+                             $('.filter-timeline div.ITILTask').parents('li').before('<li class=\"list-group-item list-group-item-action py-1\"><div class=\"form-check form-switch trigger-filter CaseFilter\" role=\"button\"><input class=\"form-check-input\" type=\"checkbox\" id=\"timeline-filter-Case-" . $row['id'] . "\" autocomplete=\"off\" checked=\"\" data-itemtype=\"Case-" . $row['id'] . "\"><label class=\"form-check-label\" for=\"timeline-filter-Case-" . $row['id'] . "\" role=\"button\"><i class=\"fas fa-project-diagram mx-2\"></i>" . Toolbox::addslashes_deep($row['name']) . " - ". $row['id'] . "</label></div></li>');
+                     })};");
+            }
+            echo Html::scriptBlock("
+               if (window.jQuery != undefined) {
+                   $(document).ready(function() {
+                       $('.filter-timeline div.list-group').prepend('<li class=\"list-group-item list-group-item-action py-1\"><div class=\"form-check form-switch trigger-filter FilterAll\" role=\"button\"><input class=\"form-check-input\" type=\"checkbox\" id=\"timeline-filter-filter-all\" autocomplete=\"off\" checked=\"\" ><label class=\"form-check-label\" for=\"timeline-filter-filter-filter-all\" role=\"button\"><i class=\"ti ti-checklist mx-2\"></i>All</label></div></li>')
+                       $('.filter-timeline #timeline-filter-filter-all').on('click', function (e) {
+                           $('.filter-timeline li').each(function () {
+                               if ($(this).find('.FilterAll').length == 0 
+                                   && $(this).find('.Log').length == 0 
+                                   && $(this).find('input[type=checkbox]').prop('checked') != $('#timeline-filter-filter-all').prop('checked')) {
+                                   $(this).find('input[type=checkbox]').click();
+                               }
+                           })
+                       })
+                   })
+              }");
+       }
+   }
+
 
     /**
      * Summary of getItemUsers
@@ -2748,9 +2979,9 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
             //if ($pmtask->getFromDBByQuery("WHERE itemtype = '$pmtask_itemtype' AND items_id = $pmtask_items_id")) {
             if ($pmtask->getFromDBByRequest($restrict)) {
 
-               if (!in_array("tasks", $item->tag_descriptions)) {
-                  $item->html_tags[] = "tasks"; // to force GLPI to keep the below HTML tags, otherwise it will apply a Html::entities_deep() to the task.description
-               }
+               //if (!in_array("tasks", $item->tag_descriptions)) {
+               //   $item->html_tags[] = "tasks"; // to force GLPI to keep the below HTML tags, otherwise it will apply a Html::entities_deep() to the task.description
+               //}
 
                $task['##task.description##'] = str_replace('##processmaker.taskcomment##', $task['##task.categorycomment##'], $task['##task.description##']);
                $task['##task.description##'] = nl2br($task['##task.description##']);
@@ -2960,6 +3191,9 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
                        ],
                       [], true);
 
+         if ($caseInfo->currentUsers[0]->userId == "") { // in case the task is "to be claimed"
+             $users_id = 0;
+         }
          $this->add1stTask($locCase->getID(), $itemtype, $items_id, $caseInfo, ['userId' => $users_id]);
       }
 
@@ -3209,7 +3443,7 @@ class PluginProcessmakerProcessmaker extends CommonDBTM {
 
       // create a followup if requested
       if ($createFollowup) { // && $itemtype == 'Ticket') {
-         $this->addItemFollowup($itemtype, $items_id, $casevariablevalues);
+         $this->addItemFollowup($itemtype, $items_id, $casevariablevalues, $myCase->getID(), $glpi_task->getID());
       }
 
       if ($txtItemTitle != '') {

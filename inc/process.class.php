@@ -2,7 +2,7 @@
 /*
 -------------------------------------------------------------------------
 ProcessMaker plugin for GLPI
-Copyright (C) 2014-2023 by Raynet SAS a company of A.Raymond Network.
+Copyright (C) 2014-2024 by Raynet SAS a company of A.Raymond Network.
 
 https://www.araymond.com/
 -------------------------------------------------------------------------
@@ -329,7 +329,7 @@ class PluginProcessmakerProcess extends CommonDBTM {
       global $DB, $PM_SOAP;
       $dbu = new DbUtils;
       $pmCurrentProcesses = [];
-
+      PluginProcessmakerProcessCategory::refreshCategories();
       // then refresh list of available process from PM to inner table
       $PM_SOAP->login( true );
       $pmProcessList = $PM_SOAP->processList();
@@ -352,6 +352,9 @@ class PluginProcessmakerProcess extends CommonDBTM {
                } else {
                   $glpiprocess->updateTaskCategory( $pmMainTaskCat );
                }
+               if (!$glpiprocess->fields['plugin_processmaker_processcategories_id']) {
+                   $glpiprocess->updateProcessCategory($process->category_guid);
+               }
             } else {
                // create it
                if (isset( $process->project_type )) {
@@ -360,7 +363,12 @@ class PluginProcessmakerProcess extends CommonDBTM {
                   $project_type = 'classic';
                }
 
-               if ($glpiprocess->add( [ 'process_guid' => $process->guid, 'name' => $process->name, 'project_type' => $project_type ])) {
+               if ($glpiprocess->add([ 
+                   'process_guid'                             => $process->guid, 
+                   'name'                                     => $process->name, 
+                   'project_type'                             => $project_type,
+                   ])) {
+                  $glpiprocess->updateProcessCategory($process->category_guid);
                   // and add main task category for this process
                   $glpiprocess->addTaskCategory( $pmMainTaskCat );
                }
@@ -419,6 +427,26 @@ class PluginProcessmakerProcess extends CommonDBTM {
       }
 
    }
+   
+    /**
+     * Summary of updateProcessCategory
+     * Update Process category for current process, only if needed (i.e. name has changed)
+     * @return boolean true if update is done, false otherwise
+     */
+    function updateProcessCategory($category_guid) {
+        global $PM_DB;
+        if ($category_guid) {
+            $processCategories = new PluginProcessmakerProcessCategory();
+            $processCategories->getFromDBByCrit(["category_guid" => $category_guid]);
+            if ($processCategories) {
+                return $this->update([
+                    'id' => $this->getID(),
+                    'plugin_processmaker_processcategories_id' => $processCategories->fields['id']
+                ]);
+            }
+        }
+        return false;
+    }
 
    /**
    * Summary of updateTaskCategory
@@ -648,6 +676,14 @@ class PluginProcessmakerProcess extends CommonDBTM {
          'massiveaction'      => true,
          'datatype'           => 'number'
       ];
+      $tab[] = [
+         'id'                 => '22',
+         'table'              => 'glpi_plugin_processmaker_processcategories',
+         'field'              => 'name',
+         'name'               => __('Process category'),
+         'massiveaction'      => false,
+         'datatype'           => 'dropdown',
+      ];
 
       return $tab;
    }
@@ -747,6 +783,11 @@ class PluginProcessmakerProcess extends CommonDBTM {
       echo "<tr class='tab_bg_1'>";
       echo "<td >".__('Process GUID', 'processmaker')."</td><td>";
       echo $this->fields["process_guid"];
+      echo "</td></tr>";
+
+      echo "<tr class='tab_bg_1'>";
+      echo "<td >".__('Process category', 'processmaker')."</td><td>";
+      echo Dropdown::getDropdownName('glpi_plugin_processmaker_processcategories', $this->fields["plugin_processmaker_processcategories_id"]);
       echo "</td></tr>";
 
       echo "<tr class='tab_bg_1'>";

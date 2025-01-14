@@ -3,7 +3,7 @@ use Symfony\Component\DomCrawler\Crawler;
 /*
 -------------------------------------------------------------------------
 ProcessMaker plugin for GLPI
-Copyright (C) 2014-2023 by Raynet SAS a company of A.Raymond Network.
+Copyright (C) 2014-2024 by Raynet SAS a company of A.Raymond Network.
 
 https://www.araymond.com/
 -------------------------------------------------------------------------
@@ -108,8 +108,15 @@ function processMakerShowCase($users_id, $from_helpdesk) {
       $tkt->showFormHelpdesk($users_id);
 
       $buffer = ob_get_clean();
+      //if (ob_get_level() > 1) {
+      //    echo $buffer;
+      //    $buffer = ob_get_clean();
+      //}
+      
+      //to change this HTML code
+      $rand = rand();
+      $buffer = preg_replace(['@</i>\s+</span>`@',"@'</span>',@", "@&nbsp;@", "@</i>\s+</button>`;@", "@</span>`@", "@</i>`@"], ["icon_span_$rand`","'post_span_$rand',", "nbsp_$rand", "icon_button_$rand`;", "span_$rand`", "icon_$rand`"], $buffer);
 
-      // to change this HTML code
       $crawler = new Crawler();
       $crawler->addHtmlContent($buffer);
 
@@ -122,7 +129,7 @@ function processMakerShowCase($users_id, $from_helpdesk) {
       $crawler->filter('[name=add]')->getNode(0)->setAttribute('style', 'display:none;');
 
       // add an input for processguid in the form
-      $formNode = $crawler->filter('#itil-form');
+      $formNode = $crawler->filter('div.card');
       $input = $formNode->getNode(0)->appendChild(new DOMElement('input'));
       $input->setAttribute('name', 'processmaker_process_guid');
       $input->setAttribute('type', 'hidden');
@@ -191,10 +198,13 @@ function processMakerShowCase($users_id, $from_helpdesk) {
          ]));
       $iframe->setAttribute(
           'src',
-"{$PM_SOAP->serverURL}/cases/cases_Open?sid={$PM_SOAP->getPMSessionID()}&APP_UID={$caseInfo->caseId}&{$paramsURL}&glpi_data={$glpi_data}"
-          );
+          "{$PM_SOAP->serverURL}/cases/cases_Open?sid={$PM_SOAP->getPMSessionID()}&APP_UID={$caseInfo->caseId}&{$paramsURL}&glpi_data={$glpi_data}"
+      );
 
-      echo $crawler->html();
+      $buffer = $crawler->html();
+      $buffer = str_replace(["icon_span_$rand`", "'post_span_$rand',", "nbsp_$rand", "icon_button_$rand`;", "span_$rand`", "icon_$rand`"], ['</i> </span>`', "'</span>',", "&nbsp;", "</i> </button>`;", "</span>`", "</i>`"], $buffer);
+
+      echo $buffer;
    }
 
 }

@@ -2,7 +2,7 @@
 /*
 -------------------------------------------------------------------------
 ProcessMaker plugin for GLPI
-Copyright (C) 2014-2023 by Raynet SAS a company of A.Raymond Network.
+Copyright (C) 2014-2024 by Raynet SAS a company of A.Raymond Network.
 
 https://www.araymond.com/
 -------------------------------------------------------------------------
@@ -34,23 +34,23 @@ function processmaker_install() {
    $config = Config::getConfigurationValues('plugin:processmaker');
 
    $config += [
-      'pm_server_URL'              => 'http://localhost/',
-      'pm_workspace'               => 'workflow',
-      'pm_admin_user'              => 'NULL',
-      'pm_admin_passwd'            => 'NULL',
-      'pm_theme'                   => 'glpi_classic',
-      'date_mod'                   => $_SESSION["glpi_currenttime"],
-      'taskcategories_id'          => 'NULL',
-      'users_id'                   => 'NULL',
-      'pm_group_guid'              => 'NULL',
-      'pm_dbserver_name'           => 'NULL',
-      'pm_dbname'                  => 'wf_workflow',
-      'pm_dbserver_user'           => 'NULL',
-      'pm_dbserver_passwd'         => 'NULL',
-      'maintenance'                => 0,
-      'ssl_verify'                 => 0,
-      'db_version'                 => '4.4.0',
-      'max_cases_per_item'         => 0,
+      'pm_server_URL'               => 'http://localhost/',
+      'pm_workspace'                => 'workflow',
+      'pm_admin_user'               => 'NULL',
+      'pm_admin_passwd'             => 'NULL',
+      'pm_theme'                    => 'glpi_classic',
+      'date_mod'                    => $_SESSION["glpi_currenttime"],
+      'taskcategories_id'           => 'NULL',
+      'users_id'                    => 'NULL',
+      'pm_group_guid'               => 'NULL',
+      'pm_dbserver_name'            => 'NULL',
+      'pm_dbname'                   => 'wf_workflow',
+      'pm_dbserver_user'            => 'NULL',
+      'pm_dbserver_passwd'          => 'NULL',
+      'maintenance'                 => 0,
+      'ssl_verify'                  => 0,
+      'db_version'                  => '4.6.0',
+      'max_cases_per_item'          => 0,
       'is_reassignreason_mandatory' => 0
       ];
 
